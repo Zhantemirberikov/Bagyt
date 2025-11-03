@@ -9,9 +9,23 @@ import SwiftUI
 
 @main
 struct BagytApp: App {
+    @StateObject private var appState = AppState()
+    @StateObject private var langManager = LanguageManager()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if appState.isLoggedIn {
+                HomeView()
+                    .environmentObject(appState)
+                    .environmentObject(langManager)
+            } else {
+                OnboardingView()
+                    .environmentObject(langManager)
+                    .environmentObject(appState) // если хочешь доступ в onboarding
+            }
         }
     }
 }
+
+
+

@@ -6,8 +6,13 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		13DE826E2EB76F9300AF2047 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DE826D2EB76F9300AF2047 /* AppState.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		13DC10412EB5FF6D00352509 /* Bagyt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bagyt.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13DE826D2EB76F9300AF2047 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -32,6 +37,7 @@
 		13DC10382EB5FF6C00352509 = {
 			isa = PBXGroup;
 			children = (
+				13DE826D2EB76F9300AF2047 /* AppState.swift */,
 				13DC10432EB5FF6D00352509 /* Bagyt */,
 				13DC10422EB5FF6D00352509 /* Products */,
 			);
@@ -119,6 +125,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				13DE826E2EB76F9300AF2047 /* AppState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
