@@ -9,23 +9,26 @@ import SwiftUI
 
 @main
 struct BagytApp: App {
+    // MARK: - Global State Objects
     @StateObject private var appState = AppState()
     @StateObject private var langManager = LanguageManager()
-
+    
+    init() {
+        print("🚀 BagytApp initialized")
+        // AppState сам управляет флагами isLoggedIn и isFirstLaunch
+    }
+    
     var body: some Scene {
         WindowGroup {
-            if appState.isLoggedIn {
-                HomeView()
-                    .environmentObject(appState)
-                    .environmentObject(langManager)
-            } else {
-                OnboardingView()
-                    .environmentObject(langManager)
-                    .environmentObject(appState) // если хочешь доступ в onboarding
-            }
+            // 👇 Используем только один главный контейнер
+            OnboardingContainerView()
+                .environmentObject(appState)
+                .environmentObject(langManager)
+                .onAppear {
+                    print("✅ BagytApp started")
+                    print("isFirstLaunch = \(appState.isFirstLaunch)")
+                    print("isLoggedIn = \(appState.isLoggedIn)")
+                }
         }
     }
 }
-
-
-

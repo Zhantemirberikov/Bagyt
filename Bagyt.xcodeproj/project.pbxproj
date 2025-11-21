@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		13DE826E2EB76F9300AF2047 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DE826D2EB76F9300AF2047 /* AppState.swift */; };
+		13DE828E2EC307E400AF2047 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 13DE828D2EC307E400AF2047 /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +29,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				13DE828E2EC307E400AF2047 /* Lottie in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -71,6 +73,7 @@
 			);
 			name = Bagyt;
 			packageProductDependencies = (
+				13DE828D2EC307E400AF2047 /* Lottie */,
 			);
 			productName = Bagyt;
 			productReference = 13DC10412EB5FF6D00352509 /* Bagyt.app */;
@@ -100,6 +103,9 @@
 			);
 			mainGroup = 13DC10382EB5FF6C00352509;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				13DE828C2EC307E400AF2047 /* XCRemoteSwiftPackageReference "lottie-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 13DC10422EB5FF6D00352509 /* Products */;
 			projectDirPath = "";
@@ -339,6 +345,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		13DE828C2EC307E400AF2047 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		13DE828D2EC307E400AF2047 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 13DE828C2EC307E400AF2047 /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 13DC10392EB5FF6C00352509 /* Project object */;
 }
