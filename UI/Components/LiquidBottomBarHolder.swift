@@ -1,3 +1,11 @@
+//
+//  LiquidBottomBarHolder.swift
+//  Bagyt
+//
+//  Created by Жантемир Бериков on 23.11.2025.
+//
+
+
 // LiquidBottomBarHolder.swift (or keep it below HomeView in same file)
 import SwiftUI
 

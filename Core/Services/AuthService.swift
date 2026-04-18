@@ -12,8 +12,8 @@ final class AuthService {
     private init() {}
 
     // ✅ Прямые URL эндпоинтов
-    private let registerURL = URL(string: "https://2cc2abd0c289.ngrok-free.app/api/register")!
-    private let loginURL = URL(string: "https://2cc2abd0c289.ngrok-free.app/api/login")!
+    private let registerURL = URL(string: "https://a2e3-185-18-253-5.ngrok-free.app/api/register")!
+    private let loginURL = URL(string: "https://a2e3-185-18-253-5.ngrok-free.app/api/login")!
 
     // MARK: - Login
     func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
@@ -111,7 +111,11 @@ final class AuthService {
                     print("✅ JSON Response:", json)
 
                     if let token = json["token"] as? String {
-                        // ✅ Извлекаем имя из user.name
+
+                        // ✅ СОХРАНЯЕМ ТОКЕН (САМОЕ ВАЖНОЕ)
+                        UserDefaults.standard.set(token, forKey: "auth_token")
+                        print("💾 TOKEN SAVED:", token)
+
                         if let user = json["user"] as? [String: Any],
                            let name = user["name"] as? String {
                             UserDefaults.standard.set(name, forKey: "userName")

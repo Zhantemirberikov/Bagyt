@@ -7,11 +7,57 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		13A15AE32F93930B007A58B1 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A15AE22F93930B007A58B1 /* GlassCard.swift */; };
+		13CE3E832F9377840091C508 /* aiaia.json in Resources */ = {isa = PBXBuildFile; fileRef = 13CE3E6C2F9377840091C508 /* aiaia.json */; };
+		13CE3E842F9377840091C508 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13CE3E6D2F9377840091C508 /* Assets.xcassets */; };
+		13CE3E852F9377840091C508 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E6E2F9377840091C508 /* AuthService.swift */; };
+		13CE3E862F9377840091C508 /* BagytApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E6F2F9377840091C508 /* BagytApp.swift */; };
+		13CE3E872F9377840091C508 /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E702F9377840091C508 /* ChatService.swift */; };
+		13CE3E882F9377840091C508 /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E712F9377840091C508 /* ChatView.swift */; };
+		13CE3E8B2F9377840091C508 /* HealthMetricsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E742F9377840091C508 /* HealthMetricsView.swift */; };
+		13CE3E8C2F9377840091C508 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E752F9377840091C508 /* HomeView.swift */; };
+		13CE3E8D2F9377840091C508 /* JournalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E762F9377840091C508 /* JournalView.swift */; };
+		13CE3E8E2F9377840091C508 /* KeyboardObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E772F9377840091C508 /* KeyboardObserver.swift */; };
+		13CE3E8F2F9377840091C508 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E782F9377840091C508 /* LanguageManager.swift */; };
+		13CE3E902F9377840091C508 /* LiquidBottomBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E792F9377840091C508 /* LiquidBottomBar.swift */; };
+		13CE3E912F9377840091C508 /* LiquidBottomBarHolder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E7A2F9377840091C508 /* LiquidBottomBarHolder.swift */; };
+		13CE3E922F9377840091C508 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E7B2F9377840091C508 /* LoginView.swift */; };
+		13CE3E932F9377840091C508 /* LottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E7C2F9377840091C508 /* LottieView.swift */; };
+		13CE3E942F9377840091C508 /* MoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E7D2F9377840091C508 /* MoodView.swift */; };
+		13CE3E952F9377840091C508 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E7E2F9377840091C508 /* MotionManager.swift */; };
+		13CE3E962F9377840091C508 /* OnboardingContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E7F2F9377840091C508 /* OnboardingContainerView.swift */; };
+		13CE3E972F9377840091C508 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E802F9377840091C508 /* OnboardingView.swift */; };
+		13CE3E982F9377840091C508 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E812F9377840091C508 /* SettingsView.swift */; };
+		13CE3E992F9377840091C508 /* VisualEffectBlur.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E822F9377840091C508 /* VisualEffectBlur.swift */; };
+		13CE3EB02F938FF90091C508 /* AnimatedGradientBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3EAF2F938FF90091C508 /* AnimatedGradientBackground.swift */; };
 		13DE826E2EB76F9300AF2047 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DE826D2EB76F9300AF2047 /* AppState.swift */; };
 		13DE828E2EC307E400AF2047 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 13DE828D2EC307E400AF2047 /* Lottie */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		13A15AE22F93930B007A58B1 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
+		13CE3E6C2F9377840091C508 /* aiaia.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = aiaia.json; sourceTree = "<group>"; };
+		13CE3E6D2F9377840091C508 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		13CE3E6E2F9377840091C508 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		13CE3E6F2F9377840091C508 /* BagytApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BagytApp.swift; sourceTree = "<group>"; };
+		13CE3E702F9377840091C508 /* ChatService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatService.swift; sourceTree = "<group>"; };
+		13CE3E712F9377840091C508 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		13CE3E742F9377840091C508 /* HealthMetricsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMetricsView.swift; sourceTree = "<group>"; };
+		13CE3E752F9377840091C508 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		13CE3E762F9377840091C508 /* JournalView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalView.swift; sourceTree = "<group>"; };
+		13CE3E772F9377840091C508 /* KeyboardObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardObserver.swift; sourceTree = "<group>"; };
+		13CE3E782F9377840091C508 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+		13CE3E792F9377840091C508 /* LiquidBottomBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidBottomBar.swift; sourceTree = "<group>"; };
+		13CE3E7A2F9377840091C508 /* LiquidBottomBarHolder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiquidBottomBarHolder.swift; sourceTree = "<group>"; };
+		13CE3E7B2F9377840091C508 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		13CE3E7C2F9377840091C508 /* LottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LottieView.swift; sourceTree = "<group>"; };
+		13CE3E7D2F9377840091C508 /* MoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoodView.swift; sourceTree = "<group>"; };
+		13CE3E7E2F9377840091C508 /* MotionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionManager.swift; sourceTree = "<group>"; };
+		13CE3E7F2F9377840091C508 /* OnboardingContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingContainerView.swift; sourceTree = "<group>"; };
+		13CE3E802F9377840091C508 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		13CE3E812F9377840091C508 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		13CE3E822F9377840091C508 /* VisualEffectBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectBlur.swift; sourceTree = "<group>"; };
+		13CE3EAF2F938FF90091C508 /* AnimatedGradientBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGradientBackground.swift; sourceTree = "<group>"; };
 		13DC10412EB5FF6D00352509 /* Bagyt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bagyt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13DE826D2EB76F9300AF2047 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -36,10 +82,153 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13DC10382EB5FF6C00352509 = {
+		13CE3E9A2F937B520091C508 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				13DE826D2EB76F9300AF2047 /* AppState.swift */,
+				13CE3E6F2F9377840091C508 /* BagytApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		13CE3E9B2F937B640091C508 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3EA02F937B980091C508 /* Managers */,
+				13CE3E9F2F937B8D0091C508 /* Services */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		13CE3E9C2F937B6F0091C508 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3EA82F938A8E0091C508 /* Onboarding */,
+				13CE3EA52F937BBE0091C508 /* Health */,
+				13CE3EA42F937BB70091C508 /* Journal */,
+				13CE3EA32F937BB00091C508 /* Home */,
+				13CE3EA22F937BAB0091C508 /* Chat */,
+				13CE3EA12F937BA40091C508 /* Auth */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		13CE3E9D2F937B780091C508 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3EA72F937BD10091C508 /* Animations */,
+				13CE3EA62F937BC90091C508 /* Components */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+		13CE3E9E2F937B7F0091C508 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E6C2F9377840091C508 /* aiaia.json */,
+				13CE3E6D2F9377840091C508 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		13CE3E9F2F937B8D0091C508 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E6E2F9377840091C508 /* AuthService.swift */,
+				13CE3E702F9377840091C508 /* ChatService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		13CE3EA02F937B980091C508 /* Managers */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E782F9377840091C508 /* LanguageManager.swift */,
+				13CE3E772F9377840091C508 /* KeyboardObserver.swift */,
+				13CE3E7E2F9377840091C508 /* MotionManager.swift */,
+			);
+			path = Managers;
+			sourceTree = "<group>";
+		};
+		13CE3EA12F937BA40091C508 /* Auth */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E7B2F9377840091C508 /* LoginView.swift */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+		13CE3EA22F937BAB0091C508 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E712F9377840091C508 /* ChatView.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		13CE3EA32F937BB00091C508 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E752F9377840091C508 /* HomeView.swift */,
+				13CE3E7D2F9377840091C508 /* MoodView.swift */,
+				13CE3E812F9377840091C508 /* SettingsView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		13CE3EA42F937BB70091C508 /* Journal */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E762F9377840091C508 /* JournalView.swift */,
+			);
+			path = Journal;
+			sourceTree = "<group>";
+		};
+		13CE3EA52F937BBE0091C508 /* Health */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E742F9377840091C508 /* HealthMetricsView.swift */,
+			);
+			path = Health;
+			sourceTree = "<group>";
+		};
+		13CE3EA62F937BC90091C508 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E7C2F9377840091C508 /* LottieView.swift */,
+				13CE3E7A2F9377840091C508 /* LiquidBottomBarHolder.swift */,
+				13CE3E792F9377840091C508 /* LiquidBottomBar.swift */,
+				13CE3E822F9377840091C508 /* VisualEffectBlur.swift */,
+				13A15AE22F93930B007A58B1 /* GlassCard.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		13CE3EA72F937BD10091C508 /* Animations */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3EAF2F938FF90091C508 /* AnimatedGradientBackground.swift */,
+			);
+			path = Animations;
+			sourceTree = "<group>";
+		};
+		13CE3EA82F938A8E0091C508 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				13CE3E7F2F9377840091C508 /* OnboardingContainerView.swift */,
+				13CE3E802F9377840091C508 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		13DC10382EB5FF6C00352509 = {
+			isa = PBXGroup;
+			children = (
+				13CE3E9E2F937B7F0091C508 /* Resources */,
+				13CE3E9D2F937B780091C508 /* UI */,
+				13CE3E9C2F937B6F0091C508 /* Features */,
+				13CE3E9B2F937B640091C508 /* Core */,
+				13CE3E9A2F937B520091C508 /* App */,
 				13DC10432EB5FF6D00352509 /* Bagyt */,
 				13DC10422EB5FF6D00352509 /* Products */,
 			);
@@ -121,6 +310,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				13CE3E832F9377840091C508 /* aiaia.json in Resources */,
+				13CE3E842F9377840091C508 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +322,27 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				13CE3E852F9377840091C508 /* AuthService.swift in Sources */,
+				13CE3E862F9377840091C508 /* BagytApp.swift in Sources */,
+				13CE3E872F9377840091C508 /* ChatService.swift in Sources */,
+				13CE3E882F9377840091C508 /* ChatView.swift in Sources */,
+				13CE3E8B2F9377840091C508 /* HealthMetricsView.swift in Sources */,
+				13CE3E8C2F9377840091C508 /* HomeView.swift in Sources */,
+				13CE3E8D2F9377840091C508 /* JournalView.swift in Sources */,
+				13CE3E8E2F9377840091C508 /* KeyboardObserver.swift in Sources */,
+				13CE3E8F2F9377840091C508 /* LanguageManager.swift in Sources */,
+				13CE3E902F9377840091C508 /* LiquidBottomBar.swift in Sources */,
+				13A15AE32F93930B007A58B1 /* GlassCard.swift in Sources */,
+				13CE3E912F9377840091C508 /* LiquidBottomBarHolder.swift in Sources */,
+				13CE3E922F9377840091C508 /* LoginView.swift in Sources */,
+				13CE3E932F9377840091C508 /* LottieView.swift in Sources */,
+				13CE3EB02F938FF90091C508 /* AnimatedGradientBackground.swift in Sources */,
+				13CE3E942F9377840091C508 /* MoodView.swift in Sources */,
+				13CE3E952F9377840091C508 /* MotionManager.swift in Sources */,
+				13CE3E962F9377840091C508 /* OnboardingContainerView.swift in Sources */,
+				13CE3E972F9377840091C508 /* OnboardingView.swift in Sources */,
+				13CE3E982F9377840091C508 /* SettingsView.swift in Sources */,
+				13CE3E992F9377840091C508 /* VisualEffectBlur.swift in Sources */,
 				13DE826E2EB76F9300AF2047 /* AppState.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
