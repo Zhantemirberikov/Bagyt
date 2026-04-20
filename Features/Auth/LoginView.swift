@@ -1,46 +1,23 @@
 import SwiftUI
 import AuthenticationServices
+import Combine
 
-// MARK: - Эффект стеклянной панели
-struct GlassPanel<Content: View>: View {
-    let content: Content
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-
-    var body: some View {
-        content
-            .padding()
-            .background(
-                Color.white.opacity(0.15)
-                    .blur(radius: 20)
-                    .background(.ultraThinMaterial)
-                    .cornerRadius(20)
-                    .shadow(color: .black.opacity(0.2), radius: 15, x: 0, y: 5)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.white.opacity(0.25), lineWidth: 1)
-            )
-    }
-}
-
-// MARK: - Основной экран логина/регистрации
 struct LoginView: View {
     @EnvironmentObject var lang: LanguageManager
     @EnvironmentObject var appState: AppState
-
+    
+    @StateObject private var viewModel = AuthViewModel()
+    
     var showBackground: Bool = true
     var showHeader: Bool = true
 
-    @State private var name = ""                // ✅ добавлено поле имени
-    @State private var email = ""
-    @State private var password = ""
-    @State private var confirmPassword = ""
     @State private var showPassword = false
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-    @State private var isRegisterMode = false
+    @State private var showPrivacy = false
+    
+    enum Field {
+        case name, email, password, confirmPassword
+    }
+    @FocusState private var focusedField: Field?
 
     var body: some View {
         ZStack {
@@ -99,7 +76,7 @@ struct LoginView: View {
 
                 Spacer()
 
-                Text(isRegisterMode ? localized("register_subtitle") : localized("subtitle"))
+                Text(viewModel.isRegisterMode ? localized("register_subtitle") : localized("subtitle"))
                     .font(.headline)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.black)
@@ -108,111 +85,118 @@ struct LoginView: View {
 
                 GlassPanel {
                     VStack(spacing: 14) {
-                        // ✅ Name (только при регистрации)
-                        if isRegisterMode {
-                            TextField(localized("name_placeholder"), text: $name)
-                                .textContentType(.name)
+
+                        if viewModel.isRegisterMode {
+                            TextField(localized("name_placeholder"), text: $viewModel.name)
+                                .focused($focusedField, equals: .name)
+                                .submitLabel(.next)
+                                .onSubmit { focusedField = .email }
                                 .padding()
                                 .background(Color.black.opacity(0.05))
                                 .cornerRadius(10)
-                                .foregroundColor(.black)
                         }
 
-                        // Email
-                        TextField(localized("email_placeholder"), text: $email)
-                            .keyboardType(.emailAddress)
-                            .textContentType(.emailAddress)
+                        TextField(localized("email_placeholder"), text: $viewModel.email)
+                            .focused($focusedField, equals: .email)
+                            .submitLabel(.next)
+                            .onSubmit { focusedField = .password }
                             .padding()
                             .background(Color.black.opacity(0.05))
                             .cornerRadius(10)
-                            .foregroundColor(.black)
 
-                        // Password
                         HStack {
                             if showPassword {
-                                TextField(localized("password_placeholder"), text: $password)
-                                    .textContentType(.password)
+                                TextField(localized("password_placeholder"), text: $viewModel.password)
                             } else {
-                                SecureField(localized("password_placeholder"), text: $password)
+                                SecureField(localized("password_placeholder"), text: $viewModel.password)
                             }
-                            Button(action: { showPassword.toggle() }) {
+
+                            Button {
+                                showPassword.toggle()
+                            } label: {
                                 Image(systemName: showPassword ? "eye.slash" : "eye")
-                                    .foregroundColor(.black.opacity(0.7))
+                            }
+                        }
+                        .focused($focusedField, equals: .password)
+                        .submitLabel(viewModel.isRegisterMode ? .next : .done)
+                        .onSubmit {
+                            if viewModel.isRegisterMode {
+                                focusedField = .confirmPassword
+                            } else {
+                                submit()
                             }
                         }
                         .padding()
                         .background(Color.black.opacity(0.05))
                         .cornerRadius(10)
 
-                        // ✅ Confirm Password (только при регистрации)
-                        if isRegisterMode {
+                        if viewModel.isRegisterMode {
                             HStack {
                                 if showPassword {
-                                    TextField(localized("confirm_password_placeholder"), text: $confirmPassword)
-                                        .textContentType(.password)
+                                    TextField(localized("confirm_password_placeholder"), text: $viewModel.confirmPassword)
                                 } else {
-                                    SecureField(localized("confirm_password_placeholder"), text: $confirmPassword)
+                                    SecureField(localized("confirm_password_placeholder"), text: $viewModel.confirmPassword)
                                 }
-                                Button(action: { showPassword.toggle() }) {
+
+                                Button {
+                                    showPassword.toggle()
+                                } label: {
                                     Image(systemName: showPassword ? "eye.slash" : "eye")
-                                        .foregroundColor(.black.opacity(0.7))
                                 }
                             }
+                            .focused($focusedField, equals: .confirmPassword)
+                            .submitLabel(.done)
+                            .onSubmit { submit() }
                             .padding()
                             .background(Color.black.opacity(0.05))
                             .cornerRadius(10)
                         }
 
-                        if let err = errorMessage {
+                        if let err = viewModel.errorMessage {
                             Text(err)
                                 .foregroundColor(.red)
                                 .font(.caption)
                                 .multilineTextAlignment(.center)
                                 .padding(.top, 4)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                                .animation(.easeInOut, value: viewModel.errorMessage)
                         }
 
-                        // Кнопка логина/регистрации
                         Button {
-                            if isRegisterMode {
-                                inlineRegister()
-                            } else {
-                                inlineLogin()
-                            }
+                            submit()
                         } label: {
                             HStack {
-                                if isLoading {
+                                if viewModel.isLoading {
                                     ProgressView()
-                                        .progressViewStyle(CircularProgressViewStyle(tint: .black))
                                 }
-                                Text(isRegisterMode ? localized("sign_up_email") : localized("sign_email"))
+                                Text(viewModel.isRegisterMode ? localized("sign_up_email") : localized("sign_email"))
                             }
-                            .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.black.opacity(0.1))
                             .cornerRadius(10)
-                            .foregroundColor(.black)
                         }
-                        .padding(.top, 8)
+                        .disabled(!viewModel.isValid)
+                        .opacity(viewModel.isValid ? 1 : 0.5)
 
-                        Button(action: {
+                        Button {
                             withAnimation {
-                                isRegisterMode.toggle()
-                                errorMessage = nil
-                                name = ""
-                                confirmPassword = ""
+                                viewModel.isRegisterMode.toggle()
+                                viewModel.errorMessage = nil
+                                viewModel.name = ""
+                                viewModel.confirmPassword = ""
                             }
-                        }) {
-                            Text(isRegisterMode ? localized("already_have_account") : localized("no_account"))
+                        } label: {
+                            Text(viewModel.isRegisterMode ? localized("already_have_account") : localized("no_account"))
                                 .font(.footnote)
                                 .foregroundColor(.black.opacity(0.8))
                         }
-                        .padding(.top, 6)
                     }
                 }
                 .padding(.horizontal, 30)
 
-                if !isRegisterMode {
+                // 🔥 SOCIAL LOGIN (ФЕЙК)
+                if !viewModel.isRegisterMode {
                     HStack {
                         Rectangle().frame(height: 1).foregroundColor(.black.opacity(0.2))
                         Text(localized("or"))
@@ -223,12 +207,15 @@ struct LoginView: View {
                     .padding(.horizontal)
 
                     VStack(spacing: 12) {
-                        Button(action: { print("Google tapped") }) {
+
+                        // ✅ GOOGLE FAKE LOGIN
+                        Button {
+                            fakeGoogleLogin()
+                        } label: {
                             HStack {
                                 Image(systemName: "g.circle.fill")
                                 Text(localized("sign_google"))
                             }
-                            .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.white)
@@ -238,98 +225,81 @@ struct LoginView: View {
                         }
                         .padding(.horizontal)
 
-                        SignInWithAppleButton(.signIn) { request in
-                            request.requestedScopes = [.fullName, .email]
-                        } onCompletion: { result in
-                            switch result {
-                            case .success:
-                                appState.isLoggedIn = true
-                            case .failure(let error):
-                                errorMessage = error.localizedDescription
+                        // ✅ APPLE FAKE LOGIN
+                        Button {
+                            fakeAppleLogin()
+                        } label: {
+                            HStack {
+                                Image(systemName: "applelogo")
+                                Text("Sign in with Apple")
                             }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.black)
+                            .foregroundColor(.white)
+                            .cornerRadius(12)
                         }
-                        .signInWithAppleButtonStyle(.black)
-                        .frame(height: 50)
-                        .cornerRadius(12)
                         .padding(.horizontal)
                     }
                 }
 
-                Spacer()
-
+                // 🔥 PRIVACY
                 VStack(spacing: 6) {
-                    Text("\(localized("policy_prefix")) \(localized("policy_link"))")
-                        .font(.footnote)
-                        .foregroundColor(.black.opacity(0.8))
-                        .multilineTextAlignment(.center)
-                        .padding(.bottom, 10)
+                    (
+                        Text("\(localized("policy_prefix")) ")
+                            .foregroundColor(.black.opacity(0.8))
+                        +
+                        Text(localized("policy_link"))
+                            .underline()
+                            .foregroundColor(.blue)
+                    )
+                    .font(.footnote)
+                    .multilineTextAlignment(.center)
+                    .onTapGesture {
+                        showPrivacy = true
+                    }
                 }
                 .padding(.horizontal)
+
+                Spacer()
+            }
+
+            if viewModel.isLoading {
+                Color.black.opacity(0.2).ignoresSafeArea()
+                ProgressView().scaleEffect(1.5)
             }
         }
-        .onAppear { showPassword.toggle() }
-    }
-
-    // MARK: - Logic
-    private func inlineLogin() {
-        errorMessage = nil
-        guard !email.isEmpty, !password.isEmpty else {
-            errorMessage = "Введите email и пароль"
-            return
+        .onTapGesture { focusedField = nil }
+        .onAppear {
+            showPassword.toggle()
+                        
         }
-
-        isLoading = true
-
-        AuthService.shared.login(email: email, password: password) { result in
-            DispatchQueue.main.async {
-                isLoading = false
-                switch result {
-                case .success(let token):
-                    print("✅ Logged in with token: \(token)")
-                    let derivedName = email.components(separatedBy: "@").first ?? "User"
-                    appState.logIn(token: token, name: derivedName.capitalized)
-                case .failure(let error):
-                    errorMessage = error.localizedDescription
-                }
+        .onChange(of: viewModel.didLogin) { success in
+            if success {
+                appState.logIn(token: viewModel.email, name: viewModel.loggedUserName)
             }
+        }
+        .sheet(isPresented: $showPrivacy) {
+            SafariView(url: URL(string: "https://google.com")!)
         }
     }
 
-    private func inlineRegister() {
-        errorMessage = nil
-        guard !name.isEmpty, !email.isEmpty, !password.isEmpty, !confirmPassword.isEmpty else {
-            errorMessage = "Пожалуйста, заполните все поля"
-            return
-        }
-
-        guard password == confirmPassword else {
-            errorMessage = "Пароли не совпадают"
-            return
-        }
-
-        isLoading = true
-
-        AuthService.shared.register(
-            name: name,
-            email: email,
-            password: password,
-            confirmPassword: confirmPassword
-        ) { result in
-
-            DispatchQueue.main.async {
-                isLoading = false
-                switch result {
-                case .success(let token):
-                    print("✅ Registered with token: \(token)")
-                    appState.logIn(token: token, name: name)
-                case .failure(let error):
-                    errorMessage = error.localizedDescription
-                }
-            }
-        }
+    // ✅ FAKE GOOGLE
+    private func fakeGoogleLogin() {
+        print("🟢 Fake Google login")
+        appState.logIn(token: "fake-google-token", name: "Google User")
     }
 
-    // MARK: - Localized text
+    // ✅ FAKE APPLE
+    private func fakeAppleLogin() {
+        print("🍎 Fake Apple login")
+        appState.logIn(token: "fake-apple-token", name: "Apple User")
+    }
+
+    private func submit() {
+        viewModel.isRegisterMode ? viewModel.register() : viewModel.login()
+    }
+
     private func localized(_ key: String) -> String {
         switch key {
         case "name_placeholder": return ["kk": "Атыңыз", "ru": "Имя", "en": "Name"][lang.currentLanguage.rawValue]!
@@ -360,13 +330,3 @@ struct LoginView: View {
         }
     }
 }
-
-#if DEBUG
-struct LoginView_Previews: PreviewProvider {
-    static var previews: some View {
-        LoginView()
-            .environmentObject(LanguageManager())
-            .environmentObject(AppState())
-    }
-}
-#endif

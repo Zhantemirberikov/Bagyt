@@ -25,10 +25,14 @@ final class ChatService {
     static let shared = ChatService()
     
     private let baseURL = "https://a2e3-185-18-253-5.ngrok-free.app/api"
-    private let storageKey = "chat_history_final"
 
     private init() {}
 
+    // ✅ ДИНАМИЧЕСКИЙ КЛЮЧ ПОД ПОЛЬЗОВАТЕЛЯ
+    private var storageKey: String {
+        let userId = UserDefaults.standard.string(forKey: "userToken") ?? "guest"
+        return "chat_history_\(userId)"
+    }
     // MARK: - LOAD
     func loadMessages() -> [ChatMessage] {
         guard let data = UserDefaults.standard.data(forKey: storageKey) else { return [] }
@@ -41,15 +45,35 @@ final class ChatService {
         UserDefaults.standard.set(data, forKey: storageKey)
     }
 
+    // MARK: - CLEAR (на будущее)
+    func clearMessages() {
+        UserDefaults.standard.removeObject(forKey: storageKey)
+    }
+
     // MARK: - MAIN SEND
     func sendMessageToAI(userText: String, completion: @escaping (ChatMessage) -> Void) {
 
         print("🔥 SEND MESSAGE:", userText)
 
         // 🔐 проверка токена
-        guard let token = UserDefaults.standard.string(forKey: "auth_token") else {
+        guard let token = KeychainHelper.read("auth_token") else {
             completion(ChatMessage(text: "❌ No auth token. Login first.", sender: .assistant))
             return
+        }
+        // 🧪 FAKE MODE (когда нет сервера)
+
+        if token.contains("offline") {
+
+            completion(ChatMessage(
+
+                text: "🤖 Fake AI: попробуй описать симптомы подробнее",
+
+                sender: .assistant
+
+            ))
+
+            return
+
         }
 
         print("🔑 TOKEN:", token)

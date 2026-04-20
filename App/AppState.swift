@@ -41,20 +41,30 @@ final class AppState: ObservableObject {
 
     // MARK: - Init
     init() {
-        self.isLoggedIn = UserDefaults.standard.bool(forKey: "isLoggedIn")
+        let savedToken = UserDefaults.standard.string(forKey: "userToken")
+        let savedName = UserDefaults.standard.string(forKey: "userName")
+
+        self.userToken = savedToken
+        self.userName = savedName
+
+        // 🔥 ГЛАВНАЯ ЛОГИКА
+        self.isLoggedIn = savedToken != nil
+
         self.isFirstLaunch = UserDefaults.standard.object(forKey: "isFirstLaunch") as? Bool ?? true
-        self.userToken = UserDefaults.standard.string(forKey: "userToken")
-        self.userName = UserDefaults.standard.string(forKey: "userName") // ✅ подгружаем имя из UserDefaults
     }
 
     // MARK: - Методы управления состоянием
     func logIn(token: String? = nil, name: String? = nil) {
         if let token = token {
             self.userToken = token
+            UserDefaults.standard.set(token, forKey: "userToken")
         }
+
         if let name = name {
             self.userName = name
+            UserDefaults.standard.set(name, forKey: "userName")
         }
+
         withAnimation {
             self.isLoggedIn = true
         }
@@ -64,13 +74,12 @@ final class AppState: ObservableObject {
         withAnimation {
             self.isLoggedIn = false
         }
+
         self.userToken = nil
         self.userName = nil
+
+        UserDefaults.standard.removeObject(forKey: "userToken")
+        UserDefaults.standard.removeObject(forKey: "userName")
+    }
     }
 
-    func finishOnboarding() {
-        withAnimation {
-            self.isFirstLaunch = false
-        }
-    }
-}

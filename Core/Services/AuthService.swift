@@ -20,10 +20,18 @@ final class AuthService {
 
         // ✅ Offline вход — работает даже если сервер не отвечает
         if email.lowercased() == "test@bagyt.com" && password == "1234" {
-            print("🟢 Offline login activated for test@bagyt.com")
+            let token = "offline-\(email)"
+
+            print("🟢 Offline login activated:", token)
+
+            // ✅ СОХРАНЯЕМ В KEYCHAIN
+            KeychainHelper.save(token, for: "auth_token")
+
+            // ✅ имя
             UserDefaults.standard.set("Тестовый пользователь", forKey: "userName")
+
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                completion(.success("offline-token"))
+                completion(.success(token))
             }
             return
         }
@@ -113,7 +121,7 @@ final class AuthService {
                     if let token = json["token"] as? String {
 
                         // ✅ СОХРАНЯЕМ ТОКЕН (САМОЕ ВАЖНОЕ)
-                        UserDefaults.standard.set(token, forKey: "auth_token")
+                        KeychainHelper.save(token, for: "auth_token")
                         print("💾 TOKEN SAVED:", token)
 
                         if let user = json["user"] as? [String: Any],
@@ -236,7 +244,76 @@ final class AuthService {
             }
         }.resume()
     }
+    // MARK: - Social Login (Google / Apple)
+    func socialLogin(
+        provider: String,
+        token: String,
+        name: String?,
+        completion: ((Result<String, Error>) -> Void)? = nil
+    ) {
+        let url = URL(string: "https://a2e3-185-18-253-5.ngrok-free.app/api/social-login")!
 
+        let body: [String: Any] = [
+            "provider": provider,   // "google" или "apple"
+            "token": token,
+            "name": name ?? ""
+        ]
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        print("📤 Sending SOCIAL LOGIN request:", body)
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+
+            if let error = error {
+                DispatchQueue.main.async {
+                    completion?(.failure(error))
+                }
+                return
+            }
+
+            guard let data = data else {
+                DispatchQueue.main.async {
+                    completion?(.failure(
+                        NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "No data"])
+                    ))
+                }
+                return
+            }
+
+            do {
+                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let token = json["token"] as? String {
+
+                    // 💾 сохраняем токен
+                    KeychainHelper.save(token, for: "auth_token")
+
+                    if let user = json["user"] as? [String: Any],
+                       let name = user["name"] as? String {
+                        UserDefaults.standard.set(name, forKey: "userName")
+                    }
+
+                    DispatchQueue.main.async {
+                        completion?(.success(token))
+                    }
+
+                } else {
+                    DispatchQueue.main.async {
+                        completion?(.failure(
+                            NSError(domain: "", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+                        ))
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion?(.failure(error))
+                }
+            }
+        }.resume()
+    }
     // MARK: - Logout
     func logout() {
         print("🟡 Logged out locally")
