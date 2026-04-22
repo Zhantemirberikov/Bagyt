@@ -18,6 +18,7 @@ final class HealthManager {
             HKQuantityType.quantityType(forIdentifier: .oxygenSaturation)!,
             HKQuantityType.quantityType(forIdentifier: .vo2Max)!,
             HKQuantityType.quantityType(forIdentifier: .restingHeartRate)!,
+            HKQuantityType.quantityType(forIdentifier: .heartRateVariabilitySDNN)!,
             HKCategoryType.categoryType(forIdentifier: .sleepAnalysis)!
         ]
     }
@@ -67,22 +68,7 @@ final class HealthManager {
         healthStore.execute(query)
     }
 
-    // MARK: - STEPS
-    func fetchSteps(completion: @escaping (Double) -> Void) {
-        fetchTodaySum(type: .stepCount, unit: .count(), completion: completion)
-    }
-
-    // MARK: - CALORIES
-    func fetchCalories(completion: @escaping (Double) -> Void) {
-        fetchTodaySum(type: .activeEnergyBurned, unit: .kilocalorie(), completion: completion)
-    }
-
-    // MARK: - DISTANCE (км)
-    func fetchDistance(completion: @escaping (Double) -> Void) {
-        fetchTodaySum(type: .distanceWalkingRunning, unit: .meterUnit(with: .kilo), completion: completion)
-    }
-
-    // MARK: - LAST VALUE (универсальный)
+    // MARK: - GENERIC LATEST
     private func fetchLatestSample(
         type: HKQuantityTypeIdentifier,
         unit: HKUnit,
@@ -113,14 +99,38 @@ final class HealthManager {
         healthStore.execute(query)
     }
 
+    // MARK: - STEPS
+    func fetchSteps(completion: @escaping (Double) -> Void) {
+        fetchTodaySum(type: .stepCount, unit: .count(), completion: completion)
+    }
+
+    // MARK: - CALORIES
+    func fetchCalories(completion: @escaping (Double) -> Void) {
+        fetchTodaySum(type: .activeEnergyBurned, unit: .kilocalorie(), completion: completion)
+    }
+
+    // MARK: - DISTANCE (км)
+    func fetchDistance(completion: @escaping (Double) -> Void) {
+        fetchTodaySum(type: .distanceWalkingRunning, unit: .meterUnit(with: .kilo), completion: completion)
+    }
+
     // MARK: - HEART RATE
     func fetchHeartRate(completion: @escaping (Double) -> Void) {
-        fetchLatestSample(type: .heartRate, unit: HKUnit(from: "count/min"), completion: completion)
+        fetchLatestSample(type: .heartRate, unit: HKUnit.count().unitDivided(by: .minute()), completion: completion)
     }
 
     // MARK: - RESTING HEART RATE
     func fetchRestingHeartRate(completion: @escaping (Double) -> Void) {
-        fetchLatestSample(type: .restingHeartRate, unit: HKUnit(from: "count/min"), completion: completion)
+        fetchLatestSample(type: .restingHeartRate, unit: HKUnit.count().unitDivided(by: .minute()), completion: completion)
+    }
+
+    // MARK: - HRV (🔥 важно для стресса)
+    func fetchHRV(completion: @escaping (Double) -> Void) {
+        fetchLatestSample(
+            type: .heartRateVariabilitySDNN,
+            unit: HKUnit.secondUnit(with: .milli),
+            completion: completion
+        )
     }
 
     // MARK: - VO2 MAX
@@ -143,7 +153,7 @@ final class HealthManager {
         fetchLatestSample(type: .bodyMassIndex, unit: HKUnit.count(), completion: completion)
     }
 
-    // MARK: - SLEEP (часы)
+    // MARK: - SLEEP (ТОЛЬКО реальный сон)
     func fetchSleep(completion: @escaping (Double) -> Void) {
         guard let type = HKCategoryType.categoryType(forIdentifier: .sleepAnalysis) else {
             completion(0)
@@ -160,10 +170,16 @@ final class HealthManager {
             sortDescriptors: nil
         ) { _, samples, _ in
 
-            let total = samples?.reduce(0.0) { result, sample in
-                guard let sample = sample as? HKCategorySample else { return result }
-                return result + sample.endDate.timeIntervalSince(sample.startDate)
-            } ?? 0
+            var total: TimeInterval = 0
+
+            samples?.forEach { sample in
+                guard let s = sample as? HKCategorySample else { return }
+
+                // ✅ считаем только asleep
+                if s.value == HKCategoryValueSleepAnalysis.asleep.rawValue {
+                    total += s.endDate.timeIntervalSince(s.startDate)
+                }
+            }
 
             let hours = total / 3600
 

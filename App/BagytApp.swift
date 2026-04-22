@@ -21,7 +21,7 @@ struct BagytApp: App {
     var body: some Scene {
         WindowGroup {
             // 👇 Используем только один главный контейнер
-            OnboardingContainerView()
+            SplashView()
                 .environmentObject(appState)
                 .environmentObject(langManager)
                 .onAppear {

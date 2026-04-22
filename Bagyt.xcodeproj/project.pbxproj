@@ -9,6 +9,10 @@
 /* Begin PBXBuildFile section */
 		139471052F9548B100DE4019 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139471042F9548A800DE4019 /* KeychainHelper.swift */; };
 		1394710A2F95575800DE4019 /* HealthManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139471092F95575500DE4019 /* HealthManager.swift */; };
+		1394710C2F95F80700DE4019 /* HealthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1394710B2F95F7FD00DE4019 /* HealthViewModel.swift */; };
+		139471152F962BAB00DE4019 /* WaterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139471142F962BA100DE4019 /* WaterView.swift */; };
+		139471172F96486E00DE4019 /* HeartbeatHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139471162F96485D00DE4019 /* HeartbeatHaptics.swift */; };
+		1394711B2F98C4DE00DE4019 /* SplashView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1394711A2F98C4D800DE4019 /* SplashView.swift */; };
 		13A15AE32F93930B007A58B1 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A15AE22F93930B007A58B1 /* GlassCard.swift */; };
 		13A15AE52F939744007A58B1 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A15AE42F939738007A58B1 /* AuthViewModel.swift */; };
 		13A15AE92F939BC8007A58B1 /* GlassPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A15AE82F939BC8007A58B1 /* GlassPanel.swift */; };
@@ -44,6 +48,10 @@
 /* Begin PBXFileReference section */
 		139471042F9548A800DE4019 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		139471092F95575500DE4019 /* HealthManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthManager.swift; sourceTree = "<group>"; };
+		1394710B2F95F7FD00DE4019 /* HealthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthViewModel.swift; sourceTree = "<group>"; };
+		139471142F962BA100DE4019 /* WaterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaterView.swift; sourceTree = "<group>"; };
+		139471162F96485D00DE4019 /* HeartbeatHaptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeartbeatHaptics.swift; sourceTree = "<group>"; };
+		1394711A2F98C4D800DE4019 /* SplashView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SplashView.swift; sourceTree = "<group>"; };
 		13A15AE22F93930B007A58B1 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
 		13A15AE42F939738007A58B1 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		13A15AE82F939BC8007A58B1 /* GlassPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassPanel.swift; sourceTree = "<group>"; };
@@ -212,6 +220,7 @@
 		13CE3EA52F937BBE0091C508 /* Health */ = {
 			isa = PBXGroup;
 			children = (
+				1394710B2F95F7FD00DE4019 /* HealthViewModel.swift */,
 				13CE3E742F9377840091C508 /* HealthMetricsView.swift */,
 			);
 			path = Health;
@@ -220,6 +229,9 @@
 		13CE3EA62F937BC90091C508 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				1394711A2F98C4D800DE4019 /* SplashView.swift */,
+				139471162F96485D00DE4019 /* HeartbeatHaptics.swift */,
+				139471142F962BA100DE4019 /* WaterView.swift */,
 				13A15AEA2F93A7BA007A58B1 /* SafariView.swift */,
 				13A15AE82F939BC8007A58B1 /* GlassPanel.swift */,
 				13CE3E7C2F9377840091C508 /* LottieView.swift */,
@@ -363,17 +375,21 @@
 				13CE3E8F2F9377840091C508 /* LanguageManager.swift in Sources */,
 				13CE3E902F9377840091C508 /* LiquidBottomBar.swift in Sources */,
 				13A15AE32F93930B007A58B1 /* GlassCard.swift in Sources */,
+				1394711B2F98C4DE00DE4019 /* SplashView.swift in Sources */,
 				13CE3E912F9377840091C508 /* LiquidBottomBarHolder.swift in Sources */,
 				13CE3E922F9377840091C508 /* LoginView.swift in Sources */,
 				13A15AE92F939BC8007A58B1 /* GlassPanel.swift in Sources */,
 				13CE3E932F9377840091C508 /* LottieView.swift in Sources */,
 				13CE3EB02F938FF90091C508 /* AnimatedGradientBackground.swift in Sources */,
 				13CE3E942F9377840091C508 /* MoodView.swift in Sources */,
+				139471152F962BAB00DE4019 /* WaterView.swift in Sources */,
 				13CE3E952F9377840091C508 /* MotionManager.swift in Sources */,
+				139471172F96486E00DE4019 /* HeartbeatHaptics.swift in Sources */,
 				13A15AE52F939744007A58B1 /* AuthViewModel.swift in Sources */,
 				1394710A2F95575800DE4019 /* HealthManager.swift in Sources */,
 				13A15AEB2F93A7BF007A58B1 /* SafariView.swift in Sources */,
 				13CE3E962F9377840091C508 /* OnboardingContainerView.swift in Sources */,
+				1394710C2F95F80700DE4019 /* HealthViewModel.swift in Sources */,
 				139471052F9548B100DE4019 /* KeychainHelper.swift in Sources */,
 				13CE3E972F9377840091C508 /* OnboardingView.swift in Sources */,
 				13CE3E982F9377840091C508 /* SettingsView.swift in Sources */,
