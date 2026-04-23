@@ -29,12 +29,11 @@ final class MoodViewModel: ObservableObject {
     @Published var todayNote: String     = ""
     @Published var todayEnergy: Int      = 3
 
-    private let key = "bagyt_mood_records"
+    private static let saveKey = "bagyt_mood_records"
 
     init() {
-        // Загружаем напрямую без вызова self-методов
         let loaded: [MoodRecord]
-        if let data = UserDefaults.standard.data(forKey: "bagyt_mood_records"),
+        if let data = UserDefaults.standard.data(forKey: Self.saveKey),
            let saved = try? JSONDecoder().decode([MoodRecord].self, from: data) {
             loaded = saved
         } else {
@@ -46,7 +45,6 @@ final class MoodViewModel: ObservableObject {
         self.todayNote   = ""
         self.todayEnergy = 3
 
-        // Ищем запись за сегодня
         if let today = loaded.first(where: { Calendar.current.isDateInToday($0.date) }) {
             self.todayMood   = today.mood
             self.todayEnergy = today.energy
@@ -94,21 +92,39 @@ final class MoodViewModel: ObservableObject {
         } else {
             records.insert(MoodRecord(mood: mood, note: todayNote, date: Date(), energy: todayEnergy), at: 0)
         }
+        // Сортируем записи по дате на всякий случай
+        records.sort { $0.date > $1.date }
+        save()
+    }
+    
+    // Новая функция удаления одной записи
+    func delete(record: MoodRecord) {
+        if let idx = records.firstIndex(where: { $0.id == record.id }) {
+            let deleted = records[idx]
+            records.remove(at: idx)
+            
+            // Если удалили сегодняшнюю запись, сбрасываем форму
+            if Calendar.current.isDateInToday(deleted.date) {
+                todayMood = nil
+                todayNote = ""
+                todayEnergy = 3
+            }
+            save()
+        }
+    }
+    
+    // Новая функция очистки всей истории
+    func deleteAll() {
+        records.removeAll()
+        todayMood = nil
+        todayNote = ""
+        todayEnergy = 3
         save()
     }
 
     private func save() {
         if let data = try? JSONEncoder().encode(records) {
-            UserDefaults.standard.set(data, forKey: key)
-        }
-    }
-
-    private func load() {
-        if let data = UserDefaults.standard.data(forKey: key),
-           let saved = try? JSONDecoder().decode([MoodRecord].self, from: data) {
-            records = saved
-        } else {
-            records = Self.demoRecords()
+            UserDefaults.standard.set(data, forKey: Self.saveKey)
         }
     }
 
@@ -117,12 +133,12 @@ final class MoodViewModel: ObservableObject {
         let moods = [4, 3, 5, 4, 2, 4, 3]
         let notes = [
             "Хорошее начало недели",
-            "Немного устал",
-            "Отличный день! Тренировка прошла супер",
-            "Продуктивный день",
-            "Плохо спал, голова болит",
-            "Восстановился после болезни",
-            "Спокойный день"
+            "Немного устал после пар, но в целом окей",
+            "Отличный день! Тренировка прошла супер, встретился с друзьями",
+            "Продуктивный день, закрыл пару сложных задач",
+            "Плохо спал, голова болит с самого утра",
+            "Восстановился после болезни, чувствую прилив сил",
+            "Спокойный домашний день"
         ]
         return moods.enumerated().compactMap { i, mood in
             guard let date = cal.date(byAdding: .day, value: -(6 - i), to: Date()) else { return nil }
@@ -136,9 +152,13 @@ final class MoodViewModel: ObservableObject {
 struct MoodView: View {
 
     @StateObject private var vm = MoodViewModel()
-    @State private var appear           = false
     @State private var showNoteField    = false
     @State private var showSavedBadge   = false
+    
+    // Новые стейты для интерактива
+    @State private var expandedRecordId: UUID? = nil
+    @State private var showResetAlert   = false
+    
     @FocusState private var noteFocused: Bool
 
     private let accent  = Color(red: 0.055, green: 0.647, blue: 0.914)
@@ -147,7 +167,9 @@ struct MoodView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            Color(red: 0.937, green: 0.969, blue: 1.0).ignoresSafeArea()
+            
+            // 👇 ПРОЗРАЧНЫЙ ФОН (пропускает AnimatedGradientBackground из HomeView)
+            Color.clear.ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 18) {
@@ -170,8 +192,14 @@ struct MoodView: View {
                     .zIndex(10)
             }
         }
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.5)) { appear = true }
+        // Alert для подтверждения очистки
+        .alert("Очистить историю?", isPresented: $showResetAlert) {
+            Button("Отмена", role: .cancel) { }
+            Button("Удалить все", role: .destructive) {
+                withAnimation { vm.deleteAll() }
+            }
+        } message: {
+            Text("Вы уверены, что хотите полностью удалить все записи? Это действие нельзя отменить.")
         }
     }
 
@@ -243,9 +271,6 @@ struct MoodView: View {
             }
             .padding(24)
         }
-        .opacity(appear ? 1 : 0)
-        .offset(y: appear ? 0 : 20)
-        .animation(.easeOut(duration: 0.45).delay(0.05), value: appear)
     }
 
     // MARK: - Stats Strip
@@ -271,9 +296,6 @@ struct MoodView: View {
                 color: accent
             )
         }
-        .opacity(appear ? 1 : 0)
-        .offset(y: appear ? 0 : 20)
-        .animation(.easeOut(duration: 0.45).delay(0.10), value: appear)
     }
 
     private func statMini(icon: String, value: String, label: String, color: Color) -> some View {
@@ -345,7 +367,7 @@ struct MoodView: View {
                                     Circle()
                                         .fill(vm.todayMood == i
                                               ? moodColor(i).opacity(0.15)
-                                              : Color(red: 0.93, green: 0.97, blue: 1.0))
+                                              : Color.white.opacity(0.5)) // Прозрачный белый для стеклянного эффекта
                                         .frame(width: vm.todayMood == i ? 54 : 46,
                                                height: vm.todayMood == i ? 54 : 46)
                                         .overlay(
@@ -387,7 +409,7 @@ struct MoodView: View {
                                 withAnimation(.spring(response: 0.3)) { vm.todayEnergy = i }
                             } label: {
                                 RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(i <= vm.todayEnergy ? accent : Color(red: 0.88, green: 0.93, blue: 0.97))
+                                    .fill(i <= vm.todayEnergy ? accent : Color.white.opacity(0.6)) // Прозрачный белый
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 8)
                                     .animation(.spring(response: 0.3), value: vm.todayEnergy)
@@ -396,7 +418,7 @@ struct MoodView: View {
                     }
                 }
                 .padding(14)
-                .background(Color(red: 0.93, green: 0.97, blue: 1.0))
+                .background(Color.white.opacity(0.5)) // Стекло для подложки энергии
                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                 // Note field
@@ -423,7 +445,7 @@ struct MoodView: View {
                                 .focused($noteFocused)
                         }
                         .padding(10)
-                        .background(Color(red: 0.93, green: 0.97, blue: 1.0))
+                        .background(Color.white.opacity(0.5)) // Стекло для текстового поля
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .transition(.move(edge: .top).combined(with: .opacity))
@@ -455,9 +477,6 @@ struct MoodView: View {
             }
             .padding(20)
         }
-        .opacity(appear ? 1 : 0)
-        .offset(y: appear ? 0 : 20)
-        .animation(.easeOut(duration: 0.45).delay(0.15), value: appear)
     }
 
     // MARK: - Week Chart
@@ -509,16 +528,12 @@ struct MoodView: View {
                                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                                         .fill(item.mood != nil
                                               ? LinearGradient(
-                                                    colors: [moodColor(item.mood!), moodColor(item.mood!).opacity(0.6)],
-                                                    startPoint: .top, endPoint: .bottom)
+                                                colors: [moodColor(item.mood!), moodColor(item.mood!).opacity(0.6)],
+                                                startPoint: .top, endPoint: .bottom)
                                               : LinearGradient(
-                                                    colors: [Color(red: 0.88, green: 0.93, blue: 0.97),
-                                                             Color(red: 0.88, green: 0.93, blue: 0.97)],
-                                                    startPoint: .top, endPoint: .bottom))
-                                        .frame(height: appear
-                                               ? (item.mood != nil ? CGFloat(item.mood!) / 5 * geo.size.height : 12)
-                                               : 4)
-                                        .animation(.easeOut(duration: 0.8).delay(Double(chartDays().firstIndex(where: { $0.date == item.date }) ?? 0) * 0.07 + 0.4), value: appear)
+                                                colors: [Color.white.opacity(0.6), Color.white.opacity(0.6)], // Полупрозрачные пустые бары
+                                                startPoint: .top, endPoint: .bottom))
+                                        .frame(height: item.mood != nil ? CGFloat(item.mood!) / 5 * geo.size.height : 12)
                                 }
                             }
                             .frame(height: 80)
@@ -536,9 +551,6 @@ struct MoodView: View {
             }
             .padding(20)
         }
-        .opacity(appear ? 1 : 0)
-        .offset(y: appear ? 0 : 20)
-        .animation(.easeOut(duration: 0.45).delay(0.20), value: appear)
     }
 
     // MARK: - Patterns Card
@@ -580,67 +592,121 @@ struct MoodView: View {
             }
             .padding(20)
         }
-        .opacity(appear ? 1 : 0)
-        .offset(y: appear ? 0 : 20)
-        .animation(.easeOut(duration: 0.45).delay(0.25), value: appear)
     }
 
     // MARK: - History List
 
     private var historyList: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("ИСТОРИЯ")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                .tracking(0.8)
-                .padding(.leading, 4)
+            
+            // Заголовок с кнопкой "Очистить"
+            HStack {
+                Text("ИСТОРИЯ")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
+                    .tracking(0.8)
+                    .padding(.leading, 4)
+                
+                Spacer()
+                
+                if !vm.records.isEmpty {
+                    Button(action: { showResetAlert = true }) {
+                        Text("Очистить все")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(Color(red: 0.95, green: 0.25, blue: 0.25))
+                    }
+                    .padding(.trailing, 4)
+                }
+            }
 
-            ForEach(vm.records.prefix(5)) { record in
-                glassCard {
-                    HStack(spacing: 14) {
-                        ZStack {
-                            Circle()
-                                .fill(moodColor(record.mood).opacity(0.12))
-                                .frame(width: 46, height: 46)
-                            Text(moodEmoji(record.mood))
-                                .font(.system(size: 22))
-                        }
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text(moodLabel(record.mood))
-                                    .font(.system(size: 15, weight: .bold))
-                                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
-                                Spacer()
-                                Text(shortDateString(record.date))
-                                    .font(.system(size: 12, weight: .medium))
-                                    .foregroundColor(Color(red: 0.6, green: 0.72, blue: 0.78))
-                            }
-                            if !record.note.isEmpty {
-                                Text(record.note)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(Color(red: 0.4, green: 0.55, blue: 0.65))
-                                    .lineLimit(2)
-                            }
-                            // Energy dots
-                            HStack(spacing: 4) {
-                                Text("Энергия:")
-                                    .font(.system(size: 10, weight: .medium))
-                                    .foregroundColor(Color(red: 0.6, green: 0.72, blue: 0.78))
-                                ForEach(1...5, id: \.self) { i in
+            // Используем LazyVStack для плавного скролла всех записей
+            LazyVStack(spacing: 12) {
+                ForEach(vm.records) { record in
+                    glassCard {
+                        VStack(alignment: .leading, spacing: 0) {
+                            HStack(alignment: .top, spacing: 14) {
+                                ZStack {
                                     Circle()
-                                        .fill(i <= record.energy ? accent : Color(red: 0.88, green: 0.93, blue: 0.97))
-                                        .frame(width: 6, height: 6)
+                                        .fill(moodColor(record.mood).opacity(0.12))
+                                        .frame(width: 46, height: 46)
+                                    Text(moodEmoji(record.mood))
+                                        .font(.system(size: 22))
+                                }
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(moodLabel(record.mood))
+                                            .font(.system(size: 15, weight: .bold))
+                                            .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                                        Spacer()
+                                        Text(shortDateString(record.date))
+                                            .font(.system(size: 12, weight: .medium))
+                                            .foregroundColor(Color(red: 0.6, green: 0.72, blue: 0.78))
+                                    }
+                                    
+                                    if !record.note.isEmpty {
+                                        Text(record.note)
+                                            .font(.system(size: 13, weight: .medium))
+                                            .foregroundColor(Color(red: 0.4, green: 0.55, blue: 0.65))
+                                            // Если развернуто - показываем всё, иначе 2 строки
+                                            .lineLimit(expandedRecordId == record.id ? nil : 2)
+                                            .animation(.easeInOut(duration: 0.3), value: expandedRecordId)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    
+                                    // Energy dots
+                                    HStack(spacing: 4) {
+                                        Text("Энергия:")
+                                            .font(.system(size: 10, weight: .medium))
+                                            .foregroundColor(Color(red: 0.6, green: 0.72, blue: 0.78))
+                                        ForEach(1...5, id: \.self) { i in
+                                            Circle()
+                                                .fill(i <= record.energy ? accent : Color.white.opacity(0.5)) // Прозрачные точки
+                                                .frame(width: 6, height: 6)
+                                        }
+                                    }
+                                    .padding(.top, 2)
                                 }
                             }
+                            .contentShape(Rectangle()) // Чтобы весь блок кликался
+                            .onTapGesture {
+                                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                                    if expandedRecordId == record.id {
+                                        expandedRecordId = nil
+                                    } else {
+                                        expandedRecordId = record.id
+                                    }
+                                }
+                            }
+                            
+                            // Расширенная зона: кнопка "Удалить"
+                            if expandedRecordId == record.id {
+                                Button(action: {
+                                    withAnimation(.spring()) {
+                                        vm.delete(record: record)
+                                        expandedRecordId = nil
+                                    }
+                                }) {
+                                    HStack(spacing: 8) {
+                                        Image(systemName: "trash.fill")
+                                            .font(.system(size: 14))
+                                        Text("Удалить запись")
+                                            .font(.system(size: 13, weight: .bold))
+                                    }
+                                    .foregroundColor(Color(red: 0.95, green: 0.25, blue: 0.25))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color(red: 0.95, green: 0.25, blue: 0.25).opacity(0.12))
+                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                                }
+                                .padding(.top, 14)
+                                .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
                         }
+                        .padding(16)
                     }
-                    .padding(16)
                 }
             }
         }
-        .opacity(appear ? 1 : 0)
-        .offset(y: appear ? 0 : 20)
-        .animation(.easeOut(duration: 0.45).delay(0.30), value: appear)
     }
 
     // MARK: - Saved Badge
@@ -657,22 +723,27 @@ struct MoodView: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.white.opacity(0.9))
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                 .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
         )
         .padding(.top, 12)
     }
 
     // MARK: - Glass Card
-
+    
+    // 👇 Измененный glassCard для пропускания фона
     @ViewBuilder
     private func glassCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         ZStack {
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.88))
+                .fill(Color.white.opacity(0.65))
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 .shadow(color: accent.opacity(0.09), radius: 14, x: 0, y: 5)
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(accent.opacity(0.10), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
             content()
         }
     }
@@ -763,7 +834,7 @@ struct MoodView: View {
             patterns.append(Pattern(emoji: "🌟", title: "Позитивная неделя",
                                     subtitle: "Ваше настроение выше среднего",
                                     badge: "Отлично", color: Color(red: 0.1, green: 0.78, blue: 0.48)))
-        } else if avg < 3 {
+        } else if avg > 0 && avg < 3 {
             patterns.append(Pattern(emoji: "💤", title: "Нужен отдых",
                                     subtitle: "Уделите внимание восстановлению",
                                     badge: "Внимание", color: Color(red: 1.0, green: 0.55, blue: 0.1)))

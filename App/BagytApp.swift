@@ -9,21 +9,20 @@ import SwiftUI
 
 @main
 struct BagytApp: App {
-    // MARK: - Global State Objects
     @StateObject private var appState = AppState()
     @StateObject private var langManager = LanguageManager()
-    
+    @AppStorage("isDarkModeEnabled") private var isDarkModeEnabled = false
+
     init() {
         print("🚀 BagytApp initialized")
-        // AppState сам управляет флагами isLoggedIn и isFirstLaunch
     }
-    
+
     var body: some Scene {
         WindowGroup {
-            // 👇 Используем только один главный контейнер
             SplashView()
                 .environmentObject(appState)
                 .environmentObject(langManager)
+                .preferredColorScheme(isDarkModeEnabled ? .dark : .light)
                 .onAppear {
                     print("✅ BagytApp started")
                     print("isFirstLaunch = \(appState.isFirstLaunch)")

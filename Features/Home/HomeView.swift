@@ -1,24 +1,23 @@
-//
-//  HomeView.swift
-//  Bagyt
-//
-
 import SwiftUI
 import Combine
 import UIKit
+import HealthKit
+
+// MARK: - HomeView
 
 struct HomeView: View {
 
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var lang: LanguageManager
+    @StateObject private var health = HealthKitManager.shared
 
     @State private var selectedTab: Int   = 0
     @State private var pulse              = false
     @State private var showProfileSheet   = false
     @State private var showAssistantSheet = false
-    @State private var showMoodSheet      = false   // ← новый
     @State private var appear             = false
-    @State private var selectedMood: Int? = nil
+    
+    // Анимации фона и орба
     @State private var bgPhase            = false
     @State private var orbRing1           = false
     @State private var orbRing2           = false
@@ -26,10 +25,21 @@ struct HomeView: View {
     @State private var orbBob             = false
     @State private var orbOffset: CGSize  = .zero
     @State private var orbIsPressed       = false
+    @State private var suppressOrbTapAfterDrag = false
 
-    private let accent  = Color(red: 0.055, green: 0.647, blue: 0.914)
-    private let accent2 = Color(red: 0.024, green: 0.714, blue: 0.831)
-    private let moodGold = Color(red: 1.0, green: 0.65, blue: 0.10)
+    @State private var showSleepDetail    = false
+    @State private var showPulseDetail    = false
+    @State private var showStepsDetail    = false
+
+    @State private var liquidDragX: CGFloat? = nil
+    @State private var isLiquidDragging = false
+
+    // Аватар из UserDefaults
+    @State private var avatarImage: UIImage? = nil
+
+    private let accent   = Color(red: 0.055, green: 0.647, blue: 0.914)
+    private let accent2  = Color(red: 0.024, green: 0.714, blue: 0.831)
+    private let deepAI   = Color(red: 0.05, green: 0.12, blue: 0.28) // Премиальный темный цвет для когнитивного AI
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -60,26 +70,29 @@ struct HomeView: View {
 
             // ── Контент ──
             VStack(spacing: 0) {
-                topBar
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 8)
+                if selectedTab == 0 {
+                    topBar
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
 
                 ZStack {
                     switch selectedTab {
                     case 0: homeContent
                     case 1: JournalView().environmentObject(appState).environmentObject(lang)
                     case 2: HealthMetricsView()
-                    case 3: SettingsView().environmentObject(appState).environmentObject(lang)
+                    case 3: MoodView()
                     default: homeContent
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                Color.clear.frame(height: 104)
+                // Увеличенный отступ, чтобы контент не прятался за орбом при скролле
+                Color.clear.frame(height: 140)
             }
 
-            // ── Bottom Bar ──
             liquidBottomBar
         }
         .ignoresSafeArea(edges: .bottom)
@@ -90,12 +103,33 @@ struct HomeView: View {
             withAnimation(.easeInOut(duration: 8).repeatForever(autoreverses: true)) { bgPhase = true }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { startOrbRings() }
             withAnimation(.easeInOut(duration: 2.2).repeatForever(autoreverses: true).delay(0.3)) { orbBob = true }
+            health.requestAuthorization()
+            
+            // Мгновенная загрузка закэшированных данных пользователя при старте
+            loadUserName()
+            loadAvatar()
+        }
+        // Автообновление при логине/логауте
+        .onChange(of: appState.userToken) { _ in
+            loadUserName()
+            loadAvatar()
         }
         .sheet(isPresented: $showAssistantSheet) {
             ChatView().environmentObject(appState).environmentObject(lang)
         }
-        .sheet(isPresented: $showMoodSheet) {   // ← новый sheet
-            MoodView()
+        .sheet(isPresented: $showProfileSheet, onDismiss: {
+            loadAvatar()
+        }) {
+            SettingsView().environmentObject(appState).environmentObject(lang)
+        }
+        .sheet(isPresented: $showSleepDetail) {
+            SleepDetailView()
+        }
+        .sheet(isPresented: $showPulseDetail) {
+            PulseDetailView()
+        }
+        .sheet(isPresented: $showStepsDetail) {
+            StepsDetailView()
         }
     }
 
@@ -105,7 +139,7 @@ struct HomeView: View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 3) {
                 Text(greetingText())
-                    .font(.system(size: 22, weight: .black))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
                     .lineLimit(1).minimumScaleFactor(0.75)
                 Text(localized("subtitle"))
@@ -116,15 +150,22 @@ struct HomeView: View {
             Button { showProfileSheet.toggle() } label: {
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(colors: [accent, accent2], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 44, height: 44)
+                        .fill(LinearGradient(colors: [accent, accent2],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .frame(width: 46, height: 46)
                         .shadow(color: accent.opacity(0.35), radius: 8, x: 0, y: 3)
-                    Text(initials(for: appState.userName))
-                        .font(.system(size: 15, weight: .black)).foregroundColor(.white)
+
+                    if let img = avatarImage {
+                        Image(uiImage: img)
+                            .resizable().scaledToFill()
+                            .frame(width: 46, height: 46)
+                            .clipShape(Circle())
+                    } else {
+                        Text(initials(for: appState.userName))
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                    }
                 }
-            }
-            .sheet(isPresented: $showProfileSheet) {
-                SettingsView().environmentObject(appState).environmentObject(lang)
             }
         }
     }
@@ -133,55 +174,131 @@ struct HomeView: View {
 
     private var homeContent: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 14) {
+            VStack(spacing: 16) {
                 healthIndexCard
                 metricsRow
-                moodCard
-                insightCard
+                
+                // Карточка настроения УДАЛЕНА по запросу.
+                
+                cognitiveAnalysisCard
                 quickActions
-                Spacer(minLength: 20)
+                Spacer(minLength: 40)
             }
             .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 16)
+        }
+        // 👇 ДОБАВЛЕНА БУФЕРИЗАЦИЯ (PULL-TO-REFRESH)
+        .refreshable {
+            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+            
+            // Имитация загрузки и анализа данных ИИ (1.5 секунды)
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            
+            await MainActor.run {
+                loadUserName()
+                loadAvatar()
+                health.requestAuthorization() // Перезапрашиваем актуальные данные HealthKit
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            }
         }
     }
 
     // MARK: - Health Index Card
 
+    private var healthIndex: Int {
+        var score = 60
+        let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
+        let stepsPct = min(Double(health.steps) / Double(stepsGoal), 1.0)
+        score += Int(stepsPct * 20)
+        if health.heartRate > 0 {
+            score += (health.heartRate >= 60 && health.heartRate <= 80) ? 10 : 5
+        } else {
+            score += 7
+        }
+        let sleepGoal = UserDefaults.standard.double(forKey: "sleepGoal").nonZero ?? 8.0
+        let sleepPct = health.sleep > 0 ? min(health.sleep / sleepGoal, 1.0) : 0.7
+        score += Int(sleepPct * 10)
+        return min(score, 100)
+    }
+
+    private var healthIndexLabel: String {
+        switch healthIndex {
+        case 90...100: return "Отличный показатель"
+        case 75..<90:  return "Хорошее состояние"
+        case 60..<75:  return "В пределах нормы"
+        default:       return "Требует внимания"
+        }
+    }
+
+    private var healthIndexIcon: String {
+        switch healthIndex {
+        case 90...100: return "waveform.path.ecg"
+        case 75..<90:  return "checkmark.shield.fill"
+        case 60..<75:  return "bolt.heart.fill"
+        default:       return "exclamationmark.triangle.fill"
+        }
+    }
+
     private var healthIndexCard: some View {
         ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(LinearGradient(colors: [accent, accent2], startPoint: .topLeading, endPoint: .bottomTrailing))
-                .shadow(color: accent.opacity(0.38), radius: 18, x: 0, y: 8)
-            Circle().fill(Color.white.opacity(0.08)).frame(width: 150, height: 150).offset(x: 40, y: -50)
-            Circle().fill(Color.white.opacity(0.05)).frame(width: 90, height: 90).offset(x: -20, y: 60)
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(LinearGradient(colors: [accent, accent2],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .shadow(color: accent.opacity(0.38), radius: 20, x: 0, y: 10)
+            
+            // Премиальные блики внутри карточки
+            Circle().fill(Color.white.opacity(0.08)).frame(width: 180, height: 180).offset(x: 50, y: -60)
+            Circle().fill(Color.white.opacity(0.05)).frame(width: 100, height: 100).offset(x: -30, y: 70)
+
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("ИНДЕКС ЗДОРОВЬЯ")
-                        .font(.system(size: 11, weight: .bold)).foregroundColor(.white.opacity(0.78)).tracking(0.9)
+                    Text("КОМПЛЕКСНЫЙ ИНДЕКС ЗДОРОВЬЯ")
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(.white.opacity(0.85))
+                        .tracking(1.2)
+                    
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text("87").font(.system(size: 60, weight: .black)).foregroundColor(.white)
-                        Text("/100").font(.system(size: 20, weight: .semibold))
-                            .foregroundColor(.white.opacity(0.65)).padding(.bottom, 6)
+                        Text("\(healthIndex)")
+                            .font(.system(size: 64, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .contentTransition(.numericText())
+                            .animation(.spring(response: 0.5), value: healthIndex)
+                        Text("/ 100")
+                            .font(.system(size: 20, weight: .semibold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.65))
+                            .padding(.bottom, 8)
                     }
-                    HStack(spacing: 6) {
-                        Image(systemName: "crown.fill").font(.system(size: 10))
-                        Text("Отлично").font(.system(size: 12, weight: .bold))
+                    HStack(spacing: 8) {
+                        Image(systemName: healthIndexIcon)
+                            .font(.system(size: 12))
+                        Text(healthIndexLabel)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
                     }
-                    .foregroundColor(.white).padding(.horizontal, 12).padding(.vertical, 5)
-                    .background(Color.white.opacity(0.22)).clipShape(Capsule())
+                    .foregroundColor(accent)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 6)
+                    .background(Color.white)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
                 }
                 Spacer()
                 ZStack {
-                    Circle().stroke(Color.white.opacity(0.18), lineWidth: 7).frame(width: 70, height: 70)
-                    Circle().trim(from: 0, to: appear ? 0.87 : 0)
-                        .stroke(Color.white, style: StrokeStyle(lineWidth: 7, lineCap: .round))
-                        .frame(width: 70, height: 70).rotationEffect(.degrees(-90))
+                    Circle().stroke(Color.white.opacity(0.15), lineWidth: 8).frame(width: 76, height: 76)
+                    Circle().trim(from: 0, to: appear ? CGFloat(healthIndex) / 100.0 : 0)
+                        .stroke(Color.white, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                        .frame(width: 76, height: 76).rotationEffect(.degrees(-90))
                         .animation(.easeOut(duration: 1.4).delay(0.3), value: appear)
-                    Image(systemName: "heart.fill").font(.system(size: 20)).foregroundColor(.white)
-                        .scaleEffect(pulse ? 1.12 : 0.9)
-                        .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
+                        .animation(.spring(response: 0.8), value: healthIndex)
+                    Image(systemName: "heart.text.square.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.white)
+                        .scaleEffect(pulse ? 1.08 : 0.95)
+                        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: pulse)
                 }
-            }.padding(22)
+            }.padding(24)
+            
+            // Стеклянный бордер
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .stroke(Color.white.opacity(0.2), lineWidth: 1)
         }
         .opacity(appear ? 1 : 0).offset(y: appear ? 0 : 18)
         .animation(.easeOut(duration: 0.5).delay(0.05), value: appear)
@@ -190,89 +307,160 @@ struct HomeView: View {
     // MARK: - Metrics Row
 
     private var metricsRow: some View {
-        HStack(spacing: 10) {
-            metricCard(icon: "figure.walk",    value: "8 420", unit: "шаг",    color: accent,                               progress: 0.84)
-            metricCard(icon: "heart.fill",      value: "68",    unit: "уд/мин", color: Color(red:0.95,green:0.25,blue:0.25), progress: 0.68)
-            metricCard(icon: "moon.stars.fill", value: "7.2",   unit: "ч сна",  color: Color(red:0.55,green:0.35,blue:1.0),  progress: 0.90)
+        HStack(spacing: 12) {
+            let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
+            let sleepGoal = UserDefaults.standard.double(forKey: "sleepGoal").nonZero ?? 8.0
+
+            metricCard(
+                icon: "figure.walk",
+                value: health.steps > 0 ? formatSteps(health.steps) : "—",
+                unit: "Шагов",
+                color: accent,
+                progress: health.stepsProgress(goal: stepsGoal),
+                onTap: { showStepsDetail = true }
+            )
+
+            metricCard(
+                icon: "heart.fill",
+                value: health.heartRate > 0 ? "\(health.heartRate)" : "—",
+                unit: "Уд/мин",
+                color: Color(red: 0.95, green: 0.25, blue: 0.35),
+                progress: health.heartProgress(),
+                onTap: { showPulseDetail = true }
+            )
+
+            metricCard(
+                icon: "moon.stars.fill",
+                value: health.sleep > 0 ? String(format: "%.1f", health.sleep) : "—",
+                unit: "Часов сна",
+                color: Color(red: 0.45, green: 0.35, blue: 0.90),
+                progress: health.sleepProgress(goal: sleepGoal),
+                onTap: { showSleepDetail = true }
+            )
         }
-        .opacity(appear ? 1 : 0).offset(y: appear ? 0 : 18)
+        .opacity(appear ? 1 : 0)
+        .offset(y: appear ? 0 : 18)
         .animation(.easeOut(duration: 0.5).delay(0.10), value: appear)
     }
 
-    private func metricCard(icon: String, value: String, unit: String, color: Color, progress: Double) -> some View {
-        VStack(spacing: 10) {
-            ZStack {
-                Circle().stroke(color.opacity(0.12), lineWidth: 4).frame(width: 44, height: 44)
-                Circle().trim(from: 0, to: appear ? CGFloat(progress) : 0)
-                    .stroke(color, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                    .frame(width: 44, height: 44).rotationEffect(.degrees(-90))
-                    .animation(.easeOut(duration: 1.0).delay(0.5), value: appear)
-                Image(systemName: icon).font(.system(size: 14, weight: .semibold)).foregroundColor(color)
-            }
-            VStack(spacing: 1) {
-                Text(value).font(.system(size: 17, weight: .black)).foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
-                Text(unit).font(.system(size: 9, weight: .bold)).foregroundColor(Color(red:0.5,green:0.63,blue:0.72)).tracking(0.3)
-            }
-        }
-        .frame(maxWidth: .infinity).padding(.vertical, 14).background(whiteCard)
+    private func formatSteps(_ s: Int) -> String {
+        s >= 1000 ? String(format: "%.1f к", Double(s) / 1000) : "\(s)"
     }
 
-    // MARK: - Mood Card
+    private func metricCard(
+        icon: String,
+        value: String,
+        unit: String,
+        color: Color,
+        progress: Double,
+        onTap: (() -> Void)?
+    ) -> some View {
+        let content = VStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .stroke(color.opacity(0.15), lineWidth: 5)
+                    .frame(width: 48, height: 48)
 
-    private var moodCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Text("Как вы себя чувствуете?")
-                    .font(.system(size: 15, weight: .bold)).foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
-                Spacer()
-                if let m = selectedMood {
-                    Text(moodLabel(m)).font(.system(size: 12, weight: .semibold)).foregroundColor(accent).transition(.opacity)
-                }
+                Circle()
+                    .trim(from: 0, to: appear ? CGFloat(progress) : 0)
+                    .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                    .frame(width: 48, height: 48)
+                    .rotationEffect(.degrees(-90))
+                    .animation(.easeOut(duration: 1.2).delay(0.4), value: appear)
+                    .animation(.spring(response: 0.8), value: progress)
+
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(color)
             }
-            HStack(spacing: 0) {
-                ForEach(1...5, id: \.self) { i in
-                    Button {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) { selectedMood = i }
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    } label: {
-                        VStack(spacing: 6) {
-                            ZStack {
-                                Circle()
-                                    .fill(selectedMood == i ? moodColor(i).opacity(0.12) : Color(red:0.93,green:0.97,blue:1.0))
-                                    .frame(width: selectedMood == i ? 50 : 42, height: selectedMood == i ? 50 : 42)
-                                    .overlay(Circle().strokeBorder(selectedMood == i ? moodColor(i) : Color.clear, lineWidth: 1.5))
-                                Text(moodEmoji(i)).font(.system(size: selectedMood == i ? 26 : 20))
-                            }
-                            .animation(.spring(response: 0.3), value: selectedMood)
-                            Circle().fill(selectedMood == i ? moodColor(i) : Color(red:0.85,green:0.92,blue:0.96)).frame(width: 5, height: 5)
-                        }.frame(maxWidth: .infinity)
-                    }
-                }
+            .shadow(color: color.opacity(0.2), radius: 5, x: 0, y: 3)
+
+            VStack(spacing: 2) {
+                Text(value)
+                    .font(.system(size: 18, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    .contentTransition(.numericText())
+
+                Text(unit.uppercased())
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 0.5, green: 0.60, blue: 0.70))
+                    .tracking(0.5)
             }
         }
-        .padding(18).background(whiteCard)
-        .opacity(appear ? 1 : 0).offset(y: appear ? 0 : 18)
-        .animation(.easeOut(duration: 0.5).delay(0.15), value: appear)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.95))
+                .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
+        )
+
+        if let action = onTap {
+            return AnyView(
+                Button(action: {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    action()
+                }) { content }
+                .buttonStyle(ScaleButtonStyle())
+            )
+        } else {
+            return AnyView(content)
+        }
     }
 
-    // MARK: - Insight Card
+    // MARK: - Cognitive AI Card (Premium Insight)
 
-    private var insightCard: some View {
-        HStack(alignment: .top, spacing: 14) {
+    private var insightText: String {
+        let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
+        if health.steps > 0 {
+            let pct = Int(Double(health.steps) / Double(stepsGoal) * 100)
+            if pct >= 100 { return "Цель активности достигнута. Когнитивные функции в оптимальном состоянии." }
+            if pct >= 50  { return "Рекомендуется легкая прогулка. Это повысит насыщение мозга кислородом на 12%." }
+            return "Выявлен низкий уровень активности. Для поддержания нейропластичности пройдите \(stepsGoal - health.steps) шагов."
+        }
+        if health.heartRate > 0 {
+            let hr = health.heartRate
+            if hr < 60 { return "Пульс \(hr) уд/мин. Зафиксирована фаза глубокого восстановления." }
+            if hr <= 80 { return "Пульс \(hr) уд/мин. Сердечно-сосудистая система работает стабильно." }
+            return "Пульс \(hr) уд/мин. Рекомендуется дыхательная практика для стабилизации симпатической нервной системы."
+        }
+        return "Активируйте доступ к HealthKit для запуска персонального когнитивного анализа."
+    }
+
+    private var cognitiveAnalysisCard: some View {
+        HStack(alignment: .top, spacing: 16) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(LinearGradient(colors: [accent, accent2], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 44, height: 44)
-                Text("⭐").font(.system(size: 20))
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(LinearGradient(colors: [Color(red: 0.3, green: 0.2, blue: 0.8), Color(red: 0.1, green: 0.5, blue: 0.9)],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .frame(width: 48, height: 48)
+                    .shadow(color: Color(red: 0.2, green: 0.3, blue: 0.8).opacity(0.5), radius: 8, x: 0, y: 4)
+                Image(systemName: "brain.head.profile")
+                    .font(.system(size: 22, weight: .light))
+                    .foregroundColor(.white)
             }
-            VStack(alignment: .leading, spacing: 4) {
-                Text("ИНСАЙТ ДНЯ").font(.system(size: 10, weight: .bold)).foregroundColor(accent).tracking(1.0)
-                Text("Сегодня ваш пульс на 8% ниже среднего — хороший знак восстановления организма.")
-                    .font(.system(size: 14, weight: .medium)).foregroundColor(Color(red:0.3,green:0.42,blue:0.52))
-                    .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("КОГНИТИВНЫЙ АНАЛИЗ")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 0.4, green: 0.6, blue: 1.0))
+                    .tracking(1.0)
+                Text(insightText)
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.9))
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(18).background(whiteCard)
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(deepAI)
+                .shadow(color: deepAI.opacity(0.2), radius: 15, x: 0, y: 8)
+                .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.1), lineWidth: 1))
+        )
         .opacity(appear ? 1 : 0).offset(y: appear ? 0 : 18)
         .animation(.easeOut(duration: 0.5).delay(0.20), value: appear)
     }
@@ -280,163 +468,305 @@ struct HomeView: View {
     // MARK: - Quick Actions
 
     private var quickActions: some View {
-        VStack(spacing: 10) {
-            // AI Ассистент
+        VStack(spacing: 12) {
             Button {
                 showAssistantSheet = true
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
             } label: {
-                HStack(spacing: 14) {
+                HStack(spacing: 16) {
                     ZStack {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(LinearGradient(colors: [accent.opacity(0.15), accent2.opacity(0.1)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                            .frame(width: 46, height: 46)
-                        Image(systemName: "brain.head.profile").font(.system(size: 20, weight: .semibold)).foregroundColor(accent)
+                        Circle()
+                            .fill(LinearGradient(colors: [accent.opacity(0.15), accent2.opacity(0.1)],
+                                                 startPoint: .topLeading, endPoint: .bottomTrailing))
+                            .frame(width: 50, height: 50)
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 22, weight: .semibold))
+                            .foregroundColor(accent)
                     }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(localized("ai_recommendations")).font(.system(size: 15, weight: .bold)).foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
-                        Text(localized("ai_text")).font(.system(size: 12, weight: .medium)).foregroundColor(Color(red:0.4,green:0.55,blue:0.65))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("AI-Диагностика")
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                        Text("Спросите о симптомах")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(Color(red:0.4,green:0.55,blue:0.65))
                     }
                     Spacer()
-                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold)).foregroundColor(Color(red:0.7,green:0.8,blue:0.85))
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(Color(red:0.7,green:0.8,blue:0.85))
                 }
-                .padding(16).background(whiteCard)
-            }
-            .buttonStyle(ScaleButtonStyle())
-
-            // Показатели + Журнал
-            HStack(spacing: 10) {
-                Button { withAnimation(.spring(response: 0.3)) { selectedTab = 2 } } label: {
-                    actionMini(icon: "waveform.path.ecg", color: accent, title: localized("health_metrics"), sub: "Данные")
-                }.buttonStyle(ScaleButtonStyle())
-                Button { withAnimation(.spring(response: 0.3)) { selectedTab = 1 } } label: {
-                    actionMini(icon: "book.fill", color: Color(red:0.55,green:0.35,blue:1.0), title: localized("journal"), sub: "Записи")
-                }.buttonStyle(ScaleButtonStyle())
-            }
-
-            // Настроение — открывает MoodView
-            Button {
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                showMoodSheet = true
-            } label: {
-                actionMini(
-                    icon: "face.smiling.fill",
-                    color: moodGold,
-                    title: "Настроение",
-                    sub: "Трекер самочувствия"
+                .padding(16)
+                .background(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(Color.white.opacity(0.95))
+                        .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
                 )
             }
             .buttonStyle(ScaleButtonStyle())
+
+            HStack(spacing: 12) {
+                Button { withAnimation(.spring(response: 0.3)) { selectedTab = 2 } } label: {
+                    actionMini(icon: "chart.bar.xaxis", color: accent, title: "Показатели", sub: "Вся статистика")
+                }.buttonStyle(ScaleButtonStyle())
+                
+                Button { withAnimation(.spring(response: 0.3)) { selectedTab = 1 } } label: {
+                    actionMini(icon: "book.pages.fill", color: Color(red:0.55,green:0.35,blue:1.0), title: "Дневник", sub: "Ваши записи")
+                }.buttonStyle(ScaleButtonStyle())
+            }
         }
         .opacity(appear ? 1 : 0).offset(y: appear ? 0 : 18)
         .animation(.easeOut(duration: 0.5).delay(0.25), value: appear)
     }
 
     private func actionMini(icon: String, color: Color, title: String, sub: String) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 14) {
             ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(color.opacity(0.12)).frame(width: 38, height: 38)
-                Image(systemName: icon).font(.system(size: 17, weight: .semibold)).foregroundColor(color)
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(color.opacity(0.12)).frame(width: 42, height: 42)
+                Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundColor(color)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 13, weight: .bold)).foregroundColor(Color(red:0.06,green:0.09,blue:0.16)).lineLimit(1)
-                Text(sub).font(.system(size: 11, weight: .medium)).foregroundColor(Color(red:0.5,green:0.63,blue:0.72))
+                Text(title).font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red:0.06,green:0.09,blue:0.16)).lineLimit(1)
+                Text(sub).font(.system(size: 11, weight: .medium))
+                    .foregroundColor(Color(red:0.5,green:0.63,blue:0.72))
             }
             Spacer()
-            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundColor(Color(red:0.7,green:0.8,blue:0.85))
         }
-        .padding(14).frame(maxWidth: .infinity).background(whiteCard)
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.95))
+                .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
+        )
     }
 
-    private var whiteCard: some View {
-        RoundedRectangle(cornerRadius: 20, style: .continuous)
-            .fill(Color.white.opacity(0.88))
-            .shadow(color: accent.opacity(0.10), radius: 12, x: 0, y: 4)
-            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(Color.white.opacity(0.9), lineWidth: 1))
-    }
-
-    // MARK: - Liquid Glass Bottom Bar
+    // MARK: - PERFECT LIQUID BOTTOM BAR
 
     private var liquidBottomBar: some View {
-        ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).fill(Color.white.opacity(0.55)))
-                .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous)
-                    .fill(LinearGradient(colors: [Color.white.opacity(0.65), .clear], startPoint: .top, endPoint: .center)))
-                .overlay(RoundedRectangle(cornerRadius: 32, style: .continuous).strokeBorder(Color.white.opacity(0.75), lineWidth: 1))
-                .shadow(color: accent.opacity(0.12), radius: 20, x: 0, y: -6)
-                .shadow(color: .black.opacity(0.04), radius: 8, x: 0, y: -2)
+        GeometryReader { geo in
+            let safeBottom = safeAreaBottomInset()
+            let bottomInset = safeBottom > 0 ? safeBottom : 8
+            let totalWidth = geo.size.width
+            let outerMargin: CGFloat = 16
+            let barWidth = totalWidth - (outerMargin * 2)
+            let panelHeight: CGFloat = 90
+            
+            // Фиксированная математика для идеального центрирования
+            let innerPadding: CGFloat = 16
+            let orbGap: CGFloat = 92
+            let slotWidth = (barWidth - (innerPadding * 2) - orbGap) / 4
+            
+            // Заранее считаем центры без использования функции
+            let start = innerPadding + (slotWidth / 2)
+            let centers: [Int: CGFloat] = [
+                0: start,
+                1: start + slotWidth,
+                2: start + slotWidth * 2 + orbGap,
+                3: start + slotWidth * 3 + orbGap
+            ]
 
-            VStack(spacing: 0) {
-                HStack(alignment: .top, spacing: 0) {
-                    tabBtn(icon: "house.fill",        label: localized("home"),    index: 0).frame(maxWidth: .infinity)
-                    tabBtn(icon: "book.fill",          label: localized("journal"), index: 1).frame(maxWidth: .infinity)
-                    Color.clear.frame(width: 80)
-                    tabBtn(icon: "waveform.path.ecg", label: localized("metrics"), index: 2).frame(maxWidth: .infinity)
-                    // ← Профиль заменён на Настроение
-                    moodTabBtn.frame(maxWidth: .infinity)
+            let activeX = centers[selectedTab] ?? start
+            let currentDragX = liquidDragX ?? activeX
+            
+            // Эффект "растягивания" при перетаскивании
+            let distanceToActive = abs(currentDragX - activeX)
+            let stretchAmount = isLiquidDragging ? min(distanceToActive * 0.25, 25) : 0
+            let finalLensWidth = slotWidth + 14 + stretchAmount
+
+            ZStack(alignment: .top) {
+                // Стекло и иконки
+                ZStack(alignment: .topLeading) {
+                    
+                    // 1. КРИСТАЛЬНО ЧИСТОЕ СТЕКЛО БАРА
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 36, style: .continuous)
+                            .fill(Color.white.opacity(0.1))
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 36, style: .continuous))
+                        
+                        RoundedRectangle(cornerRadius: 36, style: .continuous)
+                            .strokeBorder(
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: .white.opacity(0.8), location: 0),
+                                        .init(color: .white.opacity(0.05), location: 0.3),
+                                        .init(color: .white.opacity(0.05), location: 0.7),
+                                        .init(color: .white.opacity(0.3), location: 1)
+                                    ],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    }
+                    .shadow(color: Color.black.opacity(0.08), radius: 24, x: 0, y: 10)
+                    .frame(width: barWidth, height: panelHeight)
+
+                    // 2. ЖИДКАЯ ЛИНЗА (Кристалл + Искажение)
+                    ZStack {
+                        // Само стекло линзы
+                        Capsule(style: .continuous)
+                            .fill(Color.white.opacity(0.15))
+                            .background(.ultraThinMaterial, in: Capsule())
+                            
+                        // Эффект хроматической аберрации (дисперсия света по краям)
+                        Capsule(style: .continuous)
+                            .strokeBorder(
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: Color.cyan.opacity(0.5), location: 0.0),
+                                        .init(color: Color.clear, location: 0.2),
+                                        .init(color: Color.clear, location: 0.8),
+                                        .init(color: Color.purple.opacity(0.5), location: 1.0)
+                                    ],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 3
+                            )
+                            .blur(radius: 2)
+                            .blendMode(.plusLighter)
+
+                        // Яркие белые блики
+                        Capsule(style: .continuous)
+                            .strokeBorder(
+                                LinearGradient(
+                                    stops: [
+                                        .init(color: .white, location: 0),
+                                        .init(color: .white.opacity(0.0), location: 0.25),
+                                        .init(color: .white.opacity(0.0), location: 0.75),
+                                        .init(color: .white.opacity(0.6), location: 1)
+                                    ],
+                                    startPoint: .topLeading, endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 1.5
+                            )
+                    }
+                    .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 6)
+                    .shadow(color: Color.white.opacity(0.3), radius: 12, x: -2, y: -2) // Внешний светлый блик сверху
+                    .frame(width: finalLensWidth, height: 56)
+                    .position(x: currentDragX, y: panelHeight / 2 - 8)
+                    .animation(.interactiveSpring(response: 0.35, dampingFraction: 0.7, blendDuration: 0.1), value: currentDragX)
+                    .animation(.interactiveSpring(response: 0.35, dampingFraction: 0.7, blendDuration: 0.1), value: stretchAmount)
+
+                    // 3. ИКОНКИ
+                    liquidTabItem(icon: "house.fill", label: localized("home"), index: 0, centerX: centers[0] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
+                    liquidTabItem(icon: "book.fill", label: localized("journal"), index: 1, centerX: centers[1] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
+                    liquidTabItem(icon: "waveform.path.ecg", label: localized("metrics"), index: 2, centerX: centers[2] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
+                    liquidTabItem(icon: "face.smiling.fill", label: "Дневник", index: 3, centerX: centers[3] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
                 }
-                .padding(.horizontal, 8)
-                .padding(.top, 14)
-                Color.clear.frame(height: 28)
-            }
+                .frame(width: barWidth, height: panelHeight)
+                .contentShape(Rectangle()) // Ограничиваем зону нажатия ТОЛЬКО самим баром!
+                .gesture(
+                    DragGesture(minimumDistance: 8) // Добавили дистанцию в 8 поинтов для защиты от случайных касаний
+                        .onChanged { value in
+                            if !isLiquidDragging {
+                                UISelectionFeedbackGenerator().selectionChanged()
+                                isLiquidDragging = true
+                            }
+                            
+                            // Координаты теперь считаются исключительно внутри самого бара
+                            let localX = value.location.x
+                            liquidDragX = min(max(localX, innerPadding), barWidth - innerPadding)
 
-            liveOrb.offset(y: -38)
+                            if let next = nearestTab(to: liquidDragX ?? localX, centers: centers), next != selectedTab {
+                                withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                                    selectedTab = next
+                                }
+                                UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                            }
+                        }
+                        .onEnded { _ in
+                            UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                            withAnimation(.spring(response: 0.4, dampingFraction: 0.65)) {
+                                isLiquidDragging = false
+                                liquidDragX = nil
+                            }
+                        }
+                )
+                .padding(.bottom, bottomInset) // Отступ безопасной зоны (для пипки) перенесли СНАРУЖИ жеста
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+
+                // ОБНОВЛЕННЫЙ LIQUID GLASS ORB
+                liveOrb
+                    .offset(y: -18)
+            }
+            .frame(height: panelHeight + bottomInset + 28)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
-        .frame(height: 104)
-        .padding(.horizontal, 12)
-        .padding(.bottom, 8)
+        .frame(height: 126 + safeAreaBottomInset())
     }
 
-    // ── Кнопка Настроение в баре ──
-    private var moodTabBtn: some View {
-        Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            showMoodSheet = true
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: "face.smiling.fill")
-                    .font(.system(size: 17, weight: .regular))
-                    .foregroundColor(Color(red:0.55,green:0.67,blue:0.75))
-                Text("Настроение")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(Color(red:0.55,green:0.67,blue:0.75))
-            }
-        }
-    }
-
-    // MARK: - Live Orb
+    // MARK: - Live Orb (LIQUID GLASS)
 
     private var liveOrb: some View {
         ZStack {
-            Circle().stroke(accent.opacity(0.15), lineWidth: 1.5).frame(width: 110, height: 110)
+            // Светлые/стеклянные кольца пульсации
+            Circle().stroke(Color.white.opacity(0.3), lineWidth: 1.5).frame(width: 110, height: 110)
                 .scaleEffect(orbRing3 ? 1.0 : 0.55).opacity(orbRing3 ? 0.0 : 0.7)
                 .animation(.easeOut(duration: 1.9).repeatForever(autoreverses: false).delay(0.6), value: orbRing3)
-            Circle().stroke(accent.opacity(0.22), lineWidth: 2).frame(width: 90, height: 90)
+            Circle().stroke(Color.white.opacity(0.4), lineWidth: 2).frame(width: 90, height: 90)
                 .scaleEffect(orbRing2 ? 1.0 : 0.55).opacity(orbRing2 ? 0.0 : 0.85)
                 .animation(.easeOut(duration: 1.9).repeatForever(autoreverses: false).delay(0.3), value: orbRing2)
-            Circle().stroke(accent.opacity(0.32), lineWidth: 2.5).frame(width: 74, height: 74)
+            Circle().stroke(Color.white.opacity(0.5), lineWidth: 2.5).frame(width: 74, height: 74)
                 .scaleEffect(orbRing1 ? 1.0 : 0.55).opacity(orbRing1 ? 0.0 : 1.0)
                 .animation(.easeOut(duration: 1.9).repeatForever(autoreverses: false), value: orbRing1)
 
             Button {
+                if suppressOrbTapAfterDrag {
+                    suppressOrbTapAfterDrag = false
+                    return
+                }
+
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 withAnimation(.spring()) { showAssistantSheet = true }
             } label: {
                 ZStack {
+                    // 1. Основное стекло орба
                     Circle()
-                        .fill(LinearGradient(
-                            colors: [Color(red:0.03,green:0.50,blue:0.78), Color(red:0.01,green:0.42,blue:0.68)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 92, height: 92)
-                        .shadow(color: accent.opacity(0.55), radius: 20, x: 0, y: 8)
-                        .shadow(color: .black.opacity(0.18), radius: 8, x: 0, y: 3)
+                        .fill(Color.white.opacity(0.1))
+                        .background(.ultraThinMaterial, in: Circle())
+                    
+                    // 2. Хроматическая аберрация внутри орба
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: Color.cyan.opacity(0.6), location: 0.0),
+                                    .init(color: Color.clear, location: 0.3),
+                                    .init(color: Color.clear, location: 0.7),
+                                    .init(color: Color.purple.opacity(0.6), location: 1.0)
+                                ],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 4
+                        )
+                        .blur(radius: 3)
+                        .blendMode(.plusLighter)
+
+                    // 3. Резкий белый контур (объем стекла)
+                    Circle()
+                        .strokeBorder(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .white.opacity(0.9), location: 0),
+                                    .init(color: .white.opacity(0.1), location: 0.3),
+                                    .init(color: .white.opacity(0.1), location: 0.7),
+                                    .init(color: .white.opacity(0.4), location: 1)
+                                ],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
+                    
+                    // 4. Твоя Lottie-анимация
                     LottieView(animationName: "aiaia").frame(width: 92, height: 92).clipShape(Circle())
-                    Circle().strokeBorder(
-                        LinearGradient(colors: [Color.white.opacity(0.55), accent.opacity(0.25)], startPoint: .top, endPoint: .bottom),
-                        lineWidth: 2).frame(width: 92, height: 92)
                 }
+                .frame(width: 92, height: 92)
+                .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
+                .shadow(color: Color.white.opacity(0.3), radius: 10, x: -2, y: -2)
                 .scaleEffect(orbIsPressed ? 0.93 : (pulse ? 1.04 : 0.98))
                 .offset(y: orbBob ? -4 : 3)
                 .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
@@ -445,10 +775,29 @@ struct HomeView: View {
             .buttonStyle(PlainButtonStyle())
             .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
-                    .onChanged { v in orbOffset = CGSize(width: v.translation.width * 0.22, height: v.translation.height * 0.22); orbIsPressed = true }
-                    .onEnded { _ in
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                        withAnimation(.interpolatingSpring(stiffness: 180, damping: 18)) { orbOffset = .zero; orbIsPressed = false }
+                    .onChanged { v in
+                        orbOffset = CGSize(width: v.translation.width * 0.22,
+                                           height: v.translation.height * 0.22)
+                        orbIsPressed = true
+                    }
+                    .onEnded { v in
+                        let horizontal = v.translation.width
+
+                        if abs(horizontal) > 36 {
+                            switchOrbTab(horizontal: horizontal)
+                            suppressOrbTapAfterDrag = true
+
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                                suppressOrbTapAfterDrag = false
+                            }
+                        } else {
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        }
+
+                        withAnimation(.interpolatingSpring(stiffness: 180, damping: 18)) {
+                            orbOffset = .zero
+                            orbIsPressed = false
+                        }
                     }
             )
         }
@@ -461,29 +810,110 @@ struct HomeView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { orbRing3 = true }
     }
 
-    // MARK: - Tab Button
+    private func nearestTab(to x: CGFloat, centers: [Int: CGFloat]) -> Int? {
+        centers.min(by: { abs($0.value - x) < abs($1.value - x) })?.key
+    }
 
-    private func tabBtn(icon: String, label: String, index: Int) -> some View {
-        Button {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) { selectedTab = index }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        } label: {
-            VStack(spacing: 4) {
-                ZStack {
-                    if selectedTab == index {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(accent.opacity(0.12)).frame(width: 38, height: 28)
-                    }
-                    Image(systemName: icon)
-                        .font(.system(size: 17, weight: selectedTab == index ? .bold : .regular))
-                        .foregroundColor(selectedTab == index ? accent : Color(red:0.55,green:0.67,blue:0.75))
-                        .scaleEffect(selectedTab == index ? 1.08 : 1.0)
-                        .animation(.spring(response: 0.3), value: selectedTab)
-                }
-                Text(label)
-                    .font(.system(size: 10, weight: selectedTab == index ? .bold : .medium))
-                    .foregroundColor(selectedTab == index ? accent : Color(red:0.55,green:0.67,blue:0.75))
+    // Иконки с динамической реакцией на лупу
+    private func liquidTabItem(
+        icon: String,
+        label: String,
+        index: Int,
+        centerX: CGFloat,
+        lensX: CGFloat,
+        slotWidth: CGFloat
+    ) -> some View {
+        let distance = abs(centerX - lensX)
+        // Магнетизм: чем ближе лупа, тем больше иконка
+        let liquidBoost = max(0, 1 - (distance / 60))
+        let isSelected = selectedTab == index
+
+        let iconScale = 1.0 + liquidBoost * 0.18
+        let yLift = liquidBoost * 10
+        
+        let iconOpacity = isSelected ? 1.0 : 0.4 + liquidBoost * 0.4
+        let labelOpacity = isSelected ? 0.9 : 0.3 + liquidBoost * 0.5
+
+        return VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: isSelected ? .bold : .medium))
+                .foregroundColor(Color.black.opacity(iconOpacity))
+                .scaleEffect(iconScale)
+                .offset(y: -yLift)
+
+            Text(label)
+                .font(.system(size: 10, weight: isSelected ? .bold : .medium))
+                .foregroundColor(Color.black.opacity(labelOpacity))
+                .scaleEffect(1 + liquidBoost * 0.05)
+                .offset(y: -yLift * 0.4)
+        }
+        .frame(width: slotWidth, height: 90)
+        .position(x: centerX, y: 90 / 2) // Центровка ровно по математике
+        // Нажатие на иконку
+        .onTapGesture {
+            withAnimation(.spring(response: 0.30, dampingFraction: 0.82)) {
+                selectedTab = index
             }
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        }
+    }
+
+    private func switchOrbTab(horizontal: CGFloat) {
+        let orbTabs = [0, 1, 2]
+
+        let currentIndex: Int
+        if let index = orbTabs.firstIndex(of: selectedTab) {
+            currentIndex = index
+        } else {
+            currentIndex = horizontal > 0 ? 0 : orbTabs.count - 1
+        }
+
+        let nextIndex: Int
+        if horizontal > 0 {
+            nextIndex = min(currentIndex + 1, orbTabs.count - 1)
+        } else {
+            nextIndex = max(currentIndex - 1, 0)
+        }
+
+        guard orbTabs[nextIndex] != selectedTab else { return }
+
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+            selectedTab = orbTabs[nextIndex]
+        }
+    }
+
+    private func safeAreaBottomInset() -> CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        if let window = scenes.first?.windows.first(where: \.isKeyWindow) {
+            return window.safeAreaInsets.bottom
+        }
+        return 0
+    }
+
+    // MARK: - Avatar
+
+    private func loadAvatar() {
+        let key = "userAvatar_\(appState.userToken ?? "guest")"
+        if let data = UserDefaults.standard.data(forKey: key),
+           let img = UIImage(data: data) {
+            avatarImage = img
+        } else {
+            avatarImage = nil
+        }
+    }
+    
+    // MARK: - User Name Cache
+
+    private func loadUserName() {
+        let nameKey = "userName_\(appState.userToken ?? "guest")"
+        if let savedName = UserDefaults.standard.string(forKey: nameKey), !savedName.isEmpty {
+            // Принудительно устанавливаем имя из кэша для текущего токена
+            appState.userName = savedName
+        } else {
+            // Если в кэше для этого токена ничего нет, сбрасываем,
+            // чтобы не отображалось имя предыдущего юзера
+            appState.userName = ""
         }
     }
 
@@ -507,13 +937,6 @@ struct HomeView: View {
         return s.split(separator: " ").prefix(2).compactMap { $0.first }.map(String.init).joined().uppercased()
     }
 
-    private func moodEmoji(_ v: Int) -> String { ["😩","😕","😐","😊","🤩"][v-1] }
-    private func moodLabel(_ v: Int) -> String  { ["Плохо","Так себе","Нормально","Хорошо","Отлично"][v-1] }
-    private func moodColor(_ v: Int) -> Color {
-        [Color(red:0.95,green:0.25,blue:0.25), Color(red:1.0,green:0.55,blue:0.1),
-         accent, Color(red:0.1,green:0.78,blue:0.48), Color(red:0.55,green:0.35,blue:1.0)][v-1]
-    }
-
     private func localized(_ key: String) -> String {
         let l = lang.currentLanguage
         switch key {
@@ -522,19 +945,35 @@ struct HomeView: View {
         case "good_evening":   return ["kk":"Қайырлы кеш","ru":"Добрый вечер","en":"Good evening"][l.rawValue]!
         case "good_night":     return ["kk":"Қайырлы түн","ru":"Доброй ночи","en":"Good night"][l.rawValue]!
         case "subtitle":
-            switch l { case .kk: return "AI серіктесіңіз дайын 🩺"; case .ru: return "Ваш AI-помощник готов 🩺"; default: return "Your AI assistant is ready 🩺" }
+            switch l { case .kk: return "AI серіктесіңіз дайын 🩺"
+                       case .ru: return "Ваш AI-помощник готов 🩺"
+                       default:  return "Your AI assistant is ready 🩺" }
         case "home":    return ["kk":"Басты","ru":"Главная","en":"Home"][l.rawValue]!
         case "journal": return ["kk":"Журнал","ru":"Журнал","en":"Journal"][l.rawValue]!
         case "metrics": return ["kk":"Метрики","ru":"Метрики","en":"Metrics"][l.rawValue]!
         case "profile": return ["kk":"Профиль","ru":"Профиль","en":"Profile"][l.rawValue]!
         case "ai_recommendations":
-            switch l { case .kk: return "AI кеңестері"; case .ru: return "AI ассистент"; default: return "AI Assistant" }
+            switch l { case .kk: return "AI кеңестері"
+                       case .ru: return "AI ассистент"
+                       default:  return "AI Assistant" }
         case "ai_text":
-            switch l { case .kk: return "Сұрақтарыңызды қойыңыз"; case .ru: return "Задайте любой вопрос"; default: return "Ask anything" }
+            switch l { case .kk: return "Сұрақтарыңызды қойыңыз"
+                       case .ru: return "Задайте любой вопрос"
+                       default:  return "Ask anything" }
         case "health_metrics": return ["kk":"Метрики","ru":"Показатели","en":"Metrics"][l.rawValue]!
         default: return key
         }
     }
+}
+
+// MARK: - Extensions
+
+extension Int {
+    var nonZero: Int? { self == 0 ? nil : self }
+}
+
+extension Double {
+    var nonZero: Double? { self == 0.0 ? nil : self }
 }
 
 // MARK: - ScaleButtonStyle

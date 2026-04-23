@@ -77,17 +77,31 @@ struct OnboardingContainerView: View {
         }
         return slideColors[currentPage]
     }
-
+    
+    private var hasCompletedProfile: Bool {
+        let key = "hasCompletedProfileOnboarding_\(appState.userToken ?? "guest")"
+        return UserDefaults.standard.bool(forKey: key)
+    }
     var body: some View {
         ZStack {
             // Анимированный фон — меняет цвет со слайдом
             animatedBackground
 
             if appState.isLoggedIn {
-                HomeView()
+                if !hasCompletedProfile {
+                    ProfileOnboardingView(userName: appState.userName ?? "Друг") {
+                        let key = "hasCompletedProfileOnboarding_\(appState.userToken ?? "guest")"
+                        UserDefaults.standard.set(true, forKey: key)
+                    }
                     .environmentObject(appState)
                     .environmentObject(lang)
                     .transition(.opacity.combined(with: .scale))
+                } else {
+                    HomeView()
+                        .environmentObject(appState)
+                        .environmentObject(lang)
+                        .transition(.opacity.combined(with: .scale))
+                }
             } else {
                 onboardingContent
             }

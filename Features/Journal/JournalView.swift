@@ -68,7 +68,6 @@ struct JournalEntry: Identifiable, Codable {
 
 final class JournalViewModel: ObservableObject {
     
-    
     @Published var entries: [JournalEntry] = []
     @Published var selectedFilter: JournalCategory? = nil
     @Published var searchText: String = ""
@@ -165,8 +164,9 @@ struct JournalView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            // Background
-            Color(red: 0.937, green: 0.969, blue: 1.0)
+            
+            // 👇 ПРОЗРАЧНЫЙ ФОН для пропускания AnimatedGradientBackground
+            Color.clear
                 .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
@@ -212,7 +212,7 @@ struct JournalView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(showSearch ? accent : Color.white)
+                        .fill(showSearch ? accent : Color.white.opacity(0.8))
                         .frame(width: 40, height: 40)
                         .shadow(color: accent.opacity(0.18), radius: 8, x: 0, y: 3)
                     Image(systemName: showSearch ? "xmark" : "magnifyingglass")
@@ -256,7 +256,8 @@ struct JournalView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .background(cat.bgColor)
+        .background(cat.color.opacity(0.15))
+        .background(.ultraThinMaterial)
         .clipShape(Capsule())
         .overlay(Capsule().strokeBorder(cat.color.opacity(0.2), lineWidth: 1))
     }
@@ -304,10 +305,11 @@ struct JournalView: View {
                     if isSelected {
                         LinearGradient(colors: [color, color.opacity(0.75)], startPoint: .leading, endPoint: .trailing)
                     } else {
-                        color.opacity(0.08)
+                        color.opacity(0.15)
                     }
                 }
             )
+            .background(.ultraThinMaterial)
             .clipShape(Capsule())
             .overlay(Capsule().strokeBorder(isSelected ? Color.clear : color.opacity(0.2), lineWidth: 1))
             .shadow(color: isSelected ? color.opacity(0.3) : .clear, radius: 6, x: 0, y: 3)
@@ -335,7 +337,8 @@ struct JournalView: View {
         .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white)
+                .fill(Color.white.opacity(0.8))
+                .background(.ultraThinMaterial)
                 .shadow(color: accent.opacity(0.1), radius: 8, x: 0, y: 3)
         )
         .padding(.horizontal, 20)
@@ -346,36 +349,44 @@ struct JournalView: View {
     // MARK: - Entries List
 
     private var entriesList: some View {
-        LazyVStack(spacing: 12) {
+        // 🔥 Добавили pinnedViews для "липких" заголовков
+        LazyVStack(spacing: 12, pinnedViews: [.sectionHeaders]) {
             if vm.filtered.isEmpty {
                 emptyState
             } else {
                 ForEach(groupedKeys, id: \.self) { key in
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text(key)
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                            .textCase(.uppercase)
-                            .tracking(0.8)
-                            .padding(.horizontal, 20)
-                            .padding(.top, 4)
-
+                    Section {
                         ForEach(grouped[key] ?? []) { entry in
-                            JournalEntryCard(entry: entry)
-                                .padding(.horizontal, 20)
-                                .onTapGesture { selectedEntry = entry }
-                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                    Button(role: .destructive) {
-                                        withAnimation { vm.delete(entry) }
-                                    } label: {
-                                        Label("Удалить", systemImage: "trash")
-                                    }
+                            JournalEntryCard(entry: entry, onDelete: {
+                                withAnimation { vm.delete(entry) }
+                            })
+                            .padding(.horizontal, 20)
+                            .onTapGesture { selectedEntry = entry }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                Button(role: .destructive) {
+                                    withAnimation { vm.delete(entry) }
+                                } label: {
+                                    Label("Удалить", systemImage: "trash")
                                 }
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .trailing).combined(with: .opacity),
-                                    removal: .move(edge: .leading).combined(with: .opacity)
-                                ))
+                            }
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .trailing).combined(with: .opacity),
+                                removal: .move(edge: .leading).combined(with: .opacity)
+                            ))
                         }
+                    } header: {
+                        // Стеклянный прилипающий заголовок
+                        HStack {
+                            Text(key)
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
+                                .textCase(.uppercase)
+                                .tracking(0.8)
+                            Spacer()
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 8)
+                        .background(Color.clear.background(.ultraThinMaterial).opacity(0.95))
                     }
                 }
             }
@@ -452,39 +463,35 @@ struct JournalView: View {
 
 struct JournalEntryCard: View {
     let entry: JournalEntry
-    @State private var pressed = false
-
+    let onDelete: () -> Void // Экшен для удаления
+    
     var body: some View {
-        ZStack(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.88))
-                .shadow(color: entry.category.color.opacity(0.10), radius: 12, x: 0, y: 5)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(entry.category.color.opacity(0.14), lineWidth: 1)
-                )
-
-            // Left accent stripe
-            RoundedRectangle(cornerRadius: 3)
+        HStack(spacing: 0) {
+            
+            // Левая цветная полоска (прижата идеально к краю)
+            Rectangle()
                 .fill(entry.category.color)
-                .frame(width: 4)
-                .padding(.vertical, 12)
-                .padding(.leading, 12)
-
+                .frame(width: 5)
+            
             HStack(alignment: .top, spacing: 14) {
+                // Иконка (ровный квадрат с центрированным эмодзи)
                 ZStack {
-                    RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(entry.category.bgColor)
-                        .frame(width: 46, height: 46)
+                        .frame(width: 48, height: 48)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.5), lineWidth: 1) // Блик на квадрате
+                        )
                     Text(entry.category.emoji)
-                        .font(.system(size: 22))
+                        .font(.system(size: 24))
                 }
-                .padding(.leading, 20)
-
-                VStack(alignment: .leading, spacing: 5) {
-                    HStack {
+                .padding(.top, 2)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(alignment: .top) {
                         Text(entry.title)
-                            .font(.system(size: 15, weight: .bold))
+                            .font(.system(size: 16, weight: .bold))
                             .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
                             .lineLimit(1)
                         Spacer()
@@ -493,14 +500,14 @@ struct JournalEntryCard: View {
                             .font(.system(size: 10, weight: .bold))
                             .foregroundColor(entry.category.color)
                             .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
+                            .padding(.vertical, 4)
                             .background(entry.category.bgColor)
                             .clipShape(Capsule())
                     }
 
                     if !entry.body.isEmpty {
                         Text(entry.body)
-                            .font(.system(size: 13, weight: .medium))
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundColor(Color(red: 0.4, green: 0.55, blue: 0.65))
                             .lineLimit(2)
                             .lineSpacing(2)
@@ -508,29 +515,41 @@ struct JournalEntryCard: View {
 
                     HStack(spacing: 8) {
                         Text(timeString(entry.date))
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(Color(red: 0.65, green: 0.75, blue: 0.82))
 
                         if let mood = entry.mood {
-                            HStack(spacing: 3) {
+                            HStack(spacing: 4) {
                                 ForEach(1...5, id: \.self) { i in
                                     Circle()
                                         .fill(i <= mood
                                               ? Color(red: 1.0, green: 0.65, blue: 0.10)
-                                              : Color(red: 0.88, green: 0.92, blue: 0.95))
+                                              : Color.black.opacity(0.08)) // Чуть темнее для контраста на стекле
                                         .frame(width: 6, height: 6)
                                 }
                             }
                         }
                     }
+                    .padding(.top, 2)
                 }
-                .padding(.vertical, 14)
-                .padding(.trailing, 16)
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 14)
+        }
+        .background(Color.white.opacity(0.7))
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: entry.category.color.opacity(0.08), radius: 10, x: 0, y: 4)
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
+        )
+        // 🔥 Вызов нативного меню по долгому нажатию (Haptics встроен)
+        .contextMenu {
+            Button(role: .destructive, action: onDelete) {
+                Label("Удалить запись", systemImage: "trash")
             }
         }
-        .scaleEffect(pressed ? 0.97 : 1.0)
-        .animation(.spring(response: 0.3), value: pressed)
-        .onLongPressGesture(minimumDuration: 0, pressing: { p in pressed = p }, perform: {})
     }
 
     private func timeString(_ date: Date) -> String {

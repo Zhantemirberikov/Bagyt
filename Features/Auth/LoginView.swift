@@ -10,8 +10,6 @@ import SwiftUI
 import AuthenticationServices
 import Combine
 
-
-
 // MARK: - LoginView
 
 struct LoginView: View {
@@ -81,8 +79,9 @@ struct LoginView: View {
         HStack {
             HStack(spacing: 4) {
                 Text("Bagyt")
-                    .font(.system(size: 28, weight: .black))
-                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    .font(.system(size: 28, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                    .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
                 Image(systemName: "heart.fill")
                     .foregroundColor(Color(red: 0.95, green: 0.25, blue: 0.25))
                     .font(.system(size: 14))
@@ -98,25 +97,31 @@ struct LoginView: View {
     // MARK: - Title
 
     private var titleBlock: some View {
-        VStack(spacing: 10) {
-            // Иконка
+        VStack(spacing: 16) {
+            // Иконка в стиле Liquid Glass
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [accent.opacity(0.15), accent2.opacity(0.08)],
-                                         startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .frame(width: 72, height: 72)
+                    .fill(Color.white.opacity(0.15))
+                    .background(.ultraThinMaterial, in: Circle())
+                    .frame(width: 76, height: 76)
+                
+                Circle()
+                    .strokeBorder(Color.white.opacity(0.5), lineWidth: 1)
+
                 Image(systemName: vm.isRegisterMode ? "person.badge.plus" : "lock.shield.fill")
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(LinearGradient(colors: [accent, accent2],
-                                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .font(.system(size: 32, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
             }
             .padding(.top, 8)
+            .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 5)
             .scaleEffect(appear ? 1 : 0.8)
             .animation(.spring(response: 0.5, dampingFraction: 0.7), value: appear)
 
             Text(vm.isRegisterMode ? loc("register_subtitle") : loc("subtitle"))
-                .font(.system(size: 22, weight: .black))
-                .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                .font(.system(size: 24, weight: .black, design: .rounded))
+                .foregroundColor(.white)
+                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
                 .opacity(appear ? 1 : 0)
@@ -348,12 +353,13 @@ struct LoginView: View {
         VStack(spacing: 14) {
             // Разделитель
             HStack(spacing: 12) {
-                Rectangle().fill(Color(red: 0.7, green: 0.82, blue: 0.90)).frame(height: 1)
+                Rectangle().fill(Color.white.opacity(0.5)).frame(height: 1)
                 Text(loc("or"))
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(Color(red: 0.6, green: 0.72, blue: 0.78))
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.9))
+                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
                     .fixedSize()
-                Rectangle().fill(Color(red: 0.7, green: 0.82, blue: 0.90)).frame(height: 1)
+                Rectangle().fill(Color.white.opacity(0.5)).frame(height: 1)
             }
 
             // Google
@@ -410,13 +416,15 @@ struct LoginView: View {
     private var privacyBlock: some View {
         (
             Text(loc("policy_prefix") + " ")
-                .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
+                .foregroundColor(.white.opacity(0.85))
             + Text(loc("policy_link"))
                 .underline()
-                .foregroundColor(accent)
+                .foregroundColor(.white)
         )
-        .font(.system(size: 12, weight: .medium))
+        .font(.system(size: 12, weight: .bold))
+        .shadow(color: .black.opacity(0.15), radius: 2, x: 0, y: 1)
         .multilineTextAlignment(.center)
+        .padding(.horizontal, 10)
         .onTapGesture { showPrivacy = true }
         .opacity(appear ? 1 : 0)
         .animation(.easeOut(duration: 0.5).delay(0.28), value: appear)

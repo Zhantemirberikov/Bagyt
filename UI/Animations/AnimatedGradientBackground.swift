@@ -2,14 +2,12 @@
 //  AnimatedGradientBackground.swift
 //  Bagyt
 //
-//  Created by Жантемир Бериков on 18.04.2026.
-//
-// MARK: - Анимированный фон с эффектом сердцебиения
 
 import SwiftUI
+
 struct AnimatedGradientBackground: View {
     @State private var moveGradient = false
-    @State private var pulse = false
+    @State private var breath: CGFloat = 0.0
 
     var body: some View {
         let accentColor: Color = {
@@ -21,6 +19,7 @@ struct AnimatedGradientBackground: View {
         }()
 
         ZStack {
+            // Оригинальный градиент — двигается медленно как было
             LinearGradient(
                 gradient: Gradient(colors: [
                     accentColor.opacity(0.9),
@@ -33,9 +32,11 @@ struct AnimatedGradientBackground: View {
             .ignoresSafeArea()
             .animation(.easeInOut(duration: 8).repeatForever(autoreverses: true), value: moveGradient)
 
+            // Дыхание — радиальный пульс, но медленный (4 сек вдох / 6 сек выдох)
+            // Заменили 0.8 сек на 4+6 сек — всё то же самое, просто не мигает
             RadialGradient(
                 gradient: Gradient(colors: [
-                    accentColor.opacity(pulse ? 0.35 : 0.15),
+                    accentColor.opacity(0.15 + 0.20 * breath),
                     Color.clear
                 ]),
                 center: .center,
@@ -44,12 +45,20 @@ struct AnimatedGradientBackground: View {
             )
             .blendMode(.softLight)
             .ignoresSafeArea()
-            .animation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true), value: pulse)
         }
         .onAppear {
             moveGradient.toggle()
-            pulse.toggle()
+            inhale()
         }
     }
-}
 
+    private func inhale() {
+        withAnimation(.easeIn(duration: 4.0)) { breath = 1.0 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.5) { exhale() }
+    }
+
+    private func exhale() {
+        withAnimation(.easeOut(duration: 6.0)) { breath = 0.0 }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 6.5) { inhale() }
+    }
+}
