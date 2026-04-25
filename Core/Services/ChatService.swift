@@ -25,14 +25,16 @@ struct ChatMessage: Identifiable, Codable, Equatable {
 
 final class ChatService {
     static let shared = ChatService()
-
-    private let baseURL = "https://a2e3-185-18-253-5.ngrok-free.app/api"
-
     private init() {}
 
     private var storageKey: String {
         let userId = UserDefaults.standard.string(forKey: "userToken") ?? "guest"
         return "chat_history_\(userId)"
+    }
+
+    private var activeChatKey: String {
+        let userId = UserDefaults.standard.value(forKey: "userId").map { "\($0)" } ?? "guest"
+        return "active_chat_id_\(userId)"
     }
 
     // MARK: - Local Chat History
@@ -49,12 +51,13 @@ final class ChatService {
 
     func clearMessages() {
         UserDefaults.standard.removeObject(forKey: storageKey)
+        UserDefaults.standard.removeObject(forKey: activeChatKey)
     }
 
     // MARK: - Main Send
 
     func sendMessageToAI(userText: String, completion: @escaping (ChatMessage) -> Void) {
-        guard let token = KeychainHelper.read("auth_token") else {
+        guard let token = KeychainHelper.read("auth_token"), !token.isEmpty else {
             completion(ChatMessage(
                 text: "Не удалось найти токен авторизации. Пожалуйста, войдите в аккаунт заново.",
                 sender: .assistant
@@ -62,7 +65,7 @@ final class ChatService {
             return
         }
 
-        if token.contains("offline") {
+        if token.hasPrefix("offline-") {
             completion(ChatMessage(
                 text: offlineReply(for: userText),
                 sender: .assistant
@@ -72,10 +75,12 @@ final class ChatService {
 
         let enrichedText = buildEnrichedPrompt(userText: userText)
 
-        createComplaint(text: enrichedText, token: token) { result in
+        ensureActiveChat(firstMessage: userText, token: token) { [weak self] result in
+            guard let self else { return }
+
             switch result {
-            case .success(let complaintId):
-                self.analyzeComplaint(id: complaintId, token: token, completion: completion)
+            case .success(let chatId):
+                self.sendMessage(chatId: chatId, text: enrichedText, token: token, originalText: userText, completion: completion)
 
             case .failure(let error):
                 completion(ChatMessage(
@@ -88,20 +93,24 @@ final class ChatService {
 
     // MARK: - API
 
-    private func createComplaint(text: String, token: String, completion: @escaping (Result<Int, Error>) -> Void) {
-        guard let url = URL(string: "\(baseURL)/complaints") else {
-            completion(.failure(ChatServiceError.invalidURL))
+    private func ensureActiveChat(
+        firstMessage: String,
+        token: String,
+        completion: @escaping (Result<Int, Error>) -> Void
+    ) {
+        if let existing = UserDefaults.standard.value(forKey: activeChatKey) as? Int {
+            completion(.success(existing))
             return
         }
 
-        var request = URLRequest(url: url)
+        let title = String(firstMessage.prefix(50))
+        var request = URLRequest(url: APIConfig.url("chats"))
         request.httpMethod = "POST"
         request.timeoutInterval = 30
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-
-        let body = ["complaint": text]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try? JSONSerialization.data(withJSONObject: ["title": title])
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error {
@@ -111,22 +120,29 @@ final class ChatService {
                 return
             }
 
-            guard let http = response as? HTTPURLResponse,
-                  (200...299).contains(http.statusCode) else {
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let raw = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+
+            print("📡 CREATE CHAT status:", status)
+            print("📦 CREATE CHAT raw:", raw)
+
+            guard (200...299).contains(status) else {
                 DispatchQueue.main.async {
-                    completion(.failure(ChatServiceError.badStatus))
+                    completion(.failure(Self.makeError(code: status, message: raw.isEmpty ? "Chat create failed" : raw)))
                 }
                 return
             }
 
             guard let data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                  let id = json["id"] as? Int else {
+                  let id = Self.extractId(from: json) else {
                 DispatchQueue.main.async {
-                    completion(.failure(ChatServiceError.invalidResponse))
+                    completion(.failure(Self.makeError(code: -2, message: "Could not parse chat id")))
                 }
                 return
             }
+
+            UserDefaults.standard.set(id, forKey: self.activeChatKey)
 
             DispatchQueue.main.async {
                 completion(.success(id))
@@ -134,39 +150,50 @@ final class ChatService {
         }.resume()
     }
 
-    private func analyzeComplaint(id: Int, token: String, completion: @escaping (ChatMessage) -> Void) {
-        guard let url = URL(string: "\(baseURL)/complaints/analyze") else {
-            completion(ChatMessage(text: "Ошибка адреса сервера.", sender: .assistant))
-            return
-        }
-
-        var request = URLRequest(url: url)
+    private func sendMessage(
+        chatId: Int,
+        text: String,
+        token: String,
+        originalText: String,
+        completion: @escaping (ChatMessage) -> Void
+    ) {
+        var request = URLRequest(url: APIConfig.url("chats/\(chatId)/messages"))
         request.httpMethod = "POST"
-        request.timeoutInterval = 60
+        request.timeoutInterval = 90
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        let body = ["complaint_id": id]
+        let body: [String: Any] = [
+            "message": text,
+            "locale": currentLocale(for: originalText)
+        ]
+
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+
+        print("📤 SEND CHAT:", request.url?.absoluteString ?? "")
 
         URLSession.shared.dataTask(with: request) { data, response, error in
             if let error {
                 DispatchQueue.main.async {
-                    completion(ChatMessage(
-                        text: "Ошибка сети: \(error.localizedDescription)",
-                        sender: .assistant
-                    ))
+                    completion(ChatMessage(text: "Ошибка сети: \(error.localizedDescription)", sender: .assistant))
                 }
                 return
             }
 
-            guard let http = response as? HTTPURLResponse,
-                  (200...299).contains(http.statusCode) else {
+            let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+            let raw = data.flatMap { String(data: $0, encoding: .utf8) } ?? ""
+
+            print("📡 SEND CHAT status:", status)
+            print("📦 SEND CHAT raw:", raw)
+
+            if status == 404 {
+                UserDefaults.standard.removeObject(forKey: self.activeChatKey)
+            }
+
+            guard (200...299).contains(status) else {
                 DispatchQueue.main.async {
-                    completion(ChatMessage(
-                        text: "Сервер временно недоступен. Попробуйте ещё раз чуть позже.",
-                        sender: .assistant
-                    ))
+                    completion(ChatMessage(text: raw.isEmpty ? "Сервер временно недоступен." : raw, sender: .assistant))
                 }
                 return
             }
@@ -174,24 +201,65 @@ final class ChatService {
             guard let data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 DispatchQueue.main.async {
-                    completion(ChatMessage(
-                        text: "Не удалось разобрать ответ сервера.",
-                        sender: .assistant
-                    ))
+                    completion(ChatMessage(text: "Не удалось разобрать ответ сервера.", sender: .assistant))
                 }
                 return
             }
 
-            let reply =
-                json["reply"] as? String ??
-                json["message"] as? String ??
-                json["answer"] as? String ??
-                "Ответ от AI не найден."
+            let reply = Self.extractReply(from: json) ?? "Ответ от AI не найден."
 
             DispatchQueue.main.async {
                 completion(ChatMessage(text: reply, sender: .assistant))
             }
         }.resume()
+    }
+
+    private static func extractId(from json: [String: Any]) -> Int? {
+        if let id = json["id"] as? Int { return id }
+
+        if let data = json["data"] as? [String: Any],
+           let id = data["id"] as? Int {
+            return id
+        }
+
+        if let chat = json["chat"] as? [String: Any],
+           let id = chat["id"] as? Int {
+            return id
+        }
+
+        return nil
+    }
+
+    private static func extractReply(from json: [String: Any]) -> String? {
+        if let reply = json["reply"] as? String { return reply }
+        if let message = json["message"] as? String { return message }
+        if let answer = json["answer"] as? String { return answer }
+
+        if let assistant = json["assistant_message"] as? [String: Any] {
+            return assistant["message"] as? String ??
+                   assistant["content"] as? String ??
+                   assistant["text"] as? String
+        }
+
+        if let assistant = json["assistantMessage"] as? [String: Any] {
+            return assistant["message"] as? String ??
+                   assistant["content"] as? String ??
+                   assistant["text"] as? String
+        }
+
+        if let data = json["data"] as? [String: Any] {
+            return extractReply(from: data)
+        }
+
+        return nil
+    }
+
+    private static func makeError(code: Int, message: String) -> NSError {
+        NSError(
+            domain: "ChatService",
+            code: code,
+            userInfo: [NSLocalizedDescriptionKey: message]
+        )
     }
 
     // MARK: - Hidden Context
@@ -393,6 +461,17 @@ final class ChatService {
         return .en
     }
 
+    private func currentLocale(for text: String) -> String {
+        switch detectLanguage(text) {
+        case .kk:
+            return "kk"
+        case .ru:
+            return "ru"
+        case .en:
+            return "en"
+        }
+    }
+
     private func offlineReply(for text: String) -> String {
         switch detectLanguage(text) {
         case .kk:
@@ -471,10 +550,4 @@ private struct StoredMoodRecord: Codable {
         sleepQuality = try c.decodeIfPresent(Int.self, forKey: .sleepQuality)
         tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
     }
-}
-
-private enum ChatServiceError: Error {
-    case invalidURL
-    case badStatus
-    case invalidResponse
 }
