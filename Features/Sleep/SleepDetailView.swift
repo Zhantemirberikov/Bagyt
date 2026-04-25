@@ -3,9 +3,21 @@ import SwiftUI
 struct SleepDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var health = HealthKitManager.shared
+    
+    // Включаем темную тему
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
+    
+    // Состояние для автовыбора сегодняшнего дня при загрузке
+    @State private var hasAutoSelectedToday = false
 
     private let accent = Color(red: 0.055, green: 0.647, blue: 0.914)
     private let bg = Color(red: 0.878, green: 0.949, blue: 0.992)
+
+    // Динамические цвета для темной и светлой темы
+    private var primaryText: Color { isDarkMode ? .white : Color(red: 0.06, green: 0.09, blue: 0.16) }
+    private var secondaryText: Color { isDarkMode ? Color.white.opacity(0.6) : Color(red: 0.4, green: 0.55, blue: 0.65) }
+    private var cardBg: Color { isDarkMode ? Color(red: 0.1, green: 0.12, blue: 0.18).opacity(0.85) : Color.white.opacity(0.88) }
+    private var cardStroke: Color { isDarkMode ? Color.white.opacity(0.1) : .clear }
 
     private let chartPhases: [HealthKitManager.SleepPhase] = [.rem, .core, .deep, .unspecified]
 
@@ -24,22 +36,20 @@ struct SleepDetailView: View {
 
     private var phaseMinutes: [HealthKitManager.SleepPhase: Int] {
         var result: [HealthKitManager.SleepPhase: Int] = [:]
-
-        for phase in HealthKitManager.SleepPhase.allCases {
-            result[phase] = 0
-        }
-
+        for phase in HealthKitManager.SleepPhase.allCases { result[phase] = 0 }
         for sample in selectedSamples {
             result[sample.phase, default: 0] += Int(sample.duration / 60)
         }
-
         return result
     }
 
     var body: some View {
         ZStack {
+            // Динамический фон
             LinearGradient(
-                colors: [bg, Color(red: 0.941, green: 0.976, blue: 1.0), bg],
+                colors: isDarkMode
+                    ? [Color(red: 0.04, green: 0.06, blue: 0.10), Color(red: 0.06, green: 0.1, blue: 0.15), Color(red: 0.04, green: 0.06, blue: 0.10)]
+                    : [bg, Color(red: 0.941, green: 0.976, blue: 1.0), bg],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -67,8 +77,18 @@ struct SleepDetailView: View {
                 }
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
         .onAppear {
             health.fetchAll()
+        }
+        // 👇 АВТОВЫБОР СЕГОДНЯШНЕГО ДНЯ
+        .onChange(of: health.sleepWeek) { week in
+            if !hasAutoSelectedToday, !week.isEmpty {
+                if let today = week.first(where: { Calendar.current.isDateInToday($0.date) }) {
+                    health.selectSleepDay(today)
+                }
+                hasAutoSelectedToday = true
+            }
         }
     }
 
@@ -79,13 +99,13 @@ struct SleepDetailView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.75))
+                        .fill(isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.75))
                         .frame(width: 40, height: 40)
                         .shadow(color: accent.opacity(0.12), radius: 6, x: 0, y: 2)
 
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color(red: 0.3, green: 0.45, blue: 0.6))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.8) : Color(red: 0.3, green: 0.45, blue: 0.6))
                 }
             }
 
@@ -94,12 +114,12 @@ struct SleepDetailView: View {
             VStack(spacing: 2) {
                 Text("СОН")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(accent.opacity(0.7))
+                    .foregroundColor(accent.opacity(isDarkMode ? 0.9 : 0.7))
                     .tracking(1.5)
 
                 Text(screenTitle)
                     .font(.system(size: 18, weight: .black))
-                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    .foregroundColor(primaryText)
             }
 
             Spacer()
@@ -126,10 +146,8 @@ struct SleepDetailView: View {
                     )
                 )
                 .shadow(
-                    color: Color(red: 0.20, green: 0.35, blue: 0.80).opacity(0.35),
-                    radius: 16,
-                    x: 0,
-                    y: 8
+                    color: Color(red: 0.20, green: 0.35, blue: 0.80).opacity(isDarkMode ? 0.15 : 0.35),
+                    radius: 16, x: 0, y: 8
                 )
 
             Circle()
@@ -210,13 +228,14 @@ struct SleepDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("НЕДЕЛЯ")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             ZStack {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.88))
-                    .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .fill(cardBg)
+                    .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
 
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7),
@@ -229,15 +248,15 @@ struct SleepDetailView: View {
                             VStack(spacing: 6) {
                                 Text(weekdayShort(day.date))
                                     .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(isSelected(day) ? .white.opacity(0.85) : Color(red: 0.45, green: 0.58, blue: 0.68))
+                                    .foregroundColor(isSelected(day) ? .white.opacity(0.85) : secondaryText)
 
                                 Text(dayNumber(day.date))
                                     .font(.system(size: 16, weight: .black))
-                                    .foregroundColor(isSelected(day) ? .white : Color(red: 0.06, green: 0.09, blue: 0.16))
+                                    .foregroundColor(isSelected(day) ? .white : primaryText)
 
                                 Text(day.hasData ? durationCompact(day.hours) : "—")
                                     .font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(isSelected(day) ? .white.opacity(0.85) : day.hasData ? accent : Color(red: 0.65, green: 0.75, blue: 0.8))
+                                    .foregroundColor(isSelected(day) ? .white.opacity(0.85) : day.hasData ? accent : secondaryText)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 74)
@@ -252,7 +271,7 @@ struct SleepDetailView: View {
                                                 endPoint: .bottomTrailing
                                             )
                                         )
-                                        : AnyShapeStyle(Color(red: 0.95, green: 0.98, blue: 1.0))
+                                        : AnyShapeStyle(isDarkMode ? Color.white.opacity(0.08) : Color(red: 0.95, green: 0.98, blue: 1.0))
                                     )
                             )
                         }
@@ -268,13 +287,14 @@ struct SleepDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("ФАЗЫ СНА")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             ZStack {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.88))
-                    .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .fill(cardBg)
+                    .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
 
                 VStack(spacing: 12) {
                     HStack(spacing: 16) {
@@ -286,10 +306,9 @@ struct SleepDetailView: View {
 
                                 Text(phase.shortLabel)
                                     .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(Color(red: 0.4, green: 0.55, blue: 0.65))
+                                    .foregroundColor(secondaryText)
                             }
                         }
-
                         Spacer()
                     }
 
@@ -310,7 +329,7 @@ struct SleepDetailView: View {
                                     let top = CGFloat(index) * laneHeight
 
                                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                        .fill(phase.color.opacity(0.08))
+                                        .fill(phase.color.opacity(isDarkMode ? 0.15 : 0.08))
                                         .frame(width: geo.size.width, height: laneHeight * 0.55)
                                         .offset(x: 0, y: top + laneHeight * 0.22)
 
@@ -346,12 +365,7 @@ struct SleepDetailView: View {
         }
     }
 
-    private func timeGrid(
-        range: (start: Date, end: Date),
-        width: CGFloat,
-        height: CGFloat,
-        totalSec: TimeInterval
-    ) -> some View {
+    private func timeGrid(range: (start: Date, end: Date), width: CGFloat, height: CGFloat, totalSec: TimeInterval) -> some View {
         let labels = makeHourLabels(start: range.start, end: range.end)
 
         return ZStack(alignment: .topLeading) {
@@ -359,13 +373,13 @@ struct SleepDetailView: View {
                 let x = CGFloat(date.timeIntervalSince(range.start) / totalSec) * width
 
                 Rectangle()
-                    .fill(Color(red: 0.87, green: 0.92, blue: 0.96))
+                    .fill(isDarkMode ? Color.white.opacity(0.1) : Color(red: 0.87, green: 0.92, blue: 0.96))
                     .frame(width: 1, height: height)
                     .offset(x: x, y: 0)
 
                 Text(fmtHour(date))
                     .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(Color(red: 0.6, green: 0.72, blue: 0.78))
+                    .foregroundColor(secondaryText)
                     .frame(width: 28)
                     .offset(x: x - 14, y: height + 2)
             }
@@ -376,25 +390,25 @@ struct SleepDetailView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("ДЕТАЛИ")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             ZStack {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.88))
-                    .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .fill(cardBg)
+                    .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
 
                 VStack(spacing: 0) {
                     let phases = HealthKitManager.SleepPhase.allCases
-
                     ForEach(Array(phases.enumerated()), id: \.offset) { index, phase in
                         let minutes = phaseMinutes[phase] ?? 0
-
                         if minutes > 0 {
                             phaseRow(phase: phase, minutes: minutes)
 
                             if index < phases.count - 1 {
                                 Divider()
+                                    .background(isDarkMode ? Color.white.opacity(0.1) : .gray.opacity(0.2))
                                     .padding(.leading, 60)
                             }
                         }
@@ -408,7 +422,7 @@ struct SleepDetailView: View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(phase.color.opacity(0.14))
+                    .fill(phase.color.opacity(isDarkMode ? 0.2 : 0.14))
                     .frame(width: 38, height: 38)
 
                 Image(systemName: phaseIcon(phase))
@@ -419,11 +433,11 @@ struct SleepDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(phase.title)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    .foregroundColor(primaryText)
 
                 Text(phase.description)
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
+                    .foregroundColor(secondaryText)
             }
 
             Spacer()
@@ -455,22 +469,24 @@ struct SleepDetailView: View {
         VStack(spacing: 16) {
             Image(systemName: "moon.zzz")
                 .font(.system(size: 48, weight: .light))
-                .foregroundColor(Color(red: 0.55, green: 0.35, blue: 1.0).opacity(0.4))
+                .foregroundColor(Color(red: 0.55, green: 0.35, blue: 1.0).opacity(isDarkMode ? 0.8 : 0.4))
 
             Text("Нет данных о сне")
                 .font(.system(size: 18, weight: .black))
-                .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                .foregroundColor(primaryText)
 
             Text("Проверьте доступ к HealthKit и отслеживание сна на Apple Watch или iPhone. Выберите другой день недели, если сон был записан не сегодня.")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(Color(red: 0.4, green: 0.55, blue: 0.65))
+                .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
         }
         .padding(40)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.85))
+                .fill(cardBg)
+                .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
         )
     }
 
@@ -481,15 +497,8 @@ struct SleepDetailView: View {
 
     private var screenTitle: String {
         guard let selectedDay else { return "Сон за неделю" }
-
-        if Calendar.current.isDateInToday(selectedDay.date) {
-            return "Сегодня"
-        }
-
-        if Calendar.current.isDateInYesterday(selectedDay.date) {
-            return "Вчера"
-        }
-
+        if Calendar.current.isDateInToday(selectedDay.date) { return "Сегодня" }
+        if Calendar.current.isDateInYesterday(selectedDay.date) { return "Вчера" }
         return fullDayFormatter.string(from: selectedDay.date)
     }
 
@@ -505,16 +514,12 @@ struct SleepDetailView: View {
 
         var labels: [Date] = []
         var cursor = calendar.date(bySetting: .minute, value: 0, of: start) ?? start
-
-        if cursor < start {
-            cursor = calendar.date(byAdding: .hour, value: 1, to: cursor) ?? cursor
-        }
+        if cursor < start { cursor = calendar.date(byAdding: .hour, value: 1, to: cursor) ?? cursor }
 
         while cursor <= end {
             labels.append(cursor)
             cursor = calendar.date(byAdding: .hour, value: step, to: cursor) ?? cursor
         }
-
         return labels
     }
 
@@ -528,90 +533,49 @@ struct SleepDetailView: View {
 
     private func durationCompact(_ hours: Double) -> String {
         let totalMinutes = Int(hours * 60)
-
-        if totalMinutes <= 0 {
-            return "—"
-        }
+        if totalMinutes <= 0 { return "—" }
 
         let h = totalMinutes / 60
         let m = totalMinutes % 60
 
-        if h > 0 && m > 0 {
-            return "\(h)ч \(m)м"
-        }
-
-        if h > 0 {
-            return "\(h)ч"
-        }
-
+        if h > 0 && m > 0 { return "\(h)ч \(m)м" }
+        if h > 0 { return "\(h)ч" }
         return "\(m)м"
     }
 
     private func durationText(minutes: Int) -> String {
         let h = minutes / 60
         let m = minutes % 60
-
-        if h > 0 {
-            return "\(h)ч \(m)мин"
-        }
-
+        if h > 0 { return "\(h)ч \(m)мин" }
         return "\(m) мин"
     }
 
     private func phaseIcon(_ phase: HealthKitManager.SleepPhase) -> String {
         switch phase {
-        case .deep:
-            return "zzz"
-        case .rem:
-            return "brain.head.profile"
-        case .core:
-            return "moon.fill"
-        case .unspecified:
-            return "moon.stars.fill"
+        case .deep: return "zzz"
+        case .rem: return "brain.head.profile"
+        case .core: return "moon.fill"
+        case .unspecified: return "moon.stars.fill"
         }
     }
 
-    private func fmtTime(_ date: Date) -> String {
-        timeFormatter.string(from: date)
-    }
-
-    private func fmtHour(_ date: Date) -> String {
-        hourFormatter.string(from: date)
-    }
+    private func fmtTime(_ date: Date) -> String { timeFormatter.string(from: date) }
+    private func fmtHour(_ date: Date) -> String { hourFormatter.string(from: date) }
 
     private var timeFormatter: DateFormatter {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
-        f.dateFormat = "HH:mm"
-        return f
+        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "HH:mm"; return f
     }
-
     private var hourFormatter: DateFormatter {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
-        f.dateFormat = "HH"
-        return f
+        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "HH"; return f
     }
-
     private var weekdayFormatter: DateFormatter {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
-        f.dateFormat = "EE"
-        return f
+        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "EE"; return f
     }
-
     private var dayNumberFormatter: DateFormatter {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
-        f.dateFormat = "d"
-        return f
+        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "d"; return f
     }
-
     private var fullDayFormatter: DateFormatter {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
-        f.dateFormat = "d MMMM"
-        return f
+        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "d MMMM"; return f
     }
 }
 

@@ -32,7 +32,7 @@ final class AuthViewModel: ObservableObject {
         errorMessage = nil
 
         // 🔥 ТЕСТОВЫЙ ПОЛЬЗОВАТЕЛЬ
-        if email == "test@test.com" && password == "123456" {
+        if email == "test1@test.com" && password == "123456" {
             print("⚡ Test user login")
             self.loggedUserName = "Test User"
             self.didLogin = true

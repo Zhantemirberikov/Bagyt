@@ -2,75 +2,119 @@
 //  ProfileOnboardingView.swift
 //  Bagyt
 //
-//  Показывается один раз после регистрации.
-//  Данные сохраняются в UserDefaults и могут быть
-//  отредактированы позже в SettingsView.
+//  Premium medical profile onboarding
+//  User profile · Goals · Personalized health baseline
 //
 
 import SwiftUI
+import UIKit
 
-// MARK: - Шаги онбординга
+// MARK: - Steps
 
 private enum OnboardStep: Int, CaseIterable {
-    case welcome    = 0
-    case gender     = 1
-    case age        = 2
-    case body       = 3
-    case goal       = 4
-    case dailyGoals = 5
-    case ready      = 6
+    case welcome = 0
+    case gender
+    case age
+    case body
+    case goal
+    case dailyGoals
+    case ready
 }
 
-// MARK: - Модели
+// MARK: - Models
 
 enum UserGender: String, CaseIterable {
-    case male   = "male"
+    case male = "male"
     case female = "female"
-    case other  = "other"
+    case other = "other"
 
-    var label : String { ["male":"Мужской","female":"Женский","other":"Другой"][rawValue]! }
-    var emoji : String { ["male":"♂️","female":"♀️","other":"⚧️"][rawValue]! }
-    var color : Color  {
+    var label: String {
         switch self {
-        case .male:   return Color(red:0.20,green:0.55,blue:0.95)
-        case .female: return Color(red:0.95,green:0.35,blue:0.65)
-        case .other:  return Color(red:0.55,green:0.35,blue:0.95)
+        case .male: return "Мужской"
+        case .female: return "Женский"
+        case .other: return "Другой"
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .male: return "♂️"
+        case .female: return "♀️"
+        case .other: return "⚧️"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .male: return "figure.stand"
+        case .female: return "figure.dress.line.vertical.figure"
+        case .other: return "sparkles"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .male: return Color(red: 0.20, green: 0.55, blue: 0.95)
+        case .female: return Color(red: 0.95, green: 0.35, blue: 0.65)
+        case .other: return Color(red: 0.55, green: 0.35, blue: 0.95)
         }
     }
 }
 
 enum UserGoal: String, CaseIterable {
-    case loseWeight   = "lose_weight"
-    case gainWeight   = "gain_weight"
-    case keepFit      = "keep_fit"
+    case general = "general"
+    case prevention = "prevention"
     case stressRelief = "stress_relief"
-    case general      = "general"
+    case weightControl = "weight_control"
+    case chronicDisease = "chronic_disease"
 
     var label: String {
         switch self {
-        case .loseWeight:   return "Похудеть"
-        case .gainWeight:   return "Набрать массу"
-        case .keepFit:      return "Поддерживать форму"
-        case .stressRelief: return "Снизить стресс"
-        case .general:      return "Общее здоровье"
+        case .general: return "Общее самочувствие"
+        case .prevention: return "Профилактика"
+        case .stressRelief: return "Снижение стресса"
+        case .weightControl: return "Контроль веса"
+        case .chronicDisease: return "Хронические болезни"
         }
     }
+
     var emoji: String {
         switch self {
-        case .loseWeight:   return "🔥"
-        case .gainWeight:   return "💪"
-        case .keepFit:      return "⚡️"
-        case .stressRelief: return "🧘"
-        case .general:      return "❤️"
+        case .general: return "❤️"
+        case .prevention: return "🛡️"
+        case .stressRelief: return "🧠"
+        case .weightControl: return "⚖️"
+        case .chronicDisease: return "🏥"
         }
     }
+
+    var icon: String {
+        switch self {
+        case .general: return "heart.text.square.fill"
+        case .prevention: return "shield.fill"
+        case .stressRelief: return "brain.head.profile"
+        case .weightControl: return "scalemass.fill"
+        case .chronicDisease: return "cross.case.fill"
+        }
+    }
+
     var desc: String {
         switch self {
-        case .loseWeight:   return "Снижение веса и жировой массы"
-        case .gainWeight:   return "Набор мышечной массы"
-        case .keepFit:      return "Сохранение текущей формы"
-        case .stressRelief: return "Расслабление и восстановление"
-        case .general:      return "Общее улучшение самочувствия"
+        case .general: return "Следить за состоянием, сном, активностью и настроением"
+        case .prevention: return "Замечать изменения раньше и поддерживать здоровые привычки"
+        case .stressRelief: return "Отслеживать стресс, энергию, сон и когнитивное состояние"
+        case .weightControl: return "Контролировать вес, активность, воду и дневные цели"
+        case .chronicDisease: return "Вести симптомы, визиты, заметки и контекст для врача"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .general: return Color(red: 0.055, green: 0.647, blue: 0.914)
+        case .prevention: return Color(red: 0.10, green: 0.78, blue: 0.48)
+        case .stressRelief: return Color(red: 0.55, green: 0.35, blue: 1.00)
+        case .weightControl: return Color(red: 1.00, green: 0.65, blue: 0.10)
+        case .chronicDisease: return Color(red: 1.00, green: 0.35, blue: 0.35)
         }
     }
 }
@@ -83,260 +127,313 @@ struct ProfileOnboardingView: View {
     let userName: String
     let onComplete: () -> Void
 
-    @State private var step       : OnboardStep = .welcome
-    @State private var gender     : UserGender  = .male
-    @State private var age        : Int         = 25
-    @State private var weight     : Double      = 70
-    @State private var height     : Double      = 170
-    @State private var goal       : UserGoal    = .general
-    @State private var stepsGoal  : Int         = 8000
-    @State private var waterGoal  : Double      = 2.0
-    @State private var sleepGoal  : Double      = 8.0
-    @State private var caloriesGoal: Int        = 2000
-    @State private var appear     = false
-    @State private var slideDir   : AnyTransition = .identity
+    @State private var step: OnboardStep = .welcome
+    @State private var gender: UserGender = .male
+    @State private var age: Int = 25
+    @State private var weight: Double = 70
+    @State private var height: Double = 170
+    @State private var goal: UserGoal = .general
+    @State private var stepsGoal: Int = 8000
+    @State private var waterGoal: Double = 2.0
+    @State private var sleepGoal: Double = 8.0
+    @State private var caloriesGoal: Int = 2000
 
-    private let accent  = Color(red: 0.055, green: 0.647, blue: 0.914)
+    @State private var appear = false
+    @State private var cardAppear = false
+    @State private var slideDir: AnyTransition = .identity
+
+    private let accent = Color(red: 0.055, green: 0.647, blue: 0.914)
     private let accent2 = Color(red: 0.024, green: 0.714, blue: 0.831)
-    private let bg      = Color(red: 0.878, green: 0.949, blue: 0.992)
+
+    private let primaryText = Color(red: 0.06, green: 0.09, blue: 0.16)
+    private let secondaryText = Color(red: 0.40, green: 0.55, blue: 0.65)
+    private let mutedText = Color(red: 0.58, green: 0.70, blue: 0.78)
+    private let cardFill = Color.white.opacity(0.82)
+    private let softFill = Color.white.opacity(0.54)
 
     var body: some View {
         ZStack {
-            AnimatedGradientBackground().ignoresSafeArea()
+            backgroundLayer
 
             VStack(spacing: 0) {
-                // Прогресс-бар (кроме welcome и ready)
                 if step != .welcome && step != .ready {
-                    progressBar
+                    progressHeader
                         .padding(.horizontal, 24)
-                        .padding(.top, 56)
+                        .padding(.top, 54)
                         .padding(.bottom, 8)
                 }
 
-                // Контент шага
                 ZStack {
                     switch step {
-                    case .welcome    : welcomeStep
-                    case .gender     : genderStep
-                    case .age        : ageStep
-                    case .body       : bodyStep
-                    case .goal       : goalStep
-                    case .dailyGoals : dailyGoalsStep
-                    case .ready      : readyStep
+                    case .welcome:
+                        welcomeStep
+                    case .gender:
+                        genderStep
+                    case .age:
+                        ageStep
+                    case .body:
+                        bodyStep
+                    case .goal:
+                        goalStep
+                    case .dailyGoals:
+                        dailyGoalsStep
+                    case .ready:
+                        readyStep
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .transition(slideDir)
-                .animation(.spring(response: 0.5, dampingFraction: 0.8), value: step)
+                .animation(.spring(response: 0.48, dampingFraction: 0.82), value: step)
 
-                // Кнопки навигации
                 if step != .welcome && step != .ready {
                     navButtons
                         .padding(.horizontal, 24)
-                        .padding(.bottom, 40)
+                        .padding(.bottom, 38)
                 }
             }
         }
         .onAppear {
-            // Загружаем существующие данные если редактируем
-            let ud = UserDefaults.standard
-            if ud.integer(forKey: "userAge") > 0      { age    = ud.integer(forKey: "userAge") }
-            if ud.double(forKey: "userWeight")  > 0   { weight = ud.double(forKey: "userWeight") }
-            if ud.double(forKey: "userHeight")  > 0   { height = ud.double(forKey: "userHeight") }
-            if let g = ud.string(forKey: "userGender"), let gv = UserGender(rawValue: g) { gender = gv }
-            if let gl = ud.string(forKey: "userGoal"), let gv = UserGoal(rawValue: gl)   { goal   = gv }
-            if ud.integer(forKey: "stepsGoal")    > 0 { stepsGoal    = ud.integer(forKey: "stepsGoal") }
-            if ud.double(forKey: "waterGoal")     > 0 { waterGoal    = ud.double(forKey: "waterGoal") }
-            if ud.double(forKey: "sleepGoal")     > 0 { sleepGoal    = ud.double(forKey: "sleepGoal") }
-            if ud.integer(forKey: "caloriesGoal") > 0 { caloriesGoal = ud.integer(forKey: "caloriesGoal") }
-            withAnimation(.easeOut(duration: 0.6)) { appear = true }
-        }
-    }
-
-    // MARK: - Прогресс-бар
-
-    private var progressBar: some View {
-        let steps = [OnboardStep.gender, .age, .body, .goal]
-        let current = steps.firstIndex(of: step) ?? 0
-        return HStack(spacing: 6) {
-            ForEach(0..<steps.count, id: \.self) { i in
-                Capsule()
-                    .fill(i <= current ? accent : Color.white.opacity(0.45))
-                    .frame(height: 4)
-                    .animation(.spring(response: 0.4), value: step)
+            loadExistingProfile()
+            withAnimation(.easeOut(duration: 0.45)) {
+                appear = true
+            }
+            withAnimation(.easeOut(duration: 0.45).delay(0.12)) {
+                cardAppear = true
             }
         }
     }
 
-    // MARK: - Навигация
+    // MARK: - Background
 
-    private var navButtons: some View {
-        HStack(spacing: 12) {
-            // Назад
-            Button {
-                prev()
-            } label: {
-                ZStack {
-                    Circle().fill(Color.white.opacity(0.75)).frame(width: 52, height: 52)
-                        .shadow(color: accent.opacity(0.12), radius: 8, x: 0, y: 3)
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(accent)
-                }
-            }
+    private var backgroundLayer: some View {
+        ZStack {
+            AnimatedGradientBackground()
+                .ignoresSafeArea()
 
-            // Далее
-            Button { next() } label: {
-                HStack(spacing: 10) {
-                    Text(step == .goal ? "Готово" : "Далее")
-                        .font(.system(size: 17, weight: .bold))
-                    Image(systemName: step == .goal ? "checkmark" : "arrow.right")
-                        .font(.system(size: 15, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 17)
-                .background(
-                    LinearGradient(colors: [accent, accent2], startPoint: .leading, endPoint: .trailing)
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.38),
+                    Color.white.opacity(0.10),
+                    Color.white.opacity(0.26)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
+
+            VStack {
+                LinearGradient(
+                    colors: [
+                        accent.opacity(0.20),
+                        accent2.opacity(0.12),
+                        .clear
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
-                .clipShape(Capsule())
-                .shadow(color: accent.opacity(0.38), radius: 14, x: 0, y: 6)
+                .frame(height: 250)
+                .ignoresSafeArea(edges: .top)
+
+                Spacer()
             }
-            .buttonStyle(ScaleButtonStyle())
         }
     }
 
-    // MARK: - Шаг 0: Приветствие
+    // MARK: - Progress
+
+    private var progressHeader: some View {
+        VStack(spacing: 14) {
+            HStack {
+                Button {
+                    prev()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundColor(accent)
+                        .frame(width: 40, height: 40)
+                        .background(Color.white.opacity(0.76), in: Circle())
+                        .overlay(Circle().strokeBorder(Color.white.opacity(0.88), lineWidth: 1))
+                }
+                .buttonStyle(.plain)
+
+                Spacer()
+
+                Text("\(currentStepIndex)/\(totalInputSteps)")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundColor(secondaryText)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.70), in: Capsule())
+
+                Spacer()
+
+                Color.clear
+                    .frame(width: 40, height: 40)
+            }
+
+            HStack(spacing: 7) {
+                ForEach(1...totalInputSteps, id: \.self) { index in
+                    Capsule()
+                        .fill(index <= currentStepIndex ? accent : Color.white.opacity(0.52))
+                        .frame(height: 5)
+                        .animation(.spring(response: 0.35, dampingFraction: 0.82), value: step)
+                }
+            }
+        }
+    }
+
+    private var currentStepIndex: Int {
+        switch step {
+        case .gender: return 1
+        case .age: return 2
+        case .body: return 3
+        case .goal: return 4
+        case .dailyGoals: return 5
+        default: return 0
+        }
+    }
+
+    private var totalInputSteps: Int { 5 }
+
+    // MARK: - Welcome
 
     private var welcomeStep: some View {
         VStack(spacing: 0) {
-            Spacer()
+            Spacer(minLength: 30)
 
-            VStack(spacing: 28) {
-                // Большой орб
+            VStack(spacing: 24) {
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(
-                            colors: [Color(red:0.03,green:0.50,blue:0.78),
-                                     Color(red:0.01,green:0.38,blue:0.65)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 110, height: 110)
-                        .shadow(color: accent.opacity(0.45), radius: 30, x: 0, y: 12)
+                        .fill(
+                            LinearGradient(
+                                colors: [accent, accent2],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 118, height: 118)
+                        .shadow(color: accent.opacity(0.35), radius: 28, x: 0, y: 14)
+
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.34), lineWidth: 1.5)
+                        .frame(width: 118, height: 118)
+
                     LottieView(animationName: "aiaia")
-                        .frame(width: 110, height: 110)
+                        .frame(width: 112, height: 112)
                         .clipShape(Circle())
                 }
-                .scaleEffect(appear ? 1.0 : 0.5)
-                .opacity(appear ? 1.0 : 0.0)
-                .animation(.spring(response: 0.7, dampingFraction: 0.6).delay(0.1), value: appear)
+                .scaleEffect(appear ? 1 : 0.78)
+                .opacity(appear ? 1 : 0)
 
                 VStack(spacing: 12) {
-                    Text("Привет, \(firstName(userName))! 👋")
-                        .font(.system(size: 30, weight: .black))
-                        .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                    Text("Привет, \(firstName(userName))")
+                        .font(.system(size: 31, weight: .black, design: .rounded))
+                        .foregroundColor(primaryText)
                         .multilineTextAlignment(.center)
 
-                    Text("Я помогу составить вашу\nличную программу здоровья.\nЭто займёт меньше минуты.")
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundColor(Color(red:0.4,green:0.55,blue:0.65))
+                    Text("Соберём базовый медицинский профиль, чтобы Bagyt точнее считал цели, индекс здоровья и рекомендации.")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(secondaryText)
                         .multilineTextAlignment(.center)
                         .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .opacity(appear ? 1.0 : 0.0)
-                .offset(y: appear ? 0 : 20)
-                .animation(.easeOut(duration: 0.6).delay(0.3), value: appear)
+                .padding(.horizontal, 24)
 
-                // 3 фичи
                 VStack(spacing: 12) {
-                    featureRow(icon: "heart.text.square.fill", color: Color(red:0.95,green:0.25,blue:0.25),
-                               text: "Персональный индекс здоровья")
-                    featureRow(icon: "brain.head.profile", color: accent,
-                               text: "AI-советы под ваши цели")
-                    featureRow(icon: "chart.line.uptrend.xyaxis", color: Color(red:0.1,green:0.78,blue:0.48),
-                               text: "Отслеживание прогресса")
+                    premiumFeatureRow(
+                        icon: "heart.text.square.fill",
+                        color: Color(red: 1.00, green: 0.35, blue: 0.35),
+                        title: "Персональный индекс",
+                        subtitle: "Цели, сон, активность и состояние в одной системе"
+                    )
+
+                    premiumFeatureRow(
+                        icon: "brain.head.profile",
+                        color: accent,
+                        title: "Когнитивный контекст",
+                        subtitle: "Настроение, стресс и энергия для умного анализа"
+                    )
+
+                    premiumFeatureRow(
+                        icon: "shield.checkered",
+                        color: Color(red: 0.10, green: 0.78, blue: 0.48),
+                        title: "Медицинская структура",
+                        subtitle: "Профиль будет доступен в настройках и целях"
+                    )
                 }
-                .padding(.horizontal, 8)
-                .opacity(appear ? 1.0 : 0.0)
-                .offset(y: appear ? 0 : 20)
-                .animation(.easeOut(duration: 0.6).delay(0.5), value: appear)
+                .padding(.horizontal, 24)
+                .opacity(cardAppear ? 1 : 0)
+                .offset(y: cardAppear ? 0 : 12)
             }
-            .padding(.horizontal, 28)
 
             Spacer()
 
-            // Кнопка начать
-            Button {
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                    step = .gender
+            VStack(spacing: 12) {
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    go(to: .gender, direction: .forward)
+                } label: {
+                    primaryButtonLabel("Начать персонализацию", icon: "arrow.right")
                 }
-                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-            } label: {
-                HStack(spacing: 10) {
-                    Text("Начать персонализацию")
-                        .font(.system(size: 17, weight: .bold))
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 15, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(LinearGradient(colors: [accent, accent2], startPoint: .leading, endPoint: .trailing))
-                .clipShape(Capsule())
-                .shadow(color: accent.opacity(0.40), radius: 16, x: 0, y: 7)
-            }
-            .buttonStyle(ScaleButtonStyle())
-            .padding(.horizontal, 24)
+                .buttonStyle(ScaleButtonStyle())
 
-            Button {
-                saveAndComplete()
-            } label: {
-                Text("Пропустить")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Color(red:0.5,green:0.63,blue:0.72))
+                Button {
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    saveAndComplete()
+                } label: {
+                    Text("Пропустить")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundColor(secondaryText)
+                        .padding(.vertical, 8)
+                }
             }
-            .padding(.top, 12)
-            .padding(.bottom, 44)
+            .padding(.horizontal, 24)
+            .padding(.bottom, 42)
         }
     }
 
-    private func featureRow(icon: String, color: Color, text: String) -> some View {
+    private func premiumFeatureRow(icon: String, color: Color, title: String, subtitle: String) -> some View {
         HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(color.opacity(0.12))
-                    .frame(width: 44, height: 44)
-                Image(systemName: icon)
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(color)
+            Image(systemName: icon)
+                .font(.system(size: 19, weight: .black))
+                .foregroundColor(color)
+                .frame(width: 46, height: 46)
+                .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundColor(primaryText)
+
+                Text(subtitle)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(secondaryText)
+                    .lineLimit(2)
             }
-            Text(text)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundColor(Color(red:0.2,green:0.3,blue:0.4))
-            Spacer()
+
+            Spacer(minLength: 0)
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.80))
-                .shadow(color: accent.opacity(0.08), radius: 8, x: 0, y: 3)
-        )
+        .background(cardBackground(cornerRadius: 19))
     }
 
-    // MARK: - Шаг 1: Пол
+    // MARK: - Gender
 
     private var genderStep: some View {
         VStack(spacing: 0) {
             stepHeader(
-                title: "Ваш пол",
-                subtitle: "Это поможет точнее рассчитать\nваши нормы здоровья"
+                eyebrow: "Профиль",
+                title: "Укажите пол",
+                subtitle: "Это помогает точнее рассчитывать нормы активности, сна и базовые показатели."
             )
-            .padding(.top, 20)
+            .padding(.top, 18)
 
             Spacer()
 
-            HStack(spacing: 16) {
-                ForEach(UserGender.allCases, id: \.self) { g in
-                    genderCard(g)
+            HStack(spacing: 14) {
+                ForEach(UserGender.allCases, id: \.self) { item in
+                    genderCard(item)
                 }
             }
             .padding(.horizontal, 20)
@@ -345,130 +442,142 @@ struct ProfileOnboardingView: View {
         }
     }
 
-    private func genderCard(_ g: UserGender) -> some View {
-        Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) { gender = g }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    private func genderCard(_ item: UserGender) -> some View {
+        let selected = gender == item
+
+        return Button {
+            UISelectionFeedbackGenerator().selectionChanged()
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                gender = item
+            }
         } label: {
-            VStack(spacing: 14) {
+            VStack(spacing: 13) {
                 ZStack {
                     Circle()
-                        .fill(gender == g ? g.color.opacity(0.15) : Color.white.opacity(0.6))
+                        .fill(selected ? item.color.opacity(0.16) : softFill)
                         .frame(width: 72, height: 72)
                         .overlay(
-                            Circle().strokeBorder(
-                                gender == g ? g.color : Color.clear, lineWidth: 2
-                            )
+                            Circle()
+                                .strokeBorder(selected ? item.color.opacity(0.85) : Color.white.opacity(0.80), lineWidth: 1.6)
                         )
-                    Text(g.emoji)
-                        .font(.system(size: 32))
+
+                    Image(systemName: item.icon)
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundColor(selected ? item.color : secondaryText)
                 }
-                Text(g.label)
-                    .font(.system(size: 14, weight: gender == g ? .bold : .medium))
-                    .foregroundColor(gender == g ? g.color : Color(red:0.4,green:0.55,blue:0.65))
+
+                Text(item.label)
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundColor(selected ? item.color : secondaryText)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 22)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(gender == g ? g.color.opacity(0.08) : Color.white.opacity(0.80))
-                    .shadow(color: gender == g ? g.color.opacity(0.20) : Color.black.opacity(0.05),
-                            radius: gender == g ? 12 : 6, x: 0, y: 3)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .strokeBorder(gender == g ? g.color.opacity(0.30) : Color.white.opacity(0.8), lineWidth: 1.5)
-                    )
+            .background(cardBackground(cornerRadius: 22))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(selected ? item.color.opacity(0.35) : Color.clear, lineWidth: 1.5)
             )
-            .scaleEffect(gender == g ? 1.04 : 1.0)
-            .animation(.spring(response: 0.3), value: gender)
+            .scaleEffect(selected ? 1.035 : 1)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 
-    // MARK: - Шаг 2: Возраст
+    // MARK: - Age
 
     private var ageStep: some View {
         VStack(spacing: 0) {
             stepHeader(
+                eyebrow: "Базовые данные",
                 title: "Ваш возраст",
-                subtitle: "Возраст влияет на нормы\nпульса, сна и активности"
+                subtitle: "Возраст влияет на нормы сна, активности, пульса и восстановления."
             )
-            .padding(.top, 20)
+            .padding(.top, 18)
 
             Spacer()
 
-            VStack(spacing: 32) {
-                // Большая цифра
-                Text("\(age)")
-                    .font(.system(size: 96, weight: .black, design: .rounded))
-                    .foregroundStyle(LinearGradient(colors: [accent, accent2],
-                                                    startPoint: .topLeading, endPoint: .bottomTrailing))
-                    .contentTransition(.numericText())
-                    .animation(.spring(response: 0.3), value: age)
+            VStack(spacing: 22) {
+                VStack(spacing: 0) {
+                    Text("\(age)")
+                        .font(.system(size: 96, weight: .black, design: .rounded))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [accent, accent2],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .contentTransition(.numericText())
+                        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: age)
 
-                Text("лет")
-                    .font(.system(size: 20, weight: .semibold))
-                    .foregroundColor(Color(red:0.5,green:0.63,blue:0.72))
-                    .offset(y: -24)
+                    Text(ageWord(age))
+                        .font(.system(size: 21, weight: .black, design: .rounded))
+                        .foregroundColor(secondaryText)
+                }
 
-                // Слайдер
                 VStack(spacing: 16) {
-                    Slider(value: Binding(
-                        get: { Double(age) },
-                        set: { age = Int($0) }
-                    ), in: 10...100, step: 1)
+                    Slider(
+                        value: Binding(
+                            get: { Double(age) },
+                            set: { age = Int($0.rounded()) }
+                        ),
+                        in: 10...100,
+                        step: 1
+                    )
                     .tint(accent)
-                    .padding(.horizontal, 8)
 
                     HStack {
-                        Text("10").font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(red:0.6,green:0.72,blue:0.78))
+                        Text("10 \(ageWord(10))")
                         Spacer()
-                        Text("100").font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(red:0.6,green:0.72,blue:0.78))
+                        Text("100 \(ageWord(100))")
                     }
+                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .foregroundColor(mutedText)
                 }
-                .padding(.horizontal, 28)
-                .padding(.top, -12)
+                .padding(18)
+                .background(cardBackground(cornerRadius: 22))
 
-                // Быстрые кнопки возраста
-                HStack(spacing: 10) {
-                    ForEach([18, 25, 30, 40, 55], id: \.self) { a in
+                HStack(spacing: 9) {
+                    ForEach([18, 24, 30, 38, 55], id: \.self) { value in
                         Button {
-                            withAnimation(.spring(response: 0.3)) { age = a }
                             UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.82)) {
+                                age = value
+                            }
                         } label: {
-                            Text("\(a)")
-                                .font(.system(size: 14, weight: age == a ? .bold : .medium))
-                                .foregroundColor(age == a ? .white : accent)
-                                .padding(.horizontal, 14).padding(.vertical, 8)
-                                .background(
-                                    Capsule().fill(age == a ? accent : accent.opacity(0.10))
-                                )
+                            Text("\(value)")
+                                .font(.system(size: 14, weight: .black, design: .rounded))
+                                .foregroundColor(age == value ? .white : accent)
+                                .padding(.horizontal, 13)
+                                .padding(.vertical, 9)
+                                .background(age == value ? accent : accent.opacity(0.11), in: Capsule())
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
+            .padding(.horizontal, 24)
 
             Spacer()
         }
     }
 
-    // MARK: - Шаг 3: Рост и вес
+    // MARK: - Body
 
     private var bodyStep: some View {
         VStack(spacing: 0) {
             stepHeader(
+                eyebrow: "Физиология",
                 title: "Рост и вес",
-                subtitle: "Используется для расчёта\nИМТ и калорийности"
+                subtitle: "Эти данные нужны для расчёта ИМТ, калорийности и персональных ориентиров."
             )
-            .padding(.top, 20)
+            .padding(.top, 18)
 
             Spacer()
 
-            VStack(spacing: 28) {
-                // Вес
-                bodyCard(
+            VStack(spacing: 16) {
+                bodyMetricCard(
                     icon: "scalemass.fill",
                     title: "Вес",
                     value: $weight,
@@ -477,8 +586,7 @@ struct ProfileOnboardingView: View {
                     color: accent
                 )
 
-                // Рост
-                bodyCard(
+                bodyMetricCard(
                     icon: "arrow.up.and.down",
                     title: "Рост",
                     value: $height,
@@ -487,30 +595,7 @@ struct ProfileOnboardingView: View {
                     color: accent2
                 )
 
-                // ИМТ
-                let bmi = weight / ((height/100) * (height/100))
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Индекс массы тела (ИМТ)")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(red:0.5,green:0.63,blue:0.72))
-                        Text(String(format: "%.1f", bmi))
-                            .font(.system(size: 24, weight: .black))
-                            .foregroundColor(bmiColor(bmi))
-                    }
-                    Spacer()
-                    Text(bmiLabel(bmi))
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(bmiColor(bmi))
-                        .padding(.horizontal, 14).padding(.vertical, 7)
-                        .background(Capsule().fill(bmiColor(bmi).opacity(0.12)))
-                }
-                .padding(16)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(Color.white.opacity(0.80))
-                        .shadow(color: accent.opacity(0.07), radius: 6, x: 0, y: 2)
-                )
+                bmiCard
             }
             .padding(.horizontal, 24)
 
@@ -518,263 +603,307 @@ struct ProfileOnboardingView: View {
         }
     }
 
-    private func bodyCard(icon: String, title: String, value: Binding<Double>,
-                          range: ClosedRange<Double>, unit: String, color: Color) -> some View {
-        VStack(spacing: 12) {
-            HStack {
-                HStack(spacing: 8) {
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(color)
-                    Text(title)
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(Color(red:0.2,green:0.3,blue:0.4))
-                }
+    private func bodyMetricCard(
+        icon: String,
+        title: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        unit: String,
+        color: Color
+    ) -> some View {
+        VStack(spacing: 13) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundColor(color)
+                    .frame(width: 40, height: 40)
+                    .background(color.opacity(0.12), in: Circle())
+
+                Text(title)
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundColor(primaryText)
+
                 Spacer()
+
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(String(format: "%.0f", value.wrappedValue))
-                        .font(.system(size: 26, weight: .black))
+                        .font(.system(size: 28, weight: .black, design: .rounded))
                         .foregroundColor(color)
                         .contentTransition(.numericText())
-                        .animation(.spring(response: 0.3), value: value.wrappedValue)
                     Text(unit)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(color.opacity(0.7))
+                        .font(.system(size: 14, weight: .black, design: .rounded))
+                        .foregroundColor(color.opacity(0.72))
                 }
             }
 
             Slider(value: value, in: range, step: 1)
                 .tint(color)
         }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.82))
-                .shadow(color: color.opacity(0.10), radius: 8, x: 0, y: 3)
-        )
+        .padding(17)
+        .background(cardBackground(cornerRadius: 22))
     }
 
-    // MARK: - Шаг 4: Цель
+    private var bmiCard: some View {
+        let bmi = weight / ((height / 100) * (height / 100))
+        let color = bmiColor(bmi)
+
+        return HStack(spacing: 14) {
+            Image(systemName: "waveform.path.ecg")
+                .font(.system(size: 18, weight: .black))
+                .foregroundColor(color)
+                .frame(width: 42, height: 42)
+                .background(color.opacity(0.12), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Индекс массы тела")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundColor(secondaryText)
+
+                Text(String(format: "%.1f", bmi))
+                    .font(.system(size: 26, weight: .black, design: .rounded))
+                    .foregroundColor(color)
+            }
+
+            Spacer()
+
+            Text(bmiLabel(bmi))
+                .font(.system(size: 13, weight: .black, design: .rounded))
+                .foregroundColor(color)
+                .padding(.horizontal, 13)
+                .padding(.vertical, 8)
+                .background(color.opacity(0.12), in: Capsule())
+        }
+        .padding(16)
+        .background(cardBackground(cornerRadius: 22))
+    }
+
+    // MARK: - Goal
 
     private var goalStep: some View {
         VStack(spacing: 0) {
             stepHeader(
-                title: "Ваша цель",
-                subtitle: "Bagyt адаптирует советы\nпод вашу цель"
+                eyebrow: "Персонализация",
+                title: "Главная цель",
+                subtitle: "Bagyt будет подстраивать подсказки, индекс и акценты под ваш фокус."
             )
-            .padding(.top, 20)
+            .padding(.top, 18)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 10) {
-                    ForEach(UserGoal.allCases, id: \.self) { g in
-                        goalCard(g)
+                VStack(spacing: 11) {
+                    ForEach(UserGoal.allCases, id: \.self) { item in
+                        goalCard(item)
                     }
                 }
                 .padding(.horizontal, 24)
-                .padding(.vertical, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 20)
             }
         }
     }
 
-    private func goalCard(_ g: UserGoal) -> some View {
-        Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { goal = g }
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    private func goalCard(_ item: UserGoal) -> some View {
+        let selected = goal == item
+
+        return Button {
+            UISelectionFeedbackGenerator().selectionChanged()
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.80)) {
+                goal = item
+            }
         } label: {
-            HStack(spacing: 16) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(goal == g ? accent.opacity(0.15) : Color(red:0.93,green:0.97,blue:1.0))
-                        .frame(width: 52, height: 52)
-                    Text(g.emoji).font(.system(size: 26))
+            HStack(spacing: 14) {
+                Image(systemName: item.icon)
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundColor(selected ? .white : item.color)
+                    .frame(width: 50, height: 50)
+                    .background(selected ? item.color : item.color.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.label)
+                        .font(.system(size: 16, weight: .black, design: .rounded))
+                        .foregroundColor(primaryText)
+
+                    Text(item.desc)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(secondaryText)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(g.label)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
-                    Text(g.desc)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color(red:0.45,green:0.58,blue:0.68))
-                }
-                Spacer()
+
+                Spacer(minLength: 8)
+
                 ZStack {
                     Circle()
-                        .strokeBorder(goal == g ? accent : Color(red:0.78,green:0.88,blue:0.93), lineWidth: 2)
-                        .frame(width: 22, height: 22)
-                    if goal == g {
-                        Circle().fill(accent).frame(width: 12, height: 12)
+                        .strokeBorder(selected ? item.color : Color(red: 0.76, green: 0.86, blue: 0.92), lineWidth: 2)
+                        .frame(width: 23, height: 23)
+                    if selected {
+                        Circle()
+                            .fill(item.color)
+                            .frame(width: 12, height: 12)
                     }
                 }
             }
-            .padding(16)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(goal == g ? accent.opacity(0.06) : Color.white.opacity(0.82))
-                    .shadow(color: goal == g ? accent.opacity(0.15) : Color.black.opacity(0.05),
-                            radius: goal == g ? 10 : 5, x: 0, y: 3)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20, style: .continuous)
-                            .strokeBorder(goal == g ? accent.opacity(0.25) : Color.white.opacity(0.8), lineWidth: 1.5)
-                    )
+            .padding(15)
+            .background(cardBackground(cornerRadius: 22))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .strokeBorder(selected ? item.color.opacity(0.34) : Color.clear, lineWidth: 1.4)
             )
-            .scaleEffect(goal == g ? 1.02 : 1.0)
-            .animation(.spring(response: 0.3), value: goal)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 
-    // MARK: - Шаг 5: Дневные цели
+    // MARK: - Daily Goals
 
     private var dailyGoalsStep: some View {
         VStack(spacing: 0) {
             stepHeader(
-                title: "Дневные цели",
-                subtitle: "Bagyt будет отслеживать\nваш прогресс каждый день"
+                eyebrow: "Дневные ориентиры",
+                title: "Ваши цели",
+                subtitle: "Их можно изменить позже в настройках профиля."
             )
-            .padding(.top, 20)
+            .padding(.top, 18)
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 14) {
-                    // Шаги
+                VStack(spacing: 13) {
                     goalSliderCard(
-                        icon: "figure.walk", iconColor: accent,
+                        icon: "figure.walk",
+                        color: accent,
                         title: "Шаги в день",
-                        subtitle: "Рекомендовано ВОЗ: 8 000–10 000",
-                        value: Binding(get: { Double(stepsGoal) }, set: { stepsGoal = Int($0) }),
-                        range: 1000...20000, step: 500,
-                        display: "\(stepsGoal) шаг"
+                        subtitle: "Активность и общий тонус",
+                        value: Binding(get: { Double(stepsGoal) }, set: { stepsGoal = Int($0.rounded()) }),
+                        range: 1000...20000,
+                        step: 500,
+                        display: "\(stepsGoal.formattedWithSpaces) шагов"
                     )
 
-                    // Вода
                     goalSliderCard(
-                        icon: "drop.fill", iconColor: Color(red:0.20,green:0.60,blue:0.95),
-                        title: "Вода в день",
-                        subtitle: "Рекомендовано: 1.5–2.5 литра",
+                        icon: "drop.fill",
+                        color: Color(red: 0.18, green: 0.55, blue: 1.0),
+                        title: "Вода",
+                        subtitle: "Гидратация и самочувствие",
                         value: $waterGoal,
-                        range: 0.5...5.0, step: 0.1,
+                        range: 0.5...5.0,
+                        step: 0.1,
                         display: String(format: "%.1f л", waterGoal)
                     )
 
-                    // Сон
                     goalSliderCard(
-                        icon: "moon.stars.fill", iconColor: Color(red:0.55,green:0.35,blue:1.0),
+                        icon: "moon.stars.fill",
+                        color: Color(red: 0.55, green: 0.35, blue: 1.0),
                         title: "Сон",
-                        subtitle: "Рекомендовано: 7–9 часов",
+                        subtitle: "Восстановление и энергия",
                         value: $sleepGoal,
-                        range: 4.0...12.0, step: 0.5,
+                        range: 4.0...12.0,
+                        step: 0.5,
                         display: String(format: "%.1f ч", sleepGoal)
                     )
 
-                    // Калории
                     goalSliderCard(
-                        icon: "flame.fill", iconColor: Color(red:0.95,green:0.40,blue:0.15),
-                        title: "Калории в день",
-                        subtitle: "Среднее для взрослого: 1800–2500",
-                        value: Binding(get: { Double(caloriesGoal) }, set: { caloriesGoal = Int($0) }),
-                        range: 1000...4000, step: 50,
-                        display: "\(caloriesGoal) ккал"
+                        icon: "flame.fill",
+                        color: Color(red: 1.0, green: 0.58, blue: 0.12),
+                        title: "Калории",
+                        subtitle: "Ориентир питания",
+                        value: Binding(get: { Double(caloriesGoal) }, set: { caloriesGoal = Int($0.rounded()) }),
+                        range: 1000...4000,
+                        step: 50,
+                        display: "\(caloriesGoal.formattedWithSpaces) ккал"
                     )
                 }
                 .padding(.horizontal, 24)
-                .padding(.vertical, 16)
+                .padding(.top, 16)
+                .padding(.bottom, 20)
             }
         }
     }
 
-    private func goalSliderCard(icon: String, iconColor: Color, title: String, subtitle: String,
-                                 value: Binding<Double>, range: ClosedRange<Double>, step: Double,
-                                 display: String) -> some View {
-        VStack(spacing: 12) {
-            HStack {
-                HStack(spacing: 10) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(iconColor.opacity(0.12)).frame(width: 36, height: 36)
-                        Image(systemName: icon).font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(iconColor)
-                    }
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(title).font(.system(size: 14, weight: .bold))
-                            .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
-                        Text(subtitle).font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Color(red:0.5,green:0.63,blue:0.72))
-                    }
-                }
-                Spacer()
-                Text(display)
+    private func goalSliderCard(
+        icon: String,
+        color: Color,
+        title: String,
+        subtitle: String,
+        value: Binding<Double>,
+        range: ClosedRange<Double>,
+        step: Double,
+        display: String
+    ) -> some View {
+        VStack(spacing: 13) {
+            HStack(spacing: 12) {
+                Image(systemName: icon)
                     .font(.system(size: 16, weight: .black))
-                    .foregroundColor(iconColor)
+                    .foregroundColor(color)
+                    .frame(width: 40, height: 40)
+                    .background(color.opacity(0.12), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(primaryText)
+
+                    Text(subtitle)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(secondaryText)
+                }
+
+                Spacer()
+
+                Text(display)
+                    .font(.system(size: 15, weight: .black, design: .rounded))
+                    .foregroundColor(color)
                     .contentTransition(.numericText())
-                    .animation(.spring(response: 0.3), value: value.wrappedValue)
             }
-            Slider(value: value, in: range, step: step).tint(iconColor)
+
+            Slider(value: value, in: range, step: step)
+                .tint(color)
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color.white.opacity(0.85))
-                .shadow(color: iconColor.opacity(0.10), radius: 8, x: 0, y: 3)
-        )
+        .background(cardBackground(cornerRadius: 22))
     }
 
-    // MARK: - Шаг 6: Готово
+    // MARK: - Ready
 
     private var readyStep: some View {
         VStack(spacing: 0) {
-            Spacer()
+            Spacer(minLength: 22)
 
-            VStack(spacing: 28) {
-                // Анимированная галочка
+            VStack(spacing: 24) {
                 ZStack {
                     Circle()
-                        .fill(LinearGradient(
-                            colors: [Color(red:0.1,green:0.78,blue:0.48), Color(red:0.05,green:0.65,blue:0.38)],
-                            startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .frame(width: 100, height: 100)
-                        .shadow(color: Color(red:0.1,green:0.78,blue:0.48).opacity(0.40), radius: 24, x: 0, y: 10)
+                        .fill(
+                            LinearGradient(
+                                colors: [Color(red: 0.10, green: 0.78, blue: 0.48), Color(red: 0.055, green: 0.647, blue: 0.914)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .frame(width: 106, height: 106)
+                        .shadow(color: Color(red: 0.10, green: 0.78, blue: 0.48).opacity(0.35), radius: 24, x: 0, y: 12)
+
                     Image(systemName: "checkmark")
-                        .font(.system(size: 44, weight: .bold))
+                        .font(.system(size: 45, weight: .black))
                         .foregroundColor(.white)
                 }
-                .scaleEffect(appear ? 1.0 : 0.3)
-                .opacity(appear ? 1.0 : 0.0)
-                .animation(.spring(response: 0.6, dampingFraction: 0.55).delay(0.1), value: appear)
 
-                VStack(spacing: 12) {
-                    Text("Профиль готов! 🎉")
-                        .font(.system(size: 28, weight: .black))
-                        .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                VStack(spacing: 11) {
+                    Text("Профиль готов")
+                        .font(.system(size: 30, weight: .black, design: .rounded))
+                        .foregroundColor(primaryText)
 
-                    Text("Bagyt персонализирован под вас.\nДавайте начнём путь к здоровью!")
-                        .font(.system(size: 16, weight: .medium))
-                        .foregroundColor(Color(red:0.4,green:0.55,blue:0.65))
+                    Text("Bagyt персонализирован под ваши данные. Теперь можно перейти в приложение.")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(secondaryText)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
                 }
-                .opacity(appear ? 1.0 : 0.0)
-                .offset(y: appear ? 0 : 15)
-                .animation(.easeOut(duration: 0.5).delay(0.35), value: appear)
+                .padding(.horizontal, 28)
 
-                // Сводка профиля
                 VStack(spacing: 10) {
-                    summaryRow(icon: "person.fill",        color: accent,
-                               label: "Возраст",  value: "\(age) лет")
-                    summaryRow(icon: "scalemass.fill",     color: accent2,
-                               label: "Вес / Рост",
-                               value: "\(Int(weight)) кг / \(Int(height)) см")
-                    summaryRow(icon: gender.color == Color(red:0.20,green:0.55,blue:0.95)
-                               ? "person.fill" : "person.fill",
-                               color: gender.color,
-                               label: "Пол", value: gender.label)
-                    summaryRow(icon: "target",             color: Color(red:0.95,green:0.55,blue:0.10),
-                               label: "Цель",    value: goal.label)
+                    summaryRow(icon: "person.fill", color: accent, label: "Возраст", value: "\(age) \(ageWord(age))")
+                    summaryRow(icon: "scalemass.fill", color: accent2, label: "Вес / рост", value: "\(Int(weight.rounded())) кг / \(Int(height.rounded())) см")
+                    summaryRow(icon: gender.icon, color: gender.color, label: "Пол", value: gender.label)
+                    summaryRow(icon: goal.icon, color: goal.color, label: "Цель", value: goal.label)
                 }
-                .padding(.horizontal, 8)
-                .opacity(appear ? 1.0 : 0.0)
-                .offset(y: appear ? 0 : 15)
-                .animation(.easeOut(duration: 0.5).delay(0.5), value: appear)
+                .padding(.horizontal, 24)
             }
-            .padding(.horizontal, 28)
 
             Spacer()
 
@@ -782,148 +911,296 @@ struct ProfileOnboardingView: View {
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 saveAndComplete()
             } label: {
-                HStack(spacing: 10) {
-                    Text("Перейти в приложение")
-                        .font(.system(size: 17, weight: .bold))
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 15, weight: .bold))
-                }
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
-                .background(LinearGradient(colors: [accent, accent2], startPoint: .leading, endPoint: .trailing))
-                .clipShape(Capsule())
-                .shadow(color: accent.opacity(0.40), radius: 16, x: 0, y: 7)
+                primaryButtonLabel("Перейти в приложение", icon: "arrow.right")
             }
             .buttonStyle(ScaleButtonStyle())
             .padding(.horizontal, 24)
-            .padding(.bottom, 44)
-            .opacity(appear ? 1.0 : 0.0)
-            .animation(.easeOut(duration: 0.5).delay(0.65), value: appear)
+            .padding(.bottom, 42)
         }
     }
 
     private func summaryRow(icon: String, color: Color, label: String, value: String) -> some View {
-        HStack(spacing: 14) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .fill(color.opacity(0.12)).frame(width: 38, height: 38)
-                Image(systemName: icon)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(color)
-            }
+        HStack(spacing: 13) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .black))
+                .foregroundColor(color)
+                .frame(width: 38, height: 38)
+                .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
             Text(label)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundColor(Color(red:0.5,green:0.63,blue:0.72))
+                .font(.system(size: 13, weight: .bold, design: .rounded))
+                .foregroundColor(secondaryText)
+
             Spacer()
+
             Text(value)
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                .font(.system(size: 14, weight: .black, design: .rounded))
+                .foregroundColor(primaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.80))
-                .shadow(color: accent.opacity(0.06), radius: 6, x: 0, y: 2)
-        )
+        .padding(13)
+        .background(cardBackground(cornerRadius: 17))
     }
 
-    // MARK: - Общий заголовок шага
+    // MARK: - Shared UI
 
-    private func stepHeader(title: String, subtitle: String) -> some View {
-        VStack(spacing: 8) {
+    private func stepHeader(eyebrow: String, title: String, subtitle: String) -> some View {
+        VStack(spacing: 9) {
+            Text(eyebrow.uppercased())
+                .font(.system(size: 11, weight: .black, design: .rounded))
+                .foregroundColor(accent)
+                .tracking(1.1)
+
             Text(title)
-                .font(.system(size: 26, weight: .black))
-                .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                .font(.system(size: 28, weight: .black, design: .rounded))
+                .foregroundColor(primaryText)
+                .multilineTextAlignment(.center)
+
             Text(subtitle)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundColor(Color(red:0.45,green:0.58,blue:0.68))
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 24)
     }
 
-    // MARK: - Навигация шагов
+    private func primaryButtonLabel(_ title: String, icon: String) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(.system(size: 17, weight: .black, design: .rounded))
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .black))
+        }
+        .foregroundColor(.white)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 18)
+        .background(
+            LinearGradient(colors: [accent, accent2], startPoint: .leading, endPoint: .trailing)
+        )
+        .clipShape(Capsule())
+        .shadow(color: accent.opacity(0.34), radius: 15, x: 0, y: 8)
+    }
+
+    private func cardBackground(cornerRadius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(cardFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(Color.white.opacity(0.82), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.045), radius: 9, x: 0, y: 5)
+    }
+
+    // MARK: - Navigation
+
+    private var navButtons: some View {
+        HStack(spacing: 12) {
+            Button {
+                prev()
+            } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .black))
+                    .foregroundColor(accent)
+                    .frame(width: 54, height: 54)
+                    .background(Color.white.opacity(0.78), in: Circle())
+                    .overlay(Circle().strokeBorder(Color.white.opacity(0.88), lineWidth: 1))
+                    .shadow(color: accent.opacity(0.10), radius: 8, x: 0, y: 4)
+            }
+            .buttonStyle(.plain)
+
+            Button {
+                next()
+            } label: {
+                primaryButtonLabel(step == .dailyGoals ? "Готово" : "Далее", icon: step == .dailyGoals ? "checkmark" : "arrow.right")
+            }
+            .buttonStyle(ScaleButtonStyle())
+        }
+    }
 
     private func next() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        let all = OnboardStep.allCases
-        guard let cur = all.firstIndex(of: step), cur + 1 < all.count else { return }
-        slideDir = .asymmetric(
-            insertion: .move(edge: .trailing).combined(with: .opacity),
-            removal:   .move(edge: .leading).combined(with: .opacity)
-        )
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-            step = all[cur + 1]
+
+        if step == .dailyGoals {
+            go(to: .ready, direction: .forward)
+            return
         }
-        if step == .ready { appear = false; DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { appear = true } }
+
+        let all = OnboardStep.allCases
+        guard let current = all.firstIndex(of: step), current + 1 < all.count else { return }
+        go(to: all[current + 1], direction: .forward)
     }
 
     private func prev() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
+
         let all = OnboardStep.allCases
-        guard let cur = all.firstIndex(of: step), cur > 0 else { return }
-        slideDir = .asymmetric(
-            insertion: .move(edge: .leading).combined(with: .opacity),
-            removal:   .move(edge: .trailing).combined(with: .opacity)
-        )
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-            step = all[cur - 1]
+        guard let current = all.firstIndex(of: step), current > 0 else { return }
+        go(to: all[current - 1], direction: .backward)
+    }
+
+    private enum Direction {
+        case forward
+        case backward
+    }
+
+    private func go(to nextStep: OnboardStep, direction: Direction) {
+        slideDir = direction == .forward
+            ? .asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity), removal: .move(edge: .leading).combined(with: .opacity))
+            : .asymmetric(insertion: .move(edge: .leading).combined(with: .opacity), removal: .move(edge: .trailing).combined(with: .opacity))
+
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+            step = nextStep
+        }
+
+        if nextStep == .ready {
+            appear = false
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                withAnimation(.easeOut(duration: 0.35)) {
+                    appear = true
+                }
+            }
         }
     }
 
-    // MARK: - Сохранение
+    // MARK: - Persistence
+
+    private func loadExistingProfile() {
+        let defaults = UserDefaults.standard
+
+        if defaults.integer(forKey: "userAge") > 0 {
+            age = defaults.integer(forKey: "userAge")
+        }
+        if defaults.double(forKey: "userWeight") > 0 {
+            weight = defaults.double(forKey: "userWeight")
+        }
+        if defaults.double(forKey: "userHeight") > 0 {
+            height = defaults.double(forKey: "userHeight")
+        }
+        if let savedGender = defaults.string(forKey: "userGender"),
+           let value = UserGender(rawValue: savedGender) {
+            gender = value
+        }
+        if let savedGoal = defaults.string(forKey: "userGoal"),
+           let value = UserGoal(rawValue: savedGoal) {
+            goal = value
+        }
+        if defaults.integer(forKey: "stepsGoal") > 0 {
+            stepsGoal = defaults.integer(forKey: "stepsGoal")
+        }
+        if defaults.double(forKey: "waterGoal") > 0 {
+            waterGoal = defaults.double(forKey: "waterGoal")
+        }
+        if defaults.double(forKey: "sleepGoal") > 0 {
+            sleepGoal = defaults.double(forKey: "sleepGoal")
+        }
+        if defaults.integer(forKey: "caloriesGoal") > 0 {
+            caloriesGoal = defaults.integer(forKey: "caloriesGoal")
+        }
+    }
 
     private func saveAndComplete() {
-        // Сохраняем в UserDefaults
-        UserDefaults.standard.set(age,              forKey: "userAge")
-        UserDefaults.standard.set(gender.rawValue,  forKey: "userGender")
-        UserDefaults.standard.set(weight,           forKey: "userWeight")
-        UserDefaults.standard.set(height,           forKey: "userHeight")
-        UserDefaults.standard.set(goal.rawValue,    forKey: "userGoal")
-        UserDefaults.standard.set(stepsGoal,        forKey: "stepsGoal")
-        UserDefaults.standard.set(waterGoal,        forKey: "waterGoal")
-        UserDefaults.standard.set(sleepGoal,        forKey: "sleepGoal")
-        UserDefaults.standard.set(caloriesGoal,     forKey: "caloriesGoal")
-        // Обновляем shared store — SettingsView обновится мгновенно
+        saveProfileValue(age, forKey: "userAge")
+        saveProfileValue(gender.rawValue, forKey: "userGender")
+        saveProfileValue(weight, forKey: "userWeight")
+        saveProfileValue(height, forKey: "userHeight")
+        saveProfileValue(goal.rawValue, forKey: "userGoal")
+        saveProfileValue(stepsGoal, forKey: "stepsGoal")
+        saveProfileValue(waterGoal, forKey: "waterGoal")
+        saveProfileValue(sleepGoal, forKey: "sleepGoal")
+        saveProfileValue(caloriesGoal, forKey: "caloriesGoal")
+
         let store = UserProfileStore.shared
-        store.age          = age
-        store.gender       = gender.rawValue
-        store.weight       = weight
-        store.height       = height
-        store.goal         = goal.rawValue
-        store.stepsGoal    = stepsGoal
-        store.waterGoal    = waterGoal
-        store.sleepGoal    = sleepGoal
+        store.age = age
+        store.gender = gender.rawValue
+        store.weight = weight
+        store.height = height
+        store.goal = goal.rawValue
+        store.stepsGoal = stepsGoal
+        store.waterGoal = waterGoal
+        store.sleepGoal = sleepGoal
         store.caloriesGoal = caloriesGoal
+
         onComplete()
+    }
+
+    private func saveProfileValue(_ value: Any, forKey key: String) {
+        UserDefaults.standard.set(value, forKey: key)
+
+        let userId = appState.userToken ?? "guest"
+        UserDefaults.standard.set(value, forKey: "\(key)_\(userId)")
     }
 
     // MARK: - Helpers
 
     private func firstName(_ name: String) -> String {
-        name.components(separatedBy: " ").first ?? name
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.components(separatedBy: " ").first?.isEmpty == false
+            ? (trimmed.components(separatedBy: " ").first ?? trimmed)
+            : "Друг"
+    }
+
+    private func ageWord(_ value: Int) -> String {
+        let mod10 = value % 10
+        let mod100 = value % 100
+
+        if mod100 >= 11 && mod100 <= 14 {
+            return "лет"
+        }
+
+        if mod10 == 1 {
+            return "год"
+        }
+
+        if mod10 >= 2 && mod10 <= 4 {
+            return "года"
+        }
+
+        return "лет"
     }
 
     private func bmiColor(_ bmi: Double) -> Color {
         switch bmi {
-        case ..<18.5: return Color(red:0.30,green:0.60,blue:0.95)
-        case 18.5..<25: return Color(red:0.1,green:0.78,blue:0.48)
-        case 25..<30: return Color(red:1.0,green:0.65,blue:0.10)
-        default:      return Color(red:0.95,green:0.25,blue:0.25)
+        case ..<18.5:
+            return Color(red: 0.30, green: 0.60, blue: 0.95)
+        case 18.5..<25:
+            return Color(red: 0.10, green: 0.78, blue: 0.48)
+        case 25..<30:
+            return Color(red: 1.00, green: 0.65, blue: 0.10)
+        default:
+            return Color(red: 0.95, green: 0.25, blue: 0.25)
         }
     }
 
     private func bmiLabel(_ bmi: Double) -> String {
         switch bmi {
-        case ..<18.5: return "Недовес"
-        case 18.5..<25: return "Норма"
-        case 25..<30: return "Избыток"
-        default:      return "Ожирение"
+        case ..<18.5:
+            return "Недовес"
+        case 18.5..<25:
+            return "Норма"
+        case 25..<30:
+            return "Избыток"
+        default:
+            return "Высокий"
         }
     }
 }
+
+// MARK: - Helpers
+
+private extension Int {
+    var formattedWithSpaces: String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = " "
+        formatter.locale = Locale(identifier: "ru_RU")
+        return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
+    }
+}
+
+// MARK: - Preview
 
 #Preview {
     ProfileOnboardingView(userName: "Жантемир") {}

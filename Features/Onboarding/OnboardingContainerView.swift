@@ -17,6 +17,7 @@ struct OnboardingContainerView: View {
     @State private var btnPulse           = false
     @State private var bgAnimate          = false
     @StateObject private var motion       = MotionManager()
+    @State private var profileOnboardingCompleted = false
 
     // Цвета фона для каждого слайда
     private let slideColors: [(Color, Color)] = [
@@ -88,10 +89,14 @@ struct OnboardingContainerView: View {
             animatedBackground
 
             if appState.isLoggedIn {
-                if !hasCompletedProfile {
+                if !hasCompletedProfile && !profileOnboardingCompleted {
                     ProfileOnboardingView(userName: appState.userName ?? "Друг") {
                         let key = "hasCompletedProfileOnboarding_\(appState.userToken ?? "guest")"
                         UserDefaults.standard.set(true, forKey: key)
+
+                        withAnimation(.easeInOut(duration: 0.35)) {
+                            profileOnboardingCompleted = true
+                        }
                     }
                     .environmentObject(appState)
                     .environmentObject(lang)
@@ -102,6 +107,7 @@ struct OnboardingContainerView: View {
                         .environmentObject(lang)
                         .transition(.opacity.combined(with: .scale))
                 }
+
             } else {
                 onboardingContent
             }

@@ -2,859 +2,1419 @@
 //  MoodView.swift
 //  Bagyt
 //
-//  Full redesign — Bagyt design system
-//  Трекер настроения · График недели · Заметки · Паттерны
+//  Premium Mood Tracker
+//  Project background · Light/Dark by Settings toggle · Fast UI · Per-user data
 //
 
 import SwiftUI
 import Combine
+import UIKit
 
 // MARK: - Models
 
 struct MoodRecord: Identifiable, Codable {
-    var id: UUID     = UUID()
-    var mood: Int            // 1–5
-    var note: String         = ""
-    var date: Date           = Date()
-    var energy: Int          = 3    // 1–5
-    var tags: [String]       = []
+    var id: UUID
+    var mood: Int
+    var note: String
+    var date: Date
+    var energy: Int
+    var stress: Int
+    var sleepQuality: Int
+    var tags: [String]
+
+    init(
+        id: UUID = UUID(),
+        mood: Int,
+        note: String = "",
+        date: Date = Date(),
+        energy: Int = 3,
+        stress: Int = 3,
+        sleepQuality: Int = 3,
+        tags: [String] = []
+    ) {
+        self.id = id
+        self.mood = mood
+        self.note = note
+        self.date = date
+        self.energy = energy
+        self.stress = stress
+        self.sleepQuality = sleepQuality
+        self.tags = tags
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, mood, note, date, energy, stress, sleepQuality, tags
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        mood = try container.decodeIfPresent(Int.self, forKey: .mood) ?? 3
+        note = try container.decodeIfPresent(String.self, forKey: .note) ?? ""
+        date = try container.decodeIfPresent(Date.self, forKey: .date) ?? Date()
+        energy = try container.decodeIfPresent(Int.self, forKey: .energy) ?? 3
+        stress = try container.decodeIfPresent(Int.self, forKey: .stress) ?? 3
+        sleepQuality = try container.decodeIfPresent(Int.self, forKey: .sleepQuality) ?? 3
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+    }
+}
+
+struct MoodTagOption: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let icon: String
+    let color: Color
+
+    init(_ id: String, _ title: String, _ icon: String, _ color: Color) {
+        self.id = id
+        self.title = title
+        self.icon = icon
+        self.color = color
+    }
+}
+
+struct MoodInsight: Identifiable {
+    let id = UUID()
+    let icon: String
+    let title: String
+    let text: String
+    let color: Color
 }
 
 // MARK: - ViewModel
 
 final class MoodViewModel: ObservableObject {
-        
     @Published var records: [MoodRecord] = []
-    @Published var todayMood: Int?       = nil
-    @Published var todayNote: String     = ""
-    @Published var todayEnergy: Int      = 3
 
-    private static let saveKey = "bagyt_mood_records"
+    // Состояние формы
+    @Published var todayMood: Int? = nil
+    @Published var todayNote: String = ""
+    @Published var todayEnergy: Int = 3
+    @Published var todayStress: Int = 3
+    @Published var todaySleepQuality: Int = 3
+    @Published var selectedTags: Set<String> = []
+
+    // Предрассчитанные метрики
+    @Published private(set) var averageMood: Double = 0
+    @Published private(set) var averageEnergy: Double = 0
+    @Published private(set) var averageStress: Double = 0
+    @Published private(set) var streak: Int = 0
+    @Published private(set) var weeklyMoodDelta: Int = 0
+    @Published private(set) var dominantTag: MoodTagOption? = nil
+    @Published private(set) var insights: [MoodInsight] = []
+    
+    private let baseKey = "bagyt_mood_records"
+    private var activeStorageKey = "bagyt_mood_records_guest"
+
+    let tagOptions: [MoodTagOption] = [
+        MoodTagOption("sleep", "Сон", "moon.zzz.fill", Color(red: 0.55, green: 0.35, blue: 1.00)),
+        MoodTagOption("stress", "Стресс", "brain.head.profile", Color(red: 1.00, green: 0.48, blue: 0.16)),
+        MoodTagOption("study", "Учеба", "book.fill", Color(red: 0.055, green: 0.647, blue: 0.914)),
+        MoodTagOption("work", "Работа", "briefcase.fill", Color(red: 0.20, green: 0.62, blue: 1.00)),
+        MoodTagOption("health", "Здоровье", "cross.case.fill", Color(red: 1.00, green: 0.34, blue: 0.34)),
+        MoodTagOption("family", "Семья", "person.2.fill", Color(red: 1.00, green: 0.65, blue: 0.12)),
+        MoodTagOption("sport", "Спорт", "figure.run", Color(red: 0.10, green: 0.78, blue: 0.48)),
+        MoodTagOption("food", "Питание", "fork.knife", Color(red: 0.42, green: 0.76, blue: 0.30)),
+        MoodTagOption("social", "Общение", "bubble.left.and.bubble.right.fill", Color(red: 0.72, green: 0.45, blue: 1.00))
+    ]
 
     init() {
-        let loaded: [MoodRecord]
-        if let data = UserDefaults.standard.data(forKey: Self.saveKey),
-           let saved = try? JSONDecoder().decode([MoodRecord].self, from: data) {
-            loaded = saved
-        } else {
-            loaded = MoodViewModel.demoRecords()
-        }
-
-        self.records     = loaded
-        self.todayMood   = nil
-        self.todayNote   = ""
-        self.todayEnergy = 3
-
-        if let today = loaded.first(where: { Calendar.current.isDateInToday($0.date) }) {
-            self.todayMood   = today.mood
-            self.todayEnergy = today.energy
-            self.todayNote   = today.note
-        }
+        configureUser(token: UserDefaults.standard.string(forKey: "userToken"))
     }
 
     var todayRecord: MoodRecord? {
         records.first { Calendar.current.isDateInToday($0.date) }
     }
 
-    var last7: [MoodRecord] {
-        let cal = Calendar.current
-        return (0..<7).compactMap { offset -> MoodRecord? in
-            guard let day = cal.date(byAdding: .day, value: -offset, to: Date()) else { return nil }
-            return records.first { cal.isDate($0.date, inSameDayAs: day) }
-        }.reversed()
+    var last7Records: [MoodRecord] {
+        recordsWithin(days: 7)
     }
 
-    var averageMood: Double {
-        let r = records.prefix(7).filter { _ in true }
-        guard !r.isEmpty else { return 0 }
-        return Double(r.map(\.mood).reduce(0, +)) / Double(r.count)
+    var last14Records: [MoodRecord] {
+        recordsWithin(days: 14)
     }
 
-    var streak: Int {
-        let cal = Calendar.current
-        var count = 0
-        var day = Date()
-        while true {
-            if records.first(where: { cal.isDate($0.date, inSameDayAs: day) }) != nil {
-                count += 1
-                day = cal.date(byAdding: .day, value: -1, to: day)!
-            } else { break }
+    func configureUser(token: String?) {
+        let key = storageKey(for: token)
+
+        guard key != activeStorageKey else {
+            load()
+            syncTodayForm()
+            return
         }
-        return count
+
+        activeStorageKey = key
+        load()
+        syncTodayForm()
+    }
+
+    func toggleTag(_ id: String) {
+        if selectedTags.contains(id) {
+            selectedTags.remove(id)
+        } else {
+            selectedTags.insert(id)
+        }
     }
 
     func saveTodayMood() {
         guard let mood = todayMood else { return }
-        if let idx = records.firstIndex(where: { Calendar.current.isDateInToday($0.date) }) {
-            records[idx].mood   = mood
-            records[idx].note   = todayNote
-            records[idx].energy = todayEnergy
+
+        let record = MoodRecord(
+            mood: mood,
+            note: todayNote.trimmingCharacters(in: .whitespacesAndNewlines),
+            date: Date(),
+            energy: todayEnergy,
+            stress: todayStress,
+            sleepQuality: todaySleepQuality,
+            tags: Array(selectedTags)
+        )
+
+        if let index = records.firstIndex(where: { Calendar.current.isDateInToday($0.date) }) {
+            records[index].mood = record.mood
+            records[index].note = record.note
+            records[index].energy = record.energy
+            records[index].stress = record.stress
+            records[index].sleepQuality = record.sleepQuality
+            records[index].tags = record.tags
         } else {
-            records.insert(MoodRecord(mood: mood, note: todayNote, date: Date(), energy: todayEnergy), at: 0)
+            records.insert(record, at: 0)
         }
-        // Сортируем записи по дате на всякий случай
+
         records.sort { $0.date > $1.date }
         save()
+        syncTodayForm()
     }
-    
-    // Новая функция удаления одной записи
+
     func delete(record: MoodRecord) {
-        if let idx = records.firstIndex(where: { $0.id == record.id }) {
-            let deleted = records[idx]
-            records.remove(at: idx)
-            
-            // Если удалили сегодняшнюю запись, сбрасываем форму
-            if Calendar.current.isDateInToday(deleted.date) {
-                todayMood = nil
-                todayNote = ""
-                todayEnergy = 3
-            }
-            save()
+        records.removeAll { $0.id == record.id }
+
+        if Calendar.current.isDateInToday(record.date) {
+            resetTodayForm()
         }
+
+        save()
     }
-    
-    // Новая функция очистки всей истории
+
     func deleteAll() {
         records.removeAll()
+        resetTodayForm()
+        save()
+    }
+
+    func tagOption(for id: String) -> MoodTagOption? {
+        tagOptions.first { $0.id == id }
+    }
+
+    private func recordsWithin(days: Int) -> [MoodRecord] {
+        let start = Calendar.current.date(
+            byAdding: .day,
+            value: -(days - 1),
+            to: Calendar.current.startOfDay(for: Date())
+        ) ?? Date()
+
+        return records
+            .filter { $0.date >= start }
+            .sorted { $0.date > $1.date }
+    }
+
+    private func syncTodayForm() {
+        if let today = todayRecord {
+            todayMood = today.mood
+            todayNote = today.note
+            todayEnergy = today.energy
+            todayStress = today.stress
+            todaySleepQuality = today.sleepQuality
+            selectedTags = Set(today.tags)
+        } else {
+            resetTodayForm()
+        }
+        recalculateMetrics()
+    }
+
+    private func resetTodayForm() {
         todayMood = nil
         todayNote = ""
         todayEnergy = 3
-        save()
+        todayStress = 3
+        todaySleepQuality = 3
+        selectedTags = []
     }
 
     private func save() {
         if let data = try? JSONEncoder().encode(records) {
-            UserDefaults.standard.set(data, forKey: Self.saveKey)
+            UserDefaults.standard.set(data, forKey: activeStorageKey)
         }
+        recalculateMetrics()
     }
 
-    static func demoRecords() -> [MoodRecord] {
-        let cal = Calendar.current
-        let moods = [4, 3, 5, 4, 2, 4, 3]
-        let notes = [
-            "Хорошее начало недели",
-            "Немного устал после пар, но в целом окей",
-            "Отличный день! Тренировка прошла супер, встретился с друзьями",
-            "Продуктивный день, закрыл пару сложных задач",
-            "Плохо спал, голова болит с самого утра",
-            "Восстановился после болезни, чувствую прилив сил",
-            "Спокойный домашний день"
-        ]
-        return moods.enumerated().compactMap { i, mood in
-            guard let date = cal.date(byAdding: .day, value: -(6 - i), to: Date()) else { return nil }
-            return MoodRecord(mood: mood, note: notes[i], date: date, energy: mood)
+    private func load() {
+        guard let data = UserDefaults.standard.data(forKey: activeStorageKey),
+              let saved = try? JSONDecoder().decode([MoodRecord].self, from: data) else {
+            records = []
+            return
         }
+
+        records = saved.sorted { $0.date > $1.date }
+        recalculateMetrics()
+    }
+
+    private func recalculateMetrics() {
+        let cal = Calendar.current
+        let last7 = recordsWithin(days: 7)
+        let last14 = recordsWithin(days: 14)
+        
+        // Averages
+        if !last7.isEmpty {
+            averageMood = Double(last7.map(\.mood).reduce(0, +)) / Double(last7.count)
+            averageEnergy = Double(last7.map(\.energy).reduce(0, +)) / Double(last7.count)
+            averageStress = Double(last7.map(\.stress).reduce(0, +)) / Double(last7.count)
+            
+            let sorted7 = last7.sorted { $0.date < $1.date }
+            if sorted7.count >= 2 {
+                weeklyMoodDelta = (sorted7.last?.mood ?? 0) - (sorted7.first?.mood ?? 0)
+            } else {
+                weeklyMoodDelta = 0
+            }
+        } else {
+            averageMood = 0; averageEnergy = 0; averageStress = 0; weeklyMoodDelta = 0
+        }
+        
+        // Streak (Optimized with Set)
+        var currentStreak = 0
+        var dayToCheck = cal.startOfDay(for: Date())
+        let uniqueRecordDays = Set(records.map { cal.startOfDay(for: $0.date) })
+        
+        if !uniqueRecordDays.contains(dayToCheck) {
+            dayToCheck = cal.date(byAdding: .day, value: -1, to: dayToCheck) ?? dayToCheck
+        }
+        
+        while uniqueRecordDays.contains(dayToCheck) {
+            currentStreak += 1
+            dayToCheck = cal.date(byAdding: .day, value: -1, to: dayToCheck) ?? dayToCheck
+        }
+        self.streak = currentStreak
+        
+        // Dominant Tag
+        let ids = last14.flatMap(\.tags)
+        if !ids.isEmpty {
+            let counts = Dictionary(grouping: ids, by: { $0 }).mapValues(\.count)
+            if let top = counts.max(by: { $0.value < $1.value })?.key {
+                dominantTag = tagOptions.first { $0.id == top }
+            } else { dominantTag = nil }
+        } else {
+            dominantTag = nil
+        }
+        
+        // Insights Generation
+        var newInsights: [MoodInsight] = []
+
+        if averageMood >= 4 {
+            newInsights.append(MoodInsight(icon: "sparkles", title: "Хорошая динамика", text: "Среднее настроение за неделю \(String(format: "%.1f", averageMood))/5. Продолжайте отмечать факторы дня.", color: Color(red: 0.10, green: 0.78, blue: 0.48)))
+        } else if averageMood > 0 && averageMood <= 2.7 {
+            newInsights.append(MoodInsight(icon: "heart.text.square.fill", title: "Нужен ресурс", text: "Настроение ниже обычного. Проверьте сон, стресс, нагрузку и симптомы в журнале.", color: Color(red: 1.00, green: 0.58, blue: 0.12)))
+        }
+
+        if averageStress >= 4 {
+            newInsights.append(MoodInsight(icon: "brain.head.profile", title: "Стресс повышен", text: "Средний стресс \(String(format: "%.1f", averageStress))/5. Заметки помогут ИИ найти повторяющиеся причины.", color: Color(red: 1.00, green: 0.48, blue: 0.16)))
+        }
+
+        if let tag = dominantTag {
+            newInsights.append(MoodInsight(icon: tag.icon, title: "Частый фактор: \(tag.title)", text: "Этот фактор часто встречается в последних записях. Сравните его с настроением и энергией.", color: tag.color))
+        }
+
+        if streak >= 3 {
+            newInsights.append(MoodInsight(icon: "flame.fill", title: "Серия \(streak) дней", text: "Регулярные чек-ины делают когнитивный анализ Bagyt точнее.", color: Color(red: 1.00, green: 0.65, blue: 0.12)))
+        }
+
+        if newInsights.isEmpty {
+            newInsights.append(MoodInsight(icon: "waveform.path.ecg", title: "Начните с чек-ина", text: "Отметьте настроение, энергию, стресс и пару факторов дня.", color: Color(red: 0.055, green: 0.647, blue: 0.914)))
+        }
+
+        self.insights = Array(newInsights.prefix(3))
+    }
+
+    private func storageKey(for token: String?) -> String {
+        let trimmed = token?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let userId = (trimmed?.isEmpty == false) ? trimmed! : "guest"
+
+        let safeUserId = Data(userId.utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+
+        return "\(baseKey)_\(safeUserId)"
     }
 }
 
 // MARK: - MoodView
 
 struct MoodView: View {
+    @EnvironmentObject private var appState: AppState
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
     @StateObject private var vm = MoodViewModel()
-    @State private var showNoteField    = false
-    @State private var showSavedBadge   = false
-    
-    // Новые стейты для интерактива
+
+    @State private var showSavedBadge = false
+    @State private var showResetAlert = false
     @State private var expandedRecordId: UUID? = nil
-    @State private var showResetAlert   = false
-    
+    @State private var appear = false
+
     @FocusState private var noteFocused: Bool
 
-    private let accent  = Color(red: 0.055, green: 0.647, blue: 0.914)
+    private let accent = Color(red: 0.055, green: 0.647, blue: 0.914)
     private let accent2 = Color(red: 0.024, green: 0.714, blue: 0.831)
-    private let moodGold = Color(red: 1.0, green: 0.65, blue: 0.10)
+
+    private var primaryText: Color {
+        isDarkMode ? .white : Color(red: 0.06, green: 0.09, blue: 0.16)
+    }
+
+    private var secondaryText: Color {
+        isDarkMode ? .white.opacity(0.64) : Color(red: 0.38, green: 0.52, blue: 0.62)
+    }
+
+    private var mutedText: Color {
+        isDarkMode ? .white.opacity(0.42) : Color(red: 0.55, green: 0.66, blue: 0.74)
+    }
+
+    private var cardFill: Color {
+        isDarkMode ? Color(red: 0.08, green: 0.10, blue: 0.16).opacity(0.72) : Color.white.opacity(0.74)
+    }
+
+    private var softCardFill: Color {
+        isDarkMode ? Color.white.opacity(0.07) : Color.white.opacity(0.52)
+    }
+
+    private var cardStroke: Color {
+        isDarkMode ? Color.white.opacity(0.11) : Color.white.opacity(0.72)
+    }
 
     var body: some View {
         ZStack(alignment: .top) {
-            
-            // 👇 ПРОЗРАЧНЫЙ ФОН (пропускает AnimatedGradientBackground из HomeView)
-            Color.clear.ignoresSafeArea()
+            Color.clear
+                .ignoresSafeArea()
 
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 18) {
-                    headerCard
-                    statsStrip
-                    todayCard
-                    weekChart
-                    patternsCard
-                    historyList
-                    Spacer(minLength: 110)
+                // ГЛАВНОЕ ИСПРАВЛЕНИЕ ЛАГОВ: Используем один корневой LazyVStack
+                LazyVStack(spacing: 16) {
+                    heroCard
+                    statsGrid
+                    todayCheckInCard
+                    weekChartCard
+                    insightsCard
+                    factorsCard
+
+                    historyHeader
+                        .padding(.top, 8)
+
+                    if vm.records.isEmpty {
+                        emptyHistory
+                    } else {
+                        ForEach(vm.records) { record in
+                            historyRow(record)
+                                .padding(.bottom, -4) // Сохраняем компактный отступ (12 вместо 16) между рядами истории
+                        }
+                    }
+
+                    Spacer(minLength: 120)
                 }
                 .padding(.horizontal, 20)
-                .padding(.top, 8)
+                .padding(.top, 10)
+                .opacity(appear ? 1 : 0)
+                .offset(y: appear ? 0 : 10)
             }
 
-            // Saved badge
             if showSavedBadge {
                 savedBadge
                     .transition(.move(edge: .top).combined(with: .opacity))
                     .zIndex(10)
             }
         }
-        // Alert для подтверждения очистки
+        .onAppear {
+            vm.configureUser(token: appState.userToken)
+
+            withAnimation(.easeOut(duration: 0.28)) {
+                appear = true
+            }
+        }
+        .onChange(of: appState.userToken) { token in
+            vm.configureUser(token: token)
+        }
         .alert("Очистить историю?", isPresented: $showResetAlert) {
             Button("Отмена", role: .cancel) { }
             Button("Удалить все", role: .destructive) {
-                withAnimation { vm.deleteAll() }
+                withAnimation(.easeOut(duration: 0.22)) {
+                    vm.deleteAll()
+                }
             }
         } message: {
-            Text("Вы уверены, что хотите полностью удалить все записи? Это действие нельзя отменить.")
+            Text("Все записи настроения этого пользователя будут удалены. Это действие нельзя отменить.")
         }
     }
 
-    // MARK: - Header Card
+    // MARK: - Hero
 
-    private var headerCard: some View {
-        ZStack(alignment: .topLeading) {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(LinearGradient(
-                    colors: [Color(red: 0.55, green: 0.35, blue: 1.0),
-                             Color(red: 0.35, green: 0.45, blue: 1.0)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ))
-                .shadow(color: Color(red: 0.55, green: 0.35, blue: 1.0).opacity(0.4), radius: 20, x: 0, y: 10)
+    private var heroCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Настроение")
+                        .font(.system(size: 32, weight: .black, design: .rounded))
+                        .foregroundColor(primaryText)
 
-            Circle().fill(Color.white.opacity(0.07)).frame(width: 150, height: 150).offset(x: -40, y: -60)
-            Circle().fill(Color.white.opacity(0.05)).frame(width: 90, height: 90)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing).offset(x: 25, y: 25)
-
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("НАСТРОЕНИЕ")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(.white.opacity(0.75))
-                            .tracking(1.0)
-                        Text("Ежедневный трекер")
-                            .font(.system(size: 22, weight: .black))
-                            .foregroundColor(.white)
-                    }
-                    Spacer()
-                    // Today emoji big
-                    ZStack {
-                        Circle()
-                            .fill(Color.white.opacity(0.18))
-                            .frame(width: 62, height: 62)
-                        Text(vm.todayMood != nil ? moodEmoji(vm.todayMood!) : "🙂")
-                            .font(.system(size: 32))
-                    }
+                    Text("Когнитивный трекер состояния")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(secondaryText)
                 }
 
-                // Streak
-                HStack(spacing: 8) {
-                    Image(systemName: "flame.fill")
-                        .foregroundColor(Color(red: 1.0, green: 0.6, blue: 0.1))
-                        .font(.system(size: 13))
-                    Text("\(vm.streak) дней подряд")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
-                    Spacer()
-                    if vm.averageMood > 0 {
-                        HStack(spacing: 5) {
-                            Text("Среднее:")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(.white.opacity(0.75))
-                            Text(String(format: "%.1f", vm.averageMood))
-                                .font(.system(size: 13, weight: .black))
-                                .foregroundColor(.white)
-                            Text(moodEmoji(Int(vm.averageMood.rounded())))
-                                .font(.system(size: 14))
-                        }
-                    }
-                }
-                .padding(.horizontal, 14)
-                .padding(.vertical, 8)
-                .background(Color.white.opacity(0.15))
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .padding(24)
-        }
-    }
+                Spacer()
 
-    // MARK: - Stats Strip
-
-    private var statsStrip: some View {
-        HStack(spacing: 10) {
-            statMini(
-                icon: "chart.line.uptrend.xyaxis",
-                value: vm.averageMood > 0 ? String(format: "%.1f", vm.averageMood) : "—",
-                label: "Среднее",
-                color: Color(red: 0.55, green: 0.35, blue: 1.0)
-            )
-            statMini(
-                icon: "flame.fill",
-                value: "\(vm.streak)",
-                label: "Дней подряд",
-                color: Color(red: 1.0, green: 0.55, blue: 0.1)
-            )
-            statMini(
-                icon: "calendar.badge.checkmark",
-                value: "\(vm.records.count)",
-                label: "Записей",
-                color: accent
-            )
-        }
-    }
-
-    private func statMini(icon: String, value: String, label: String, color: Color) -> some View {
-        glassCard {
-            VStack(spacing: 8) {
                 ZStack {
-                    Circle().fill(color.opacity(0.12)).frame(width: 38, height: 38)
-                    Image(systemName: icon)
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(color)
+                    Circle()
+                        .fill(radialMoodColor.opacity(isDarkMode ? 0.22 : 0.15))
+                        .frame(width: 70, height: 70)
+
+                    Circle()
+                        .strokeBorder(radialMoodColor.opacity(0.35), lineWidth: 1)
+
+                    Text(vm.todayMood.map { moodEmoji($0) } ?? "🙂")
+                        .font(.system(size: 34))
                 }
-                Text(value)
-                    .font(.system(size: 20, weight: .black))
-                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
-                Text(label)
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                    .multilineTextAlignment(.center)
+                .frame(width: 70, height: 70)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+
+            HStack(spacing: 10) {
+                heroPill(icon: "flame.fill", title: "\(vm.streak)", subtitle: "серия")
+                heroPill(icon: "chart.line.uptrend.xyaxis", title: vm.averageMood > 0 ? String(format: "%.1f", vm.averageMood) : "-", subtitle: "среднее")
+                heroPill(icon: "calendar.badge.checkmark", title: "\(vm.records.count)", subtitle: "записей")
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            isDarkMode ? Color.white.opacity(0.10) : Color.white.opacity(0.78),
+                            isDarkMode ? Color.white.opacity(0.055) : Color.white.opacity(0.54)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(cardStroke, lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(isDarkMode ? 0.22 : 0.07), radius: 16, x: 0, y: 10)
+    }
+
+    private var radialMoodColor: Color {
+        if let mood = vm.todayMood {
+            return moodColor(mood)
+        }
+        return accent
+    }
+
+    private func heroPill(icon: String, title: String, subtitle: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .black))
+                .foregroundColor(accent)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+                    .foregroundColor(primaryText)
+
+                Text(subtitle)
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundColor(mutedText)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .background(softCardFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    // MARK: - Stats
+
+    private var statsGrid: some View {
+        HStack(spacing: 10) {
+            statCard(
+                icon: "bolt.heart.fill",
+                value: vm.averageEnergy > 0 ? String(format: "%.1f", vm.averageEnergy) : "-",
+                label: "Энергия",
+                color: Color(red: 0.12, green: 0.78, blue: 0.50)
+            )
+
+            statCard(
+                icon: "brain.fill",
+                value: vm.averageStress > 0 ? String(format: "%.1f", vm.averageStress) : "-",
+                label: "Стресс",
+                color: Color(red: 1.00, green: 0.50, blue: 0.16)
+            )
+
+            statCard(
+                icon: vm.weeklyMoodDelta >= 0 ? "arrow.up.right" : "arrow.down.right",
+                value: deltaText(vm.weeklyMoodDelta),
+                label: "Динамика",
+                color: vm.weeklyMoodDelta >= 0 ? Color(red: 0.10, green: 0.78, blue: 0.48) : Color(red: 1.00, green: 0.35, blue: 0.35)
+            )
         }
     }
 
-    // MARK: - Today Card
+    private func statCard(icon: String, value: String, label: String, color: Color) -> some View {
+        VStack(spacing: 9) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(isDarkMode ? 0.18 : 0.12))
+                    .frame(width: 38, height: 38)
 
-    private var todayCard: some View {
-        glassCard {
-            VStack(alignment: .leading, spacing: 18) {
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .black))
+                    .foregroundColor(color)
+            }
 
-                // Title
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("КАК ВЫ СЕГОДНЯ?")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                            .tracking(0.8)
-                        Text(todayDateString())
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
-                    }
-                    Spacer()
-                    if vm.todayMood != nil {
-                        HStack(spacing: 4) {
-                            Circle().fill(Color(red: 0.1, green: 0.78, blue: 0.48)).frame(width: 7, height: 7)
-                            Text("Сохранено")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(Color(red: 0.1, green: 0.78, blue: 0.48))
-                        }
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(Color(red: 0.1, green: 0.78, blue: 0.48).opacity(0.1))
-                        .clipShape(Capsule())
-                    }
+            Text(value)
+                .font(.system(size: 21, weight: .black, design: .rounded))
+                .foregroundColor(primaryText)
+
+            Text(label)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(secondaryText)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 15)
+        .background(cardBackground(cornerRadius: 22))
+    }
+
+    // MARK: - Today Check-In
+
+    private var todayCheckInCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("СЕГОДНЯ")
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                        .foregroundColor(mutedText)
+                        .tracking(1.0)
+
+                    Text(todayDateString())
+                        .font(.system(size: 17, weight: .black, design: .rounded))
+                        .foregroundColor(primaryText)
                 }
 
-                // Mood selector
-                HStack(spacing: 0) {
-                    ForEach(1...5, id: \.self) { i in
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.6)) {
-                                vm.todayMood = i
-                                showNoteField = true
-                            }
-                            let gen = UIImpactFeedbackGenerator(style: .medium)
-                            gen.impactOccurred()
-                        } label: {
-                            VStack(spacing: 8) {
-                                ZStack {
-                                    Circle()
-                                        .fill(vm.todayMood == i
-                                              ? moodColor(i).opacity(0.15)
-                                              : Color.white.opacity(0.5)) // Прозрачный белый для стеклянного эффекта
-                                        .frame(width: vm.todayMood == i ? 54 : 46,
-                                               height: vm.todayMood == i ? 54 : 46)
-                                        .overlay(
-                                            Circle().strokeBorder(
-                                                vm.todayMood == i ? moodColor(i) : Color.clear,
-                                                lineWidth: 2
-                                            )
-                                        )
-                                    Text(moodEmoji(i))
-                                        .font(.system(size: vm.todayMood == i ? 28 : 22))
-                                }
-                                .animation(.spring(response: 0.3), value: vm.todayMood)
+                Spacer()
 
-                                Text(moodShortLabel(i))
-                                    .font(.system(size: 10, weight: vm.todayMood == i ? .bold : .medium))
-                                    .foregroundColor(vm.todayMood == i
-                                                     ? moodColor(i)
-                                                     : Color(red: 0.6, green: 0.72, blue: 0.78))
-                            }
-                            .frame(maxWidth: .infinity)
-                        }
-                    }
-                }
-
-                // Energy level
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Уровень энергии")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundColor(Color(red: 0.3, green: 0.42, blue: 0.52))
-                        Spacer()
-                        Text(energyLabel(vm.todayEnergy))
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(accent)
-                    }
-                    HStack(spacing: 8) {
-                        ForEach(1...5, id: \.self) { i in
-                            Button {
-                                withAnimation(.spring(response: 0.3)) { vm.todayEnergy = i }
-                            } label: {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                    .fill(i <= vm.todayEnergy ? accent : Color.white.opacity(0.6)) // Прозрачный белый
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: 8)
-                                    .animation(.spring(response: 0.3), value: vm.todayEnergy)
-                            }
-                        }
-                    }
-                }
-                .padding(14)
-                .background(Color.white.opacity(0.5)) // Стекло для подложки энергии
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                // Note field
-                if showNoteField {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Заметка (необязательно)")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                            .tracking(0.5)
-
-                        ZStack(alignment: .topLeading) {
-                            if vm.todayNote.isEmpty {
-                                Text("Что повлияло на ваше настроение?")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(Color(red: 0.7, green: 0.8, blue: 0.85))
-                                    .padding(.top, 10)
-                                    .padding(.leading, 4)
-                            }
-                            TextEditor(text: $vm.todayNote)
-                                .font(.system(size: 14))
-                                .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
-                                .frame(minHeight: 72)
-                                .scrollContentBackground(.hidden)
-                                .focused($noteFocused)
-                        }
-                        .padding(10)
-                        .background(Color.white.opacity(0.5)) // Стекло для текстового поля
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .transition(.move(edge: .top).combined(with: .opacity))
-                }
-
-                // Save button
                 if vm.todayMood != nil {
-                    Button { saveAndAnimate() } label: {
-                        HStack(spacing: 8) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 17))
-                            Text("Сохранить настроение")
-                                .font(.system(size: 15, weight: .bold))
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            LinearGradient(
-                                colors: [Color(red: 0.55, green: 0.35, blue: 1.0), accent],
-                                startPoint: .leading, endPoint: .trailing
-                            )
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                        .shadow(color: Color(red: 0.55, green: 0.35, blue: 1.0).opacity(0.35), radius: 10, x: 0, y: 5)
+                    HStack(spacing: 6) {
+                        Circle()
+                            .fill(Color(red: 0.10, green: 0.78, blue: 0.48))
+                            .frame(width: 7, height: 7)
+
+                        Text("Сохранено")
+                            .font(.system(size: 12, weight: .black, design: .rounded))
+                            .foregroundColor(Color(red: 0.10, green: 0.78, blue: 0.48))
                     }
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.horizontal, 11)
+                    .padding(.vertical, 7)
+                    .background(Color(red: 0.10, green: 0.78, blue: 0.48).opacity(isDarkMode ? 0.16 : 0.11), in: Capsule())
                 }
             }
-            .padding(20)
+
+            moodSelector
+
+            metricStepper(
+                title: "Энергия",
+                subtitle: energyLabel(vm.todayEnergy),
+                icon: "bolt.fill",
+                value: $vm.todayEnergy,
+                color: Color(red: 0.12, green: 0.78, blue: 0.50),
+                reversed: false
+            )
+
+            metricStepper(
+                title: "Стресс",
+                subtitle: stressLabel(vm.todayStress),
+                icon: "brain.head.profile",
+                value: $vm.todayStress,
+                color: Color(red: 1.00, green: 0.50, blue: 0.16),
+                reversed: true
+            )
+
+            metricStepper(
+                title: "Качество сна",
+                subtitle: sleepLabel(vm.todaySleepQuality),
+                icon: "moon.stars.fill",
+                value: $vm.todaySleepQuality,
+                color: Color(red: 0.55, green: 0.35, blue: 1.00),
+                reversed: false
+            )
+
+            tagPicker
+            noteField
+            saveButton
         }
+        .padding(18)
+        .background(cardBackground(cornerRadius: 26))
+    }
+
+    private var moodSelector: some View {
+        HStack(spacing: 0) {
+            ForEach(1...5, id: \.self) { value in
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.78)) {
+                        vm.todayMood = value
+                    }
+                } label: {
+                    VStack(spacing: 8) {
+                        ZStack {
+                            Circle()
+                                .fill(vm.todayMood == value ? moodColor(value).opacity(isDarkMode ? 0.20 : 0.14) : softCardFill)
+                                .frame(width: vm.todayMood == value ? 56 : 47, height: vm.todayMood == value ? 56 : 47)
+                                .overlay(
+                                    Circle()
+                                        .strokeBorder(vm.todayMood == value ? moodColor(value).opacity(0.80) : cardStroke, lineWidth: 1.3)
+                                )
+
+                            Text(moodEmoji(value))
+                                .font(.system(size: vm.todayMood == value ? 29 : 22))
+                        }
+
+                        Text(moodShortLabel(value))
+                            .font(.system(size: 10, weight: vm.todayMood == value ? .black : .bold, design: .rounded))
+                            .foregroundColor(vm.todayMood == value ? moodColor(value) : mutedText)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func metricStepper(
+        title: String,
+        subtitle: String,
+        icon: String,
+        value: Binding<Int>,
+        color: Color,
+        reversed: Bool
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundColor(color)
+                    .frame(width: 28, height: 28)
+                    .background(color.opacity(isDarkMode ? 0.16 : 0.11), in: Circle())
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .black, design: .rounded))
+                        .foregroundColor(primaryText)
+
+                    Text(subtitle)
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundColor(secondaryText)
+                }
+
+                Spacer()
+
+                Text("\(value.wrappedValue)/5")
+                    .font(.system(size: 13, weight: .black, design: .rounded))
+                    .foregroundColor(color)
+            }
+
+            HStack(spacing: 7) {
+                ForEach(1...5, id: \.self) { index in
+                    Button {
+                        UISelectionFeedbackGenerator().selectionChanged()
+                        withAnimation(.easeOut(duration: 0.16)) {
+                            value.wrappedValue = index
+                        }
+                    } label: {
+                        RoundedRectangle(cornerRadius: 7, style: .continuous)
+                            .fill(index <= value.wrappedValue ? color.opacity(reversed ? 0.55 : 0.95) : softCardFill)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 9)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .padding(14)
+        .background(softCardFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var tagPicker: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Факторы дня")
+                .font(.system(size: 12, weight: .black, design: .rounded))
+                .foregroundColor(mutedText)
+                .textCase(.uppercase)
+                .tracking(0.8)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(vm.tagOptions) { tag in
+                        let selected = vm.selectedTags.contains(tag.id)
+
+                        Button {
+                            UISelectionFeedbackGenerator().selectionChanged()
+                            withAnimation(.easeOut(duration: 0.16)) {
+                                vm.toggleTag(tag.id)
+                            }
+                        } label: {
+                            HStack(spacing: 7) {
+                                Image(systemName: tag.icon)
+                                    .font(.system(size: 11, weight: .black))
+
+                                Text(tag.title)
+                                    .font(.system(size: 12, weight: .black, design: .rounded))
+                            }
+                            .foregroundColor(selected ? .white : tag.color)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 9)
+                            .background(selected ? tag.color.opacity(0.88) : tag.color.opacity(isDarkMode ? 0.14 : 0.10), in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .strokeBorder(selected ? Color.white.opacity(0.16) : tag.color.opacity(0.18), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    private var noteField: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            Text("Заметка")
+                .font(.system(size: 12, weight: .black, design: .rounded))
+                .foregroundColor(mutedText)
+                .textCase(.uppercase)
+                .tracking(0.8)
+
+            ZStack(alignment: .topLeading) {
+                if vm.todayNote.isEmpty {
+                    Text("Что повлияло на ваше состояние сегодня?")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.28) : Color(red: 0.64, green: 0.74, blue: 0.80))
+                        .padding(.top, 13)
+                        .padding(.leading, 12)
+                }
+
+                TextEditor(text: $vm.todayNote)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundColor(primaryText)
+                    .frame(minHeight: 88)
+                    .padding(8)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .focused($noteFocused)
+                    .colorScheme(isDarkMode ? .dark : .light)
+            }
+            .background(softCardFill, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .strokeBorder(cardStroke.opacity(0.75), lineWidth: 1)
+            )
+        }
+    }
+
+    private var saveButton: some View {
+        Button {
+            saveAndAnimate()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: vm.todayMood == nil ? "face.smiling" : "checkmark.circle.fill")
+                    .font(.system(size: 18, weight: .black))
+
+                Text(vm.todayMood == nil ? "Выберите настроение" : "Сохранить чек-ин")
+                    .font(.system(size: 16, weight: .black, design: .rounded))
+            }
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                LinearGradient(
+                    colors: vm.todayMood == nil
+                    ? [Color.gray.opacity(0.35), Color.gray.opacity(0.25)]
+                    : [accent, accent2],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(RoundedRectangle(cornerRadius: 19, style: .continuous))
+            .shadow(color: vm.todayMood == nil ? .clear : accent.opacity(isDarkMode ? 0.18 : 0.26), radius: 12, x: 0, y: 7)
+        }
+        .buttonStyle(.plain)
+        .disabled(vm.todayMood == nil)
     }
 
     // MARK: - Week Chart
 
-    private var weekChart: some View {
-        glassCard {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("НЕДЕЛЯ")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                            .tracking(0.8)
-                        Text("График настроения")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
-                    }
-                    Spacer()
-                    // Mini legend
-                    HStack(spacing: 12) {
-                        ForEach([("😩",1),("😊",4),("🤩",5)], id: \.1) { item in
-                            HStack(spacing: 4) {
-                                Text(item.0).font(.system(size: 12))
-                                Text("\(item.1)").font(.system(size: 10, weight: .bold))
-                                    .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                            }
-                        }
-                    }
-                }
+    private var weekChartCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            sectionHeader(
+                eyebrow: "НЕДЕЛЯ",
+                title: "График состояния",
+                icon: "chart.xyaxis.line",
+                color: accent
+            )
 
-                // Bar chart
-                HStack(alignment: .bottom, spacing: 8) {
-                    ForEach(chartDays(), id: \.date) { item in
-                        VStack(spacing: 6) {
-                            // Emoji on top of bar
-                            if let mood = item.mood {
-                                Text(moodEmoji(mood))
-                                    .font(.system(size: 14))
-                            } else {
-                                Text("·")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(Color(red: 0.7, green: 0.8, blue: 0.85))
-                            }
-
-                            // Bar
-                            GeometryReader { geo in
-                                VStack {
-                                    Spacer()
-                                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                        .fill(item.mood != nil
-                                              ? LinearGradient(
-                                                colors: [moodColor(item.mood!), moodColor(item.mood!).opacity(0.6)],
-                                                startPoint: .top, endPoint: .bottom)
-                                              : LinearGradient(
-                                                colors: [Color.white.opacity(0.6), Color.white.opacity(0.6)], // Полупрозрачные пустые бары
-                                                startPoint: .top, endPoint: .bottom))
-                                        .frame(height: item.mood != nil ? CGFloat(item.mood!) / 5 * geo.size.height : 12)
-                                }
-                            }
-                            .frame(height: 80)
-
-                            // Day label
-                            Text(item.dayLabel)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(item.isToday
-                                                 ? Color(red: 0.55, green: 0.35, blue: 1.0)
-                                                 : Color(red: 0.6, green: 0.72, blue: 0.78))
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
+            HStack(alignment: .bottom, spacing: 8) {
+                ForEach(chartDays()) { item in
+                    chartColumn(item)
                 }
             }
-            .padding(20)
-        }
-    }
+            .frame(height: 128)
 
-    // MARK: - Patterns Card
-
-    private var patternsCard: some View {
-        glassCard {
-            VStack(alignment: .leading, spacing: 14) {
-                Text("ПАТТЕРНЫ")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                    .tracking(0.8)
-
-                let patterns = buildPatterns()
-                ForEach(patterns, id: \.title) { p in
-                    HStack(spacing: 12) {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .fill(p.color.opacity(0.12))
-                                .frame(width: 38, height: 38)
-                            Text(p.emoji).font(.system(size: 18))
-                        }
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(p.title)
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
-                            Text(p.subtitle)
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                        }
-                        Spacer()
-                        Text(p.badge)
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(p.color)
-                            .padding(.horizontal, 10).padding(.vertical, 4)
-                            .background(p.color.opacity(0.1))
-                            .clipShape(Capsule())
-                    }
-                }
-            }
-            .padding(20)
-        }
-    }
-
-    // MARK: - History List
-
-    private var historyList: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            
-            // Заголовок с кнопкой "Очистить"
-            HStack {
-                Text("ИСТОРИЯ")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(Color(red: 0.5, green: 0.63, blue: 0.72))
-                    .tracking(0.8)
-                    .padding(.leading, 4)
-                
+            HStack(spacing: 14) {
+                chartLegend(color: Color(red: 0.12, green: 0.78, blue: 0.50), text: "хорошее")
+                chartLegend(color: Color(red: 1.00, green: 0.65, blue: 0.12), text: "среднее")
+                chartLegend(color: Color(red: 1.00, green: 0.35, blue: 0.35), text: "низкое")
                 Spacer()
-                
-                if !vm.records.isEmpty {
-                    Button(action: { showResetAlert = true }) {
-                        Text("Очистить все")
-                            .font(.system(size: 11, weight: .bold))
-                            .foregroundColor(Color(red: 0.95, green: 0.25, blue: 0.25))
+            }
+        }
+        .padding(18)
+        .background(cardBackground(cornerRadius: 26))
+    }
+
+    private func chartColumn(_ item: ChartDay) -> some View {
+        let mood = item.mood ?? 0
+        let height = CGFloat(max(10, mood * 17))
+
+        return VStack(spacing: 7) {
+            Text(item.mood.map { moodEmoji($0) } ?? "·")
+                .font(.system(size: 14))
+                .foregroundColor(item.mood == nil ? mutedText : primaryText)
+
+            ZStack(alignment: .bottom) {
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(softCardFill)
+                    .frame(width: 28, height: 82)
+
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(item.mood == nil ? mutedText.opacity(0.18) : moodColor(mood))
+                    .frame(width: 28, height: item.mood == nil ? 10 : height)
+            }
+
+            Text(item.dayLabel)
+                .font(.system(size: 11, weight: item.isToday ? .black : .bold, design: .rounded))
+                .foregroundColor(item.isToday ? accent : mutedText)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func chartLegend(color: Color, text: String) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+
+            Text(text)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundColor(mutedText)
+        }
+    }
+
+    // MARK: - Insights
+
+    private var insightsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                eyebrow: "AI-КОНТЕКСТ",
+                title: "Наблюдения",
+                icon: "sparkles",
+                color: Color(red: 0.72, green: 0.45, blue: 1.00)
+            )
+
+            ForEach(vm.insights) { insight in
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: insight.icon)
+                        .font(.system(size: 15, weight: .black))
+                        .foregroundColor(insight.color)
+                        .frame(width: 36, height: 36)
+                        .background(insight.color.opacity(isDarkMode ? 0.16 : 0.11), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(insight.title)
+                            .font(.system(size: 14, weight: .black, design: .rounded))
+                            .foregroundColor(primaryText)
+
+                        Text(insight.text)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(secondaryText)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .padding(.trailing, 4)
+
+                    Spacer(minLength: 0)
+                }
+                .padding(12)
+                .background(softCardFill, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+            }
+        }
+        .padding(18)
+        .background(cardBackground(cornerRadius: 26))
+    }
+
+    // MARK: - Factors
+
+    private var factorsCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            sectionHeader(
+                eyebrow: "ФАКТОРЫ",
+                title: "Что чаще влияет",
+                icon: "circle.hexagongrid.fill",
+                color: Color(red: 1.00, green: 0.65, blue: 0.12)
+            )
+
+            let factors = factorRows()
+
+            if factors.isEmpty {
+                Text("Отмечайте факторы дня, и здесь появятся связи между настроением, стрессом, сном и событиями.")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(secondaryText)
+                    .lineSpacing(4)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(softCardFill, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+            } else {
+                ForEach(factors, id: \.id) { row in
+                    factorRow(row)
+                }
+            }
+        }
+        .padding(18)
+        .background(cardBackground(cornerRadius: 26))
+    }
+
+    private func factorRow(_ row: FactorRow) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: row.option.icon)
+                .font(.system(size: 14, weight: .black))
+                .foregroundColor(row.option.color)
+                .frame(width: 36, height: 36)
+                .background(row.option.color.opacity(isDarkMode ? 0.16 : 0.11), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.option.title)
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundColor(primaryText)
+
+                Text("\(row.count) раз · среднее настроение \(String(format: "%.1f", row.averageMood))/5")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(secondaryText)
+            }
+
+            Spacer()
+
+            Text(moodEmoji(Int(row.averageMood.rounded())))
+                .font(.system(size: 20))
+        }
+        .padding(12)
+        .background(softCardFill, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+    }
+
+    // MARK: - History Header
+    
+    private var historyHeader: some View {
+        HStack {
+            sectionHeaderText(eyebrow: "ИСТОРИЯ", title: "Последние записи")
+
+            Spacer()
+
+            if !vm.records.isEmpty {
+                Button {
+                    showResetAlert = true
+                } label: {
+                    Text("Очистить")
+                        .font(.system(size: 12, weight: .black, design: .rounded))
+                        .foregroundColor(Color(red: 1.00, green: 0.35, blue: 0.35))
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 7)
+                        .background(Color(red: 1.00, green: 0.35, blue: 0.35).opacity(isDarkMode ? 0.16 : 0.10), in: Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private var emptyHistory: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "heart.text.square.fill")
+                .font(.system(size: 34, weight: .bold))
+                .foregroundColor(accent)
+                .frame(width: 76, height: 76)
+                .background(accent.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
+
+            Text("История пока пустая")
+                .font(.system(size: 18, weight: .black, design: .rounded))
+                .foregroundColor(primaryText)
+
+            Text("Первый чек-ин уже поможет Bagyt лучше понимать ваше состояние.")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundColor(secondaryText)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 34)
+        .padding(.horizontal, 20)
+        .background(cardBackground(cornerRadius: 26))
+    }
+
+    private func historyRow(_ record: MoodRecord) -> some View {
+        let expanded = expandedRecordId == record.id
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 13) {
+                ZStack {
+                    Circle()
+                        .fill(moodColor(record.mood).opacity(isDarkMode ? 0.18 : 0.12))
+                        .frame(width: 48, height: 48)
+
+                    Text(moodEmoji(record.mood))
+                        .font(.system(size: 23))
+                }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack {
+                        Text(moodLabel(record.mood))
+                            .font(.system(size: 15, weight: .black, design: .rounded))
+                            .foregroundColor(primaryText)
+
+                        Spacer()
+
+                        Text(shortDateString(record.date))
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(mutedText)
+                    }
+
+                    HStack(spacing: 10) {
+                        smallSignal(icon: "bolt.fill", value: record.energy, color: Color(red: 0.12, green: 0.78, blue: 0.50))
+                        smallSignal(icon: "brain.head.profile", value: record.stress, color: Color(red: 1.00, green: 0.50, blue: 0.16))
+                        smallSignal(icon: "moon.stars.fill", value: record.sleepQuality, color: Color(red: 0.55, green: 0.35, blue: 1.00))
+                    }
+
+                    if !record.note.isEmpty {
+                        Text(record.note)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(secondaryText)
+                            .lineLimit(expanded ? nil : 2)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    if !record.tags.isEmpty {
+                        tagRow(record.tags, limit: expanded ? 99 : 3)
+                    }
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture {
+                withAnimation(.easeOut(duration: 0.18)) {
+                    expandedRecordId = expanded ? nil : record.id
                 }
             }
 
-            // Используем LazyVStack для плавного скролла всех записей
-            LazyVStack(spacing: 12) {
-                ForEach(vm.records) { record in
-                    glassCard {
-                        VStack(alignment: .leading, spacing: 0) {
-                            HStack(alignment: .top, spacing: 14) {
-                                ZStack {
-                                    Circle()
-                                        .fill(moodColor(record.mood).opacity(0.12))
-                                        .frame(width: 46, height: 46)
-                                    Text(moodEmoji(record.mood))
-                                        .font(.system(size: 22))
-                                }
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(moodLabel(record.mood))
-                                            .font(.system(size: 15, weight: .bold))
-                                            .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
-                                        Spacer()
-                                        Text(shortDateString(record.date))
-                                            .font(.system(size: 12, weight: .medium))
-                                            .foregroundColor(Color(red: 0.6, green: 0.72, blue: 0.78))
-                                    }
-                                    
-                                    if !record.note.isEmpty {
-                                        Text(record.note)
-                                            .font(.system(size: 13, weight: .medium))
-                                            .foregroundColor(Color(red: 0.4, green: 0.55, blue: 0.65))
-                                            // Если развернуто - показываем всё, иначе 2 строки
-                                            .lineLimit(expandedRecordId == record.id ? nil : 2)
-                                            .animation(.easeInOut(duration: 0.3), value: expandedRecordId)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
-                                    
-                                    // Energy dots
-                                    HStack(spacing: 4) {
-                                        Text("Энергия:")
-                                            .font(.system(size: 10, weight: .medium))
-                                            .foregroundColor(Color(red: 0.6, green: 0.72, blue: 0.78))
-                                        ForEach(1...5, id: \.self) { i in
-                                            Circle()
-                                                .fill(i <= record.energy ? accent : Color.white.opacity(0.5)) // Прозрачные точки
-                                                .frame(width: 6, height: 6)
-                                        }
-                                    }
-                                    .padding(.top, 2)
-                                }
-                            }
-                            .contentShape(Rectangle()) // Чтобы весь блок кликался
-                            .onTapGesture {
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
-                                    if expandedRecordId == record.id {
-                                        expandedRecordId = nil
-                                    } else {
-                                        expandedRecordId = record.id
-                                    }
-                                }
-                            }
-                            
-                            // Расширенная зона: кнопка "Удалить"
-                            if expandedRecordId == record.id {
-                                Button(action: {
-                                    withAnimation(.spring()) {
-                                        vm.delete(record: record)
-                                        expandedRecordId = nil
-                                    }
-                                }) {
-                                    HStack(spacing: 8) {
-                                        Image(systemName: "trash.fill")
-                                            .font(.system(size: 14))
-                                        Text("Удалить запись")
-                                            .font(.system(size: 13, weight: .bold))
-                                    }
-                                    .foregroundColor(Color(red: 0.95, green: 0.25, blue: 0.25))
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(Color(red: 0.95, green: 0.25, blue: 0.25).opacity(0.12))
-                                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                                }
-                                .padding(.top, 14)
-                                .transition(.opacity.combined(with: .move(edge: .top)))
-                            }
-                        }
-                        .padding(16)
+            if expanded {
+                Button {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+                    withAnimation(.easeOut(duration: 0.20)) {
+                        vm.delete(record: record)
+                        expandedRecordId = nil
                     }
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "trash.fill")
+                            .font(.system(size: 13, weight: .bold))
+
+                        Text("Удалить запись")
+                            .font(.system(size: 13, weight: .black, design: .rounded))
+                    }
+                    .foregroundColor(Color(red: 1.00, green: 0.35, blue: 0.35))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 11)
+                    .background(Color(red: 1.00, green: 0.35, blue: 0.35).opacity(isDarkMode ? 0.16 : 0.10), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity)
+            }
+        }
+        .padding(15)
+        .background(cardBackground(cornerRadius: 22))
+    }
+
+    private func smallSignal(icon: String, value: Int, color: Color) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9, weight: .black))
+
+            Text("\(value)")
+                .font(.system(size: 11, weight: .black, design: .rounded))
+        }
+        .foregroundColor(color)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(color.opacity(isDarkMode ? 0.16 : 0.10), in: Capsule())
+    }
+
+    private func tagRow(_ ids: [String], limit: Int) -> some View {
+        HStack(spacing: 6) {
+            ForEach(Array(ids.prefix(limit)), id: \.self) { id in
+                if let tag = vm.tagOption(for: id) {
+                    HStack(spacing: 4) {
+                        Image(systemName: tag.icon)
+                            .font(.system(size: 9, weight: .black))
+
+                        Text(tag.title)
+                            .font(.system(size: 10, weight: .black, design: .rounded))
+                    }
+                    .foregroundColor(tag.color)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(tag.color.opacity(isDarkMode ? 0.16 : 0.10), in: Capsule())
                 }
             }
+
+            if ids.count > limit {
+                Text("+\(ids.count - limit)")
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .foregroundColor(mutedText)
+            }
+
+            Spacer(minLength: 0)
         }
     }
 
     // MARK: - Saved Badge
 
     private var savedBadge: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 9) {
             Image(systemName: "checkmark.circle.fill")
-                .foregroundColor(Color(red: 0.1, green: 0.78, blue: 0.48))
-            Text("Настроение сохранено!")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                .font(.system(size: 16, weight: .black))
+                .foregroundColor(Color(red: 0.10, green: 0.78, blue: 0.48))
+
+            Text("Чек-ин сохранен")
+                .font(.system(size: 14, weight: .black, design: .rounded))
+                .foregroundColor(primaryText)
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 18)
         .padding(.vertical, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color.white.opacity(0.9))
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
+        .background(cardFill, in: RoundedRectangle(cornerRadius: 17, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 17, style: .continuous)
+                .strokeBorder(cardStroke, lineWidth: 1)
         )
+        .shadow(color: Color.black.opacity(isDarkMode ? 0.24 : 0.10), radius: 14, x: 0, y: 8)
         .padding(.top, 12)
     }
 
-    // MARK: - Glass Card
-    
-    // 👇 Измененный glassCard для пропускания фона
-    @ViewBuilder
-    private func glassCard<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.65))
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .shadow(color: accent.opacity(0.09), radius: 14, x: 0, y: 5)
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.8), lineWidth: 1)
-            content()
+    // MARK: - Shared UI
+
+    private func cardBackground(cornerRadius: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+            .fill(cardFill)
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .strokeBorder(cardStroke, lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(isDarkMode ? 0.15 : 0.045), radius: 10, x: 0, y: 6)
+    }
+
+    private func sectionHeader(eyebrow: String, title: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 11) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .black))
+                .foregroundColor(color)
+                .frame(width: 36, height: 36)
+                .background(color.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
+
+            sectionHeaderText(eyebrow: eyebrow, title: title)
+
+            Spacer()
         }
     }
 
-    // MARK: - Helpers
+    private func sectionHeaderText(eyebrow: String, title: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(eyebrow)
+                .font(.system(size: 11, weight: .black, design: .rounded))
+                .foregroundColor(mutedText)
+                .tracking(1.0)
 
-    private func saveAndAnimate() {
-        noteFocused = false
-        vm.saveTodayMood()
-        let gen = UINotificationFeedbackGenerator()
-        gen.notificationOccurred(.success)
-        withAnimation(.spring()) { showSavedBadge = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.2) {
-            withAnimation(.easeOut) { showSavedBadge = false }
+            Text(title)
+                .font(.system(size: 17, weight: .black, design: .rounded))
+                .foregroundColor(primaryText)
         }
     }
 
-    private func moodEmoji(_ v: Int) -> String {
-        ["😩","😕","😐","😊","🤩"][max(0, min(v-1, 4))]
-    }
-    private func moodLabel(_ v: Int) -> String {
-        ["Плохо","Так себе","Нормально","Хорошо","Отлично"][max(0, min(v-1, 4))]
-    }
-    private func moodShortLabel(_ v: Int) -> String {
-        ["Плохо","Так себе","Норм","Хорошо","Класс!"][max(0, min(v-1, 4))]
-    }
-    private func moodColor(_ v: Int) -> Color {
-        [Color(red: 0.95, green: 0.25, blue: 0.25),
-         Color(red: 1.0, green: 0.55, blue: 0.1),
-         Color(red: 0.055, green: 0.647, blue: 0.914),
-         Color(red: 0.1, green: 0.78, blue: 0.48),
-         Color(red: 0.55, green: 0.35, blue: 1.0)][max(0, min(v-1, 4))]
-    }
-    private func energyLabel(_ v: Int) -> String {
-        ["Очень низкая","Низкая","Средняя","Высокая","Максимум"][max(0, min(v-1, 4))]
-    }
+    // MARK: - Data Helpers
 
-    private func todayDateString() -> String {
-        let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "ru_RU")
-        fmt.dateFormat = "EEEE, d MMMM"
-        return fmt.string(from: Date()).capitalized
-    }
-
-    private func shortDateString(_ date: Date) -> String {
-        if Calendar.current.isDateInToday(date) { return "Сегодня" }
-        if Calendar.current.isDateInYesterday(date) { return "Вчера" }
-        let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "ru_RU")
-        fmt.dateFormat = "d MMM"
-        return fmt.string(from: date)
-    }
-
-    // Chart data
-    private struct ChartDay {
+    private struct ChartDay: Identifiable {
+        let id = UUID()
         let date: Date
         let dayLabel: String
         let mood: Int?
         let isToday: Bool
     }
 
+    private struct FactorRow {
+        let id: String
+        let option: MoodTagOption
+        let count: Int
+        let averageMood: Double
+    }
+
     private func chartDays() -> [ChartDay] {
         let cal = Calendar.current
-        let days = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"]
-        return (0..<7).compactMap { offset -> ChartDay? in
-            guard let day = cal.date(byAdding: .day, value: -(6 - offset), to: Date()) else { return nil }
+        let labels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+        let recentRecords = vm.last14Records // Оптимизация: ищем только по недавним записям
+
+        return (0..<7).compactMap { offset in
+            guard let day = cal.date(byAdding: .day, value: -(6 - offset), to: Date()) else {
+                return nil
+            }
+
             let weekday = cal.component(.weekday, from: day)
-            let label = days[max(0, (weekday + 5) % 7)]
-            let record = vm.records.first { cal.isDate($0.date, inSameDayAs: day) }
-            return ChartDay(date: day, dayLabel: label, mood: record?.mood, isToday: cal.isDateInToday(day))
+            let label = labels[max(0, (weekday + 5) % 7)]
+            let record = recentRecords.first { cal.isDate($0.date, inSameDayAs: day) }
+
+            return ChartDay(
+                date: day,
+                dayLabel: label,
+                mood: record?.mood,
+                isToday: cal.isDateInToday(day)
+            )
         }
     }
 
-    // Pattern analysis
-    private struct Pattern {
-        let emoji: String
-        let title: String
-        let subtitle: String
-        let badge: String
-        let color: Color
-    }
+    private func factorRows() -> [FactorRow] {
+        let recent = vm.last14Records
+        var rows: [FactorRow] = []
 
-    private func buildPatterns() -> [Pattern] {
-        let avg = vm.averageMood
-        var patterns: [Pattern] = []
+        for option in vm.tagOptions {
+            let related = recent.filter { $0.tags.contains(option.id) }
+            guard !related.isEmpty else { continue }
 
-        if avg >= 4 {
-            patterns.append(Pattern(emoji: "🌟", title: "Позитивная неделя",
-                                    subtitle: "Ваше настроение выше среднего",
-                                    badge: "Отлично", color: Color(red: 0.1, green: 0.78, blue: 0.48)))
-        } else if avg > 0 && avg < 3 {
-            patterns.append(Pattern(emoji: "💤", title: "Нужен отдых",
-                                    subtitle: "Уделите внимание восстановлению",
-                                    badge: "Внимание", color: Color(red: 1.0, green: 0.55, blue: 0.1)))
+            let avg = Double(related.map(\.mood).reduce(0, +)) / Double(related.count)
+            rows.append(FactorRow(id: option.id, option: option, count: related.count, averageMood: avg))
         }
 
-        if vm.streak >= 3 {
-            patterns.append(Pattern(emoji: "🔥", title: "Серия \(vm.streak) дней",
-                                    subtitle: "Продолжайте отслеживать каждый день",
-                                    badge: "+\(vm.streak) дней", color: Color(red: 1.0, green: 0.55, blue: 0.1)))
+        return rows
+            .sorted {
+                if $0.count == $1.count {
+                    return $0.averageMood > $1.averageMood
+                }
+                return $0.count > $1.count
+            }
+            .prefix(4)
+            .map { $0 }
+    }
+
+    private func saveAndAnimate() {
+        guard vm.todayMood != nil else { return }
+
+        noteFocused = false
+        vm.saveTodayMood()
+
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+            showSavedBadge = true
         }
 
-        patterns.append(Pattern(emoji: "📊", title: "Всего записей: \(vm.records.count)",
-                                subtitle: "Чем больше данных — тем точнее анализ",
-                                badge: "Данные", color: accent))
-        return patterns
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.7) {
+            withAnimation(.easeOut(duration: 0.18)) {
+                showSavedBadge = false
+            }
+        }
     }
+
+    // MARK: - Text Helpers
+
+    private func moodEmoji(_ value: Int) -> String {
+        ["😩", "😕", "😐", "😊", "🤩"][max(0, min(value - 1, 4))]
+    }
+
+    private func moodLabel(_ value: Int) -> String {
+        ["Плохо", "Так себе", "Нормально", "Хорошо", "Отлично"][max(0, min(value - 1, 4))]
+    }
+
+    private func moodShortLabel(_ value: Int) -> String {
+        ["Плохо", "Так себе", "Норм", "Хорошо", "Класс"][max(0, min(value - 1, 4))]
+    }
+
+    private func moodColor(_ value: Int) -> Color {
+        [
+            Color(red: 1.00, green: 0.35, blue: 0.35),
+            Color(red: 1.00, green: 0.58, blue: 0.12),
+            Color(red: 0.055, green: 0.647, blue: 0.914),
+            Color(red: 0.10, green: 0.78, blue: 0.48),
+            Color(red: 0.55, green: 0.35, blue: 1.00)
+        ][max(0, min(value - 1, 4))]
+    }
+
+    private func energyLabel(_ value: Int) -> String {
+        ["Очень низкая", "Низкая", "Средняя", "Высокая", "Максимум"][max(0, min(value - 1, 4))]
+    }
+
+    private func stressLabel(_ value: Int) -> String {
+        ["Спокойно", "Легкий", "Средний", "Высокий", "Очень высокий"][max(0, min(value - 1, 4))]
+    }
+
+    private func sleepLabel(_ value: Int) -> String {
+        ["Очень плохо", "Плохо", "Нормально", "Хорошо", "Отлично"][max(0, min(value - 1, 4))]
+    }
+
+    private func deltaText(_ value: Int) -> String {
+        if value > 0 { return "+\(value)" }
+        return "\(value)"
+    }
+
+    private func todayDateString() -> String {
+        Self.fullDayFormatter.string(from: Date()).capitalized
+    }
+
+    private func shortDateString(_ date: Date) -> String {
+        if Calendar.current.isDateInToday(date) { return "Сегодня" }
+        if Calendar.current.isDateInYesterday(date) { return "Вчера" }
+        return Self.shortDateFormatter.string(from: date)
+    }
+
+    private static let fullDayFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.dateFormat = "EEEE, d MMMM"
+        return formatter
+    }()
+
+    private static let shortDateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.dateFormat = "d MMM"
+        return formatter
+    }()
 }
 
 // MARK: - Preview
 
 #Preview {
     MoodView()
+        .environmentObject(AppState())
 }

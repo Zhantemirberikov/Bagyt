@@ -11,11 +11,17 @@ struct HomeView: View {
     @EnvironmentObject var lang: LanguageManager
     @StateObject private var health = HealthKitManager.shared
 
+    // Подключаем настройку темной темы
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
+
     @State private var selectedTab: Int   = 0
     @State private var pulse              = false
     @State private var showProfileSheet   = false
     @State private var showAssistantSheet = false
     @State private var appear             = false
+    
+    // 👇 Новый стейт для открытия деталей индекса здоровья
+    @State private var showIndexDetail    = false
     
     // Анимации фона и орба
     @State private var bgPhase            = false
@@ -39,28 +45,41 @@ struct HomeView: View {
 
     private let accent   = Color(red: 0.055, green: 0.647, blue: 0.914)
     private let accent2  = Color(red: 0.024, green: 0.714, blue: 0.831)
-    private let deepAI   = Color(red: 0.05, green: 0.12, blue: 0.28) // Премиальный темный цвет для когнитивного AI
+    
+    // MARK: - Динамическая палитра (Светлая / Темная тема)
+    private var baseBg: Color { isDarkMode ? Color(red: 0.04, green: 0.06, blue: 0.10) : Color(red: 0.94, green: 0.97, blue: 1.0) }
+    private var primaryText: Color { isDarkMode ? .white : Color(red: 0.06, green: 0.09, blue: 0.16) }
+    private var secondaryText: Color { isDarkMode ? Color.white.opacity(0.6) : Color(red: 0.4, green: 0.55, blue: 0.65) }
+    private var cardBg: Color { isDarkMode ? Color(red: 0.1, green: 0.12, blue: 0.18).opacity(0.85) : Color.white.opacity(0.95) }
+    private var cardStroke: Color { isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.8) }
+    private var liquidBarBg: Color { isDarkMode ? Color.black.opacity(0.4) : Color.white.opacity(0.1) }
+    private var iconTint: Color { isDarkMode ? .white : .black }
 
     var body: some View {
         ZStack(alignment: .bottom) {
 
             // ── Фон ──
             ZStack {
+                // Базовый цвет подложки
+                baseBg.ignoresSafeArea()
+                
                 AnimatedGradientBackground()
+                    .opacity(isDarkMode ? 0.3 : 1.0) // Приглушаем светлый фон в темной теме
+                
                 Circle()
-                    .fill(RadialGradient(colors: [accent.opacity(0.30), .clear], center: .center, startRadius: 0, endRadius: 180))
+                    .fill(RadialGradient(colors: [accent.opacity(isDarkMode ? 0.15 : 0.30), .clear], center: .center, startRadius: 0, endRadius: 180))
                     .frame(width: 340, height: 340)
                     .offset(x: bgPhase ? -70 : 50, y: bgPhase ? -160 : -100)
                     .blur(radius: 45)
                     .animation(.easeInOut(duration: 7).repeatForever(autoreverses: true), value: bgPhase)
                 Circle()
-                    .fill(RadialGradient(colors: [accent2.opacity(0.25), .clear], center: .center, startRadius: 0, endRadius: 150))
+                    .fill(RadialGradient(colors: [accent2.opacity(isDarkMode ? 0.15 : 0.25), .clear], center: .center, startRadius: 0, endRadius: 150))
                     .frame(width: 280, height: 280)
                     .offset(x: bgPhase ? 120 : 50, y: bgPhase ? 80 : 180)
                     .blur(radius: 40)
                     .animation(.easeInOut(duration: 9).repeatForever(autoreverses: true).delay(1.5), value: bgPhase)
                 Circle()
-                    .fill(RadialGradient(colors: [accent.opacity(0.20), .clear], center: .center, startRadius: 0, endRadius: 120))
+                    .fill(RadialGradient(colors: [accent.opacity(isDarkMode ? 0.10 : 0.20), .clear], center: .center, startRadius: 0, endRadius: 120))
                     .frame(width: 220, height: 220)
                     .offset(x: bgPhase ? -60 : 40, y: bgPhase ? 420 : 320)
                     .blur(radius: 35)
@@ -97,6 +116,8 @@ struct HomeView: View {
         }
         .ignoresSafeArea(edges: .bottom)
         .navigationBarHidden(true)
+        .preferredColorScheme(isDarkMode ? .dark : .light) // Принудительно задаем системную тему
+        .animation(.easeInOut(duration: 0.4), value: isDarkMode) // Плавный переход при смене темы
         .onAppear {
             pulse = true
             withAnimation(.easeOut(duration: 0.6).delay(0.1)) { appear = true }
@@ -131,6 +152,11 @@ struct HomeView: View {
         .sheet(isPresented: $showStepsDetail) {
             StepsDetailView()
         }
+        // 👇 Шторка детализации индекса
+        .sheet(isPresented: $showIndexDetail) {
+            HealthIndexDetailSheet(health: health)
+                .preferredColorScheme(isDarkMode ? .dark : .light)
+        }
     }
 
     // MARK: - Top Bar
@@ -140,11 +166,11 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(greetingText())
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    .foregroundColor(primaryText)
                     .lineLimit(1).minimumScaleFactor(0.75)
                 Text(localized("subtitle"))
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundColor(Color(red: 0.4, green: 0.55, blue: 0.65))
+                    .foregroundColor(secondaryText)
             }
             Spacer()
             Button { showProfileSheet.toggle() } label: {
@@ -153,7 +179,7 @@ struct HomeView: View {
                         .fill(LinearGradient(colors: [accent, accent2],
                                              startPoint: .topLeading, endPoint: .bottomTrailing))
                         .frame(width: 46, height: 46)
-                        .shadow(color: accent.opacity(0.35), radius: 8, x: 0, y: 3)
+                        .shadow(color: accent.opacity(isDarkMode ? 0.15 : 0.35), radius: 8, x: 0, y: 3)
 
                     if let img = avatarImage {
                         Image(uiImage: img)
@@ -177,16 +203,13 @@ struct HomeView: View {
             VStack(spacing: 16) {
                 healthIndexCard
                 metricsRow
-                
-                // Карточка настроения УДАЛЕНА по запросу.
-                
                 cognitiveAnalysisCard
                 quickActions
                 Spacer(minLength: 40)
             }
             .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 16)
         }
-        // 👇 ДОБАВЛЕНА БУФЕРИЗАЦИЯ (PULL-TO-REFRESH)
+        // БУФЕРИЗАЦИЯ (PULL-TO-REFRESH)
         .refreshable {
             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
             
@@ -201,7 +224,13 @@ struct HomeView: View {
             }
         }
     }
-
+    // Вытаскиваем сон строго за сегодняшний день
+        private var todaySleepHours: Double {
+            if let today = health.sleepWeek.first(where: { Calendar.current.isDateInToday($0.date) }) {
+                return today.hours
+            }
+            return 0.0
+        }
     // MARK: - Health Index Card
 
     private var healthIndex: Int {
@@ -215,7 +244,7 @@ struct HomeView: View {
             score += 7
         }
         let sleepGoal = UserDefaults.standard.double(forKey: "sleepGoal").nonZero ?? 8.0
-        let sleepPct = health.sleep > 0 ? min(health.sleep / sleepGoal, 1.0) : 0.7
+        let sleepPct = todaySleepHours > 0 ? min(todaySleepHours / sleepGoal, 1.0) : 0.7
         score += Int(sleepPct * 10)
         return min(score, 100)
     }
@@ -238,68 +267,75 @@ struct HomeView: View {
         }
     }
 
+    // 👇 Обернули карточку в Button, чтобы сделать ее кликабельной
     private var healthIndexCard: some View {
-        ZStack(alignment: .topTrailing) {
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(LinearGradient(colors: [accent, accent2],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
-                .shadow(color: accent.opacity(0.38), radius: 20, x: 0, y: 10)
-            
-            // Премиальные блики внутри карточки
-            Circle().fill(Color.white.opacity(0.08)).frame(width: 180, height: 180).offset(x: 50, y: -60)
-            Circle().fill(Color.white.opacity(0.05)).frame(width: 100, height: 100).offset(x: -30, y: 70)
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            showIndexDetail = true
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .fill(LinearGradient(colors: [accent, accent2],
+                                         startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .shadow(color: accent.opacity(isDarkMode ? 0.15 : 0.38), radius: 20, x: 0, y: 10)
+                
+                // Премиальные блики внутри карточки
+                Circle().fill(Color.white.opacity(0.08)).frame(width: 180, height: 180).offset(x: 50, y: -60)
+                Circle().fill(Color.white.opacity(0.05)).frame(width: 100, height: 100).offset(x: -30, y: 70)
 
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("КОМПЛЕКСНЫЙ ИНДЕКС ЗДОРОВЬЯ")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .foregroundColor(.white.opacity(0.85))
-                        .tracking(1.2)
-                    
-                    HStack(alignment: .firstTextBaseline, spacing: 4) {
-                        Text("\(healthIndex)")
-                            .font(.system(size: 64, weight: .bold, design: .rounded))
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("КОМПЛЕКСНЫЙ ИНДЕКС ЗДОРОВЬЯ")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(.white.opacity(0.85))
+                            .tracking(1.2)
+                        
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("\(healthIndex)")
+                                .font(.system(size: 64, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .contentTransition(.numericText())
+                                .animation(.spring(response: 0.5), value: healthIndex)
+                            Text("/ 100")
+                                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                                .foregroundColor(.white.opacity(0.65))
+                                .padding(.bottom, 8)
+                        }
+                        HStack(spacing: 8) {
+                            Image(systemName: healthIndexIcon)
+                                .font(.system(size: 12))
+                            Text(healthIndexLabel)
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                        }
+                        .foregroundColor(accent)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 6)
+                        .background(Color.white)
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+                    }
+                    Spacer()
+                    ZStack {
+                        Circle().stroke(Color.white.opacity(0.15), lineWidth: 8).frame(width: 76, height: 76)
+                        Circle().trim(from: 0, to: appear ? CGFloat(healthIndex) / 100.0 : 0)
+                            .stroke(Color.white, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                            .frame(width: 76, height: 76).rotationEffect(.degrees(-90))
+                            .animation(.easeOut(duration: 1.4).delay(0.3), value: appear)
+                            .animation(.spring(response: 0.8), value: healthIndex)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 22, weight: .bold))
                             .foregroundColor(.white)
-                            .contentTransition(.numericText())
-                            .animation(.spring(response: 0.5), value: healthIndex)
-                        Text("/ 100")
-                            .font(.system(size: 20, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.65))
-                            .padding(.bottom, 8)
+                            .scaleEffect(pulse ? 1.08 : 0.95)
+                            .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: pulse)
                     }
-                    HStack(spacing: 8) {
-                        Image(systemName: healthIndexIcon)
-                            .font(.system(size: 12))
-                        Text(healthIndexLabel)
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                    }
-                    .foregroundColor(accent)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 6)
-                    .background(Color.white)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
-                }
-                Spacer()
-                ZStack {
-                    Circle().stroke(Color.white.opacity(0.15), lineWidth: 8).frame(width: 76, height: 76)
-                    Circle().trim(from: 0, to: appear ? CGFloat(healthIndex) / 100.0 : 0)
-                        .stroke(Color.white, style: StrokeStyle(lineWidth: 8, lineCap: .round))
-                        .frame(width: 76, height: 76).rotationEffect(.degrees(-90))
-                        .animation(.easeOut(duration: 1.4).delay(0.3), value: appear)
-                        .animation(.spring(response: 0.8), value: healthIndex)
-                    Image(systemName: "heart.text.square.fill")
-                        .font(.system(size: 22))
-                        .foregroundColor(.white)
-                        .scaleEffect(pulse ? 1.08 : 0.95)
-                        .animation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true), value: pulse)
-                }
-            }.padding(24)
-            
-            // Стеклянный бордер
-            RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                }.padding(24)
+                
+                // Стеклянный бордер
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            }
         }
+        .buttonStyle(ScaleButtonStyle())
         .opacity(appear ? 1 : 0).offset(y: appear ? 0 : 18)
         .animation(.easeOut(duration: 0.5).delay(0.05), value: appear)
     }
@@ -330,13 +366,13 @@ struct HomeView: View {
             )
 
             metricCard(
-                icon: "moon.stars.fill",
-                value: health.sleep > 0 ? String(format: "%.1f", health.sleep) : "—",
-                unit: "Часов сна",
-                color: Color(red: 0.45, green: 0.35, blue: 0.90),
-                progress: health.sleepProgress(goal: sleepGoal),
-                onTap: { showSleepDetail = true }
-            )
+                            icon: "moon.stars.fill",
+                            value: todaySleepHours > 0 ? String(format: "%.1f", todaySleepHours) : "—",
+                            unit: "Часов сна",
+                            color: Color(red: 0.45, green: 0.35, blue: 0.90),
+                            progress: todaySleepHours > 0 ? min(todaySleepHours / sleepGoal, 1.0) : 0.0,
+                            onTap: { showSleepDetail = true }
+                        )
         }
         .opacity(appear ? 1 : 0)
         .offset(y: appear ? 0 : 18)
@@ -373,17 +409,17 @@ struct HomeView: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundColor(color)
             }
-            .shadow(color: color.opacity(0.2), radius: 5, x: 0, y: 3)
+            .shadow(color: color.opacity(isDarkMode ? 0.1 : 0.2), radius: 5, x: 0, y: 3)
 
             VStack(spacing: 2) {
                 Text(value)
                     .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 0.06, green: 0.09, blue: 0.16))
+                    .foregroundColor(primaryText)
                     .contentTransition(.numericText())
 
                 Text(unit.uppercased())
                     .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 0.5, green: 0.60, blue: 0.70))
+                    .foregroundColor(secondaryText)
                     .tracking(0.5)
             }
         }
@@ -391,10 +427,10 @@ struct HomeView: View {
         .padding(.vertical, 16)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.95))
-                .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
+                .fill(cardBg)
+                .shadow(color: Color.black.opacity(isDarkMode ? 0.3 : 0.04), radius: 10, x: 0, y: 4)
                 .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
+                    .strokeBorder(cardStroke, lineWidth: 1))
         )
 
         if let action = onTap {
@@ -416,50 +452,52 @@ struct HomeView: View {
         let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
         if health.steps > 0 {
             let pct = Int(Double(health.steps) / Double(stepsGoal) * 100)
-            if pct >= 100 { return "Цель активности достигнута. Когнитивные функции в оптимальном состоянии." }
-            if pct >= 50  { return "Рекомендуется легкая прогулка. Это повысит насыщение мозга кислородом на 12%." }
-            return "Выявлен низкий уровень активности. Для поддержания нейропластичности пройдите \(stepsGoal - health.steps) шагов."
+            if pct >= 100 { return "Отличная активность! Вы выполнили дневную норму шагов, так держать." }
+            if pct >= 50  { return "Вы прошли больше половины пути. Небольшая прогулка поможет закрыть цель на сегодня." }
+            return "Активность пока ниже обычного. Постарайтесь пройти еще \(stepsGoal - health.steps) шагов до конца дня."
         }
         if health.heartRate > 0 {
             let hr = health.heartRate
-            if hr < 60 { return "Пульс \(hr) уд/мин. Зафиксирована фаза глубокого восстановления." }
-            if hr <= 80 { return "Пульс \(hr) уд/мин. Сердечно-сосудистая система работает стабильно." }
-            return "Пульс \(hr) уд/мин. Рекомендуется дыхательная практика для стабилизации симпатической нервной системы."
+            if hr < 60 { return "Ваш пульс — \(hr) уд/мин. Зафиксировано хорошее состояние покоя и восстановления." }
+            if hr <= 80 { return "Ваш пульс — \(hr) уд/мин. Сердечный ритм находится в пределах здоровой нормы." }
+            return "Ваш пульс — \(hr) уд/мин. Показатели немного завышены, постарайтесь уделить время отдыху."
         }
-        return "Активируйте доступ к HealthKit для запуска персонального когнитивного анализа."
+        return "Включите синхронизацию с HealthKit для получения персональных рекомендаций о здоровье."
     }
 
     private var cognitiveAnalysisCard: some View {
         HStack(alignment: .top, spacing: 16) {
             ZStack {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(LinearGradient(colors: [Color(red: 0.3, green: 0.2, blue: 0.8), Color(red: 0.1, green: 0.5, blue: 0.9)],
+                    .fill(LinearGradient(colors: [accent, accent2],
                                          startPoint: .topLeading, endPoint: .bottomTrailing))
                     .frame(width: 48, height: 48)
-                    .shadow(color: Color(red: 0.2, green: 0.3, blue: 0.8).opacity(0.5), radius: 8, x: 0, y: 4)
-                Image(systemName: "brain.head.profile")
-                    .font(.system(size: 22, weight: .light))
+                    .shadow(color: accent.opacity(0.35), radius: 8, x: 0, y: 4)
+                
+                Image(systemName: "sparkles")
+                    .font(.system(size: 22, weight: .medium))
                     .foregroundColor(.white)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("КОГНИТИВНЫЙ АНАЛИЗ")
+                Text("СВОДКА СОСТОЯНИЯ")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 0.4, green: 0.6, blue: 1.0))
+                    .foregroundColor(accent)
                     .tracking(1.0)
                 Text(insightText)
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
-                    .lineSpacing(4)
+                    .foregroundColor(primaryText)
+                    .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(deepAI)
-                .shadow(color: deepAI.opacity(0.2), radius: 15, x: 0, y: 8)
+                .fill(cardBg)
+                .shadow(color: Color.black.opacity(isDarkMode ? 0.3 : 0.04), radius: 10, x: 0, y: 4)
                 .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.1), lineWidth: 1))
+                    .strokeBorder(cardStroke, lineWidth: 1))
         )
         .opacity(appear ? 1 : 0).offset(y: appear ? 0 : 18)
         .animation(.easeOut(duration: 0.5).delay(0.20), value: appear)
@@ -479,29 +517,29 @@ struct HomeView: View {
                             .fill(LinearGradient(colors: [accent.opacity(0.15), accent2.opacity(0.1)],
                                                  startPoint: .topLeading, endPoint: .bottomTrailing))
                             .frame(width: 50, height: 50)
-                        Image(systemName: "sparkles")
-                            .font(.system(size: 22, weight: .semibold))
+                        Image(systemName: "stethoscope")
+                            .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(accent)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         Text("AI-Диагностика")
                             .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                            .foregroundColor(primaryText)
                         Text("Спросите о симптомах")
                             .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(Color(red:0.4,green:0.55,blue:0.65))
+                            .foregroundColor(secondaryText)
                     }
                     Spacer()
                     Image(systemName: "chevron.right")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color(red:0.7,green:0.8,blue:0.85))
+                        .foregroundColor(secondaryText.opacity(0.5))
                 }
                 .padding(16)
                 .background(
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(Color.white.opacity(0.95))
-                        .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
-                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
+                        .fill(cardBg)
+                        .shadow(color: Color.black.opacity(isDarkMode ? 0.3 : 0.04), radius: 10, x: 0, y: 4)
+                        .overlay(RoundedRectangle(cornerRadius: 24, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
                 )
             }
             .buttonStyle(ScaleButtonStyle())
@@ -529,9 +567,9 @@ struct HomeView: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red:0.06,green:0.09,blue:0.16)).lineLimit(1)
+                    .foregroundColor(primaryText).lineLimit(1)
                 Text(sub).font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(red:0.5,green:0.63,blue:0.72))
+                    .foregroundColor(secondaryText)
             }
             Spacer()
         }
@@ -539,9 +577,9 @@ struct HomeView: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(Color.white.opacity(0.95))
-                .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 4)
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(Color.white.opacity(0.8), lineWidth: 1))
+                .fill(cardBg)
+                .shadow(color: Color.black.opacity(isDarkMode ? 0.3 : 0.04), radius: 10, x: 0, y: 4)
+                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
         )
     }
 
@@ -585,7 +623,7 @@ struct HomeView: View {
                     // 1. КРИСТАЛЬНО ЧИСТОЕ СТЕКЛО БАРА
                     ZStack {
                         RoundedRectangle(cornerRadius: 36, style: .continuous)
-                            .fill(Color.white.opacity(0.1))
+                            .fill(liquidBarBg)
                             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 36, style: .continuous))
                         
                         RoundedRectangle(cornerRadius: 36, style: .continuous)
@@ -602,7 +640,7 @@ struct HomeView: View {
                                 lineWidth: 1.5
                             )
                     }
-                    .shadow(color: Color.black.opacity(0.08), radius: 24, x: 0, y: 10)
+                    .shadow(color: Color.black.opacity(isDarkMode ? 0.3 : 0.08), radius: 24, x: 0, y: 10)
                     .frame(width: barWidth, height: panelHeight)
 
                     // 2. ЖИДКАЯ ЛИНЗА (Кристалл + Искажение)
@@ -644,8 +682,8 @@ struct HomeView: View {
                                 lineWidth: 1.5
                             )
                     }
-                    .shadow(color: Color.black.opacity(0.12), radius: 10, x: 0, y: 6)
-                    .shadow(color: Color.white.opacity(0.3), radius: 12, x: -2, y: -2) // Внешний светлый блик сверху
+                    .shadow(color: Color.black.opacity(isDarkMode ? 0.5 : 0.12), radius: 10, x: 0, y: 6)
+                    .shadow(color: Color.white.opacity(isDarkMode ? 0.1 : 0.3), radius: 12, x: -2, y: -2) // Внешний светлый блик сверху
                     .frame(width: finalLensWidth, height: 56)
                     .position(x: currentDragX, y: panelHeight / 2 - 8)
                     .animation(.interactiveSpring(response: 0.35, dampingFraction: 0.7, blendDuration: 0.1), value: currentDragX)
@@ -655,7 +693,7 @@ struct HomeView: View {
                     liquidTabItem(icon: "house.fill", label: localized("home"), index: 0, centerX: centers[0] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
                     liquidTabItem(icon: "book.fill", label: localized("journal"), index: 1, centerX: centers[1] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
                     liquidTabItem(icon: "waveform.path.ecg", label: localized("metrics"), index: 2, centerX: centers[2] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
-                    liquidTabItem(icon: "face.smiling.fill", label: "Дневник", index: 3, centerX: centers[3] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
+                    liquidTabItem(icon: "face.smiling.fill", label: "Настроение", index: 3, centerX: centers[3] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
                 }
                 .frame(width: barWidth, height: panelHeight)
                 .contentShape(Rectangle()) // Ограничиваем зону нажатия ТОЛЬКО самим баром!
@@ -765,8 +803,8 @@ struct HomeView: View {
                     LottieView(animationName: "aiaia").frame(width: 92, height: 92).clipShape(Circle())
                 }
                 .frame(width: 92, height: 92)
-                .shadow(color: Color.black.opacity(0.15), radius: 15, x: 0, y: 8)
-                .shadow(color: Color.white.opacity(0.3), radius: 10, x: -2, y: -2)
+                .shadow(color: Color.black.opacity(isDarkMode ? 0.4 : 0.15), radius: 15, x: 0, y: 8)
+                .shadow(color: Color.white.opacity(isDarkMode ? 0.1 : 0.3), radius: 10, x: -2, y: -2)
                 .scaleEffect(orbIsPressed ? 0.93 : (pulse ? 1.04 : 0.98))
                 .offset(y: orbBob ? -4 : 3)
                 .animation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true), value: pulse)
@@ -837,13 +875,13 @@ struct HomeView: View {
         return VStack(spacing: 4) {
             Image(systemName: icon)
                 .font(.system(size: 20, weight: isSelected ? .bold : .medium))
-                .foregroundColor(Color.black.opacity(iconOpacity))
+                .foregroundColor(iconTint.opacity(iconOpacity))
                 .scaleEffect(iconScale)
                 .offset(y: -yLift)
 
             Text(label)
                 .font(.system(size: 10, weight: isSelected ? .bold : .medium))
-                .foregroundColor(Color.black.opacity(labelOpacity))
+                .foregroundColor(iconTint.opacity(labelOpacity))
                 .scaleEffect(1 + liquidBoost * 0.05)
                 .offset(y: -yLift * 0.4)
         }
@@ -908,11 +946,8 @@ struct HomeView: View {
     private func loadUserName() {
         let nameKey = "userName_\(appState.userToken ?? "guest")"
         if let savedName = UserDefaults.standard.string(forKey: nameKey), !savedName.isEmpty {
-            // Принудительно устанавливаем имя из кэша для текущего токена
             appState.userName = savedName
         } else {
-            // Если в кэше для этого токена ничего нет, сбрасываем,
-            // чтобы не отображалось имя предыдущего юзера
             appState.userName = ""
         }
     }
@@ -983,6 +1018,206 @@ struct ScaleButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.96 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+// MARK: - НОВЫЙ ЭКРАН: Детализация Индекса Здоровья
+
+struct HealthIndexDetailSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
+    @ObservedObject var health: HealthKitManager
+
+    private let accent  = Color(red: 0.055, green: 0.647, blue: 0.914)
+    private let accent2 = Color(red: 0.024, green: 0.714, blue: 0.831)
+    
+    private var baseBg: Color { isDarkMode ? Color(red: 0.04, green: 0.06, blue: 0.10) : Color(red: 0.94, green: 0.97, blue: 1.0) }
+    private var cardBg: Color { isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.8) }
+    private var primaryText: Color { isDarkMode ? .white : Color(red: 0.06, green: 0.09, blue: 0.16) }
+    private var secondaryText: Color { isDarkMode ? .white.opacity(0.6) : Color(red: 0.5, green: 0.63, blue: 0.72) }
+    private var todaySleepHours: Double {
+            if let today = health.sleepWeek.first(where: { Calendar.current.isDateInToday($0.date) }) {
+                return today.hours
+            }
+            return 0.0
+        }
+    // Расчеты баллов (вынесены отдельно для визуализации)
+    private var stepsPoints: Int {
+        let goal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
+        let pct = min(Double(health.steps) / Double(goal), 1.0)
+        return Int(pct * 20)
+    }
+    
+    private var hrPoints: Int {
+        if health.heartRate > 0 {
+            return (health.heartRate >= 60 && health.heartRate <= 80) ? 10 : 5
+        }
+        return 7 // Значение по умолчанию, если нет данных
+    }
+    
+    private var sleepPoints: Int {
+            let goal = UserDefaults.standard.double(forKey: "sleepGoal").nonZero ?? 8.0
+            let pct = todaySleepHours > 0 ? min(todaySleepHours / goal, 1.0) : 0.7
+            return Int(pct * 10)
+        }
+    
+    private var totalScore: Int {
+        min(60 + stepsPoints + hrPoints + sleepPoints, 100)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                baseBg.ignoresSafeArea()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 24) {
+                        
+                        // Заголовок с большим числом
+                        VStack(spacing: 8) {
+                            ZStack {
+                                Circle()
+                                    .stroke(Color.white.opacity(isDarkMode ? 0.05 : 0.4), lineWidth: 12)
+                                    .frame(width: 140, height: 140)
+                                Circle()
+                                    .trim(from: 0, to: CGFloat(totalScore) / 100.0)
+                                    .stroke(
+                                        LinearGradient(colors: [accent, accent2], startPoint: .topLeading, endPoint: .bottomTrailing),
+                                        style: StrokeStyle(lineWidth: 12, lineCap: .round)
+                                    )
+                                    .frame(width: 140, height: 140)
+                                    .rotationEffect(.degrees(-90))
+                                
+                                VStack(spacing: 0) {
+                                    Text("\(totalScore)")
+                                        .font(.system(size: 48, weight: .black, design: .rounded))
+                                        .foregroundColor(primaryText)
+                                    Text("из 100")
+                                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                                        .foregroundColor(secondaryText)
+                                }
+                            }
+                            .padding(.vertical, 16)
+                            
+                            Text("Ваш индекс формируется на основе базовых параметров и данных вашей активности за сегодня.")
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(secondaryText)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 20)
+                        }
+                        
+                        // Детализация баллов
+                        VStack(spacing: 12) {
+                            metricBreakdownRow(
+                                icon: "person.fill", color: accent,
+                                title: "Базовый уровень", points: 60, max: 60,
+                                desc: "Стартовые баллы профиля"
+                            )
+                            metricBreakdownRow(
+                                icon: "figure.walk", color: Color(red: 0.1, green: 0.78, blue: 0.48),
+                                title: "Активность", points: stepsPoints, max: 20,
+                                desc: "На основе дневной цели по шагам"
+                            )
+                            metricBreakdownRow(
+                                icon: "heart.fill", color: Color(red: 0.95, green: 0.25, blue: 0.35),
+                                title: "Пульс", points: hrPoints, max: 10,
+                                desc: health.heartRate > 0 ? "Средний пульс в пределах нормы" : "Нет актуальных данных"
+                            )
+                            metricBreakdownRow(
+                                icon: "moon.stars.fill", color: Color(red: 0.55, green: 0.35, blue: 1.0),
+                                title: "Сон", points: sleepPoints, max: 10,
+                                desc: "На основе времени отдыха"
+                            )
+                        }
+                        
+                        // Блок AI-совета
+                        HStack(alignment: .top, spacing: 16) {
+                            Image(systemName: "sparkles")
+                                .font(.system(size: 20, weight: .bold))
+                                .foregroundColor(accent)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Как улучшить индекс?")
+                                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                                    .foregroundColor(primaryText)
+                                Text("Чтобы достичь максимума, старайтесь ежедневно закрывать кольца активности и спать не менее 8 часов.")
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(secondaryText)
+                                    .lineSpacing(3)
+                            }
+                        }
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(accent.opacity(isDarkMode ? 0.1 : 0.05))
+                                .overlay(RoundedRectangle(cornerRadius: 24).strokeBorder(accent.opacity(isDarkMode ? 0.2 : 0.1), lineWidth: 1))
+                        )
+                        
+                        Spacer(minLength: 20)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                }
+            }
+            .navigationTitle("Детализация индекса")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Готово") { dismiss() }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(accent)
+                }
+            }
+        }
+    }
+    
+    private func metricBreakdownRow(icon: String, color: Color, title: String, points: Int, max: Int, desc: String) -> some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(color.opacity(0.15))
+                    .frame(width: 44, height: 44)
+                Image(systemName: icon)
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(color)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(title)
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(primaryText)
+                    Spacer()
+                    Text("+\(points)")
+                        .font(.system(size: 15, weight: .black, design: .rounded))
+                        .foregroundColor(color)
+                }
+                
+                // Мини-прогресс бар
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(isDarkMode ? Color.white.opacity(0.1) : Color.black.opacity(0.06))
+                            .frame(height: 6)
+                        Capsule()
+                            .fill(color)
+                            .frame(width: max > 0 ? CGFloat(points) / CGFloat(max) * geo.size.width : 0, height: 6)
+                    }
+                }
+                .frame(height: 6)
+                .padding(.vertical, 2)
+                
+                Text(desc)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(secondaryText)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(cardBg)
+                .background(.ultraThinMaterial)
+                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(isDarkMode ? Color.white.opacity(0.1) : .clear, lineWidth: 1))
+        )
     }
 }
 

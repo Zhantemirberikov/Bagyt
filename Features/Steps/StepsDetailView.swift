@@ -14,15 +14,27 @@ struct StepsDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = StepsDetailViewModel()
 
+    // Включаем темную тему
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
+
     private let accent = Color(red: 0.055, green: 0.647, blue: 0.914)
     private let accent2 = Color(red: 0.024, green: 0.714, blue: 0.831)
     private let accent3 = Color(red: 0.36, green: 0.90, blue: 1.0)
     private let bg = Color(red: 0.93, green: 0.98, blue: 1.0)
 
+    // Динамическая палитра
+    private var primaryText: Color { isDarkMode ? .white : Color(red: 0.05, green: 0.12, blue: 0.18) }
+    private var secondaryText: Color { isDarkMode ? .white.opacity(0.6) : Color(red: 0.42, green: 0.60, blue: 0.68) }
+    private var cardBg: Color { isDarkMode ? Color(red: 0.08, green: 0.12, blue: 0.16).opacity(0.85) : Color.white.opacity(0.92) }
+    private var cardStroke: Color { isDarkMode ? Color.white.opacity(0.1) : .clear }
+
     var body: some View {
         ZStack {
+            // Динамический фон
             LinearGradient(
-                colors: [bg, Color.white, Color(red: 0.95, green: 0.99, blue: 1.0)],
+                colors: isDarkMode
+                    ? [Color(red: 0.04, green: 0.08, blue: 0.12), Color(red: 0.02, green: 0.05, blue: 0.08), Color(red: 0.01, green: 0.03, blue: 0.05)]
+                    : [bg, Color.white, Color(red: 0.95, green: 0.99, blue: 1.0)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -50,6 +62,7 @@ struct StepsDetailView: View {
                 }
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
         .onAppear {
             viewModel.load()
         }
@@ -62,13 +75,13 @@ struct StepsDetailView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.82))
+                        .fill(isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.82))
                         .frame(width: 40, height: 40)
                         .shadow(color: accent.opacity(0.12), radius: 6, x: 0, y: 2)
 
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color(red: 0.29, green: 0.45, blue: 0.55))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.8) : Color(red: 0.29, green: 0.45, blue: 0.55))
                 }
             }
 
@@ -77,12 +90,12 @@ struct StepsDetailView: View {
             VStack(spacing: 2) {
                 Text("ШАГИ")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(accent.opacity(0.75))
+                    .foregroundColor(accent.opacity(isDarkMode ? 0.9 : 0.75))
                     .tracking(1.5)
 
                 Text(viewModel.titleText)
                     .font(.system(size: 18, weight: .black))
-                    .foregroundColor(Color(red: 0.05, green: 0.12, blue: 0.18))
+                    .foregroundColor(primaryText)
             }
 
             Spacer()
@@ -104,7 +117,7 @@ struct StepsDetailView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .shadow(color: accent.opacity(0.32), radius: 18, x: 0, y: 8)
+                .shadow(color: accent.opacity(isDarkMode ? 0.15 : 0.32), radius: 18, x: 0, y: 8)
 
             Circle()
                 .fill(Color.white.opacity(0.09))
@@ -118,7 +131,7 @@ struct StepsDetailView: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("ВСЕГО ШАГОВ")
+                    Text("СУММАРНО ШАГОВ")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.white.opacity(0.78))
                         .tracking(1.0)
@@ -175,15 +188,16 @@ struct StepsDetailView: View {
 
     private var weekCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("НЕДЕЛЯ")
+            Text("НЕДЕЛЬНАЯ СВОДКА")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.42, green: 0.60, blue: 0.68))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             ZStack {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.92))
-                    .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .fill(cardBg)
+                    .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
 
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7),
@@ -199,7 +213,7 @@ struct StepsDetailView: View {
                                     .foregroundColor(
                                         viewModel.isSelected(day)
                                         ? .white.opacity(0.86)
-                                        : Color(red: 0.42, green: 0.60, blue: 0.68)
+                                        : secondaryText
                                     )
 
                                 Text(viewModel.dayNumber(day.date))
@@ -207,7 +221,7 @@ struct StepsDetailView: View {
                                     .foregroundColor(
                                         viewModel.isSelected(day)
                                         ? .white
-                                        : Color(red: 0.05, green: 0.12, blue: 0.18)
+                                        : primaryText
                                     )
 
                                 Text(day.steps > 0 ? day.compactSteps : "—")
@@ -217,7 +231,7 @@ struct StepsDetailView: View {
                                         ? .white.opacity(0.86)
                                         : day.steps > 0
                                             ? accent
-                                            : Color(red: 0.70, green: 0.80, blue: 0.84)
+                                            : secondaryText.opacity(0.6)
                                     )
                             }
                             .frame(maxWidth: .infinity)
@@ -233,7 +247,7 @@ struct StepsDetailView: View {
                                                 endPoint: .bottomTrailing
                                             )
                                         )
-                                        : AnyShapeStyle(Color(red: 0.95, green: 0.99, blue: 1.0))
+                                        : AnyShapeStyle(isDarkMode ? Color.white.opacity(0.08) : Color(red: 0.95, green: 0.99, blue: 1.0))
                                     )
                             )
                         }
@@ -247,12 +261,13 @@ struct StepsDetailView: View {
 
     private var hourlyCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("АКТИВНОСТЬ ПО ЧАСАМ")
+            Text("ПОЧАСОВОЙ ГРАФИК АКТИВНОСТИ")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.42, green: 0.60, blue: 0.68))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             ZStack {
+                // График всегда темный
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .fill(
                         LinearGradient(
@@ -265,7 +280,7 @@ struct StepsDetailView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .shadow(color: accent.opacity(0.22), radius: 20, x: 0, y: 10)
+                    .shadow(color: accent.opacity(isDarkMode ? 0.1 : 0.22), radius: 20, x: 0, y: 10)
 
                 Circle()
                     .fill(accent.opacity(0.18))
@@ -282,12 +297,12 @@ struct StepsDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Пульсирующий ритм дня")
+                            Text("Динамика активности")
                                 .font(.system(size: 18, weight: .black))
                                 .foregroundColor(.white)
 
-                            Text("Проведи пальцем по графику и смотри шаги в конкретный час")
-                                .font(.system(size: 12, weight: .medium))
+                            Text("Коснитесь графика для просмотра количества шагов в выбранный час")
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(Color.white.opacity(0.66))
                         }
 
@@ -298,7 +313,7 @@ struct StepsDetailView: View {
                                 Circle()
                                     .fill(accent3)
                                     .frame(width: 8, height: 8)
-                                Text("INTERACTIVE")
+                                Text("АНАЛИЗ ДАННЫХ")
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(Color.white.opacity(0.82))
                             }
@@ -337,45 +352,46 @@ struct StepsDetailView: View {
 
     private var detailsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ИНСАЙТЫ")
+            Text("КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.42, green: 0.60, blue: 0.68))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             VStack(spacing: 12) {
                 detailRow(
                     icon: "flag.checkered.2.crossed",
                     color: accent,
-                    title: "Прогресс цели",
+                    title: "Выполнение дневной нормы",
                     value: viewModel.progressText
                 )
 
                 detailRow(
                     icon: "clock.fill",
                     color: Color(red: 0.22, green: 0.68, blue: 0.82),
-                    title: "Самый активный час",
+                    title: "Пиковая активность",
                     value: viewModel.bestHourText
                 )
 
                 detailRow(
                     icon: "flame.fill",
                     color: Color(red: 1.0, green: 0.58, blue: 0.22),
-                    title: "Активных часов",
+                    title: "Часы активности (≥250)",
                     value: viewModel.activeHoursText
                 )
 
                 detailRow(
                     icon: "chart.bar.fill",
                     color: Color(red: 0.36, green: 0.58, blue: 0.96),
-                    title: "Среднее за неделю",
+                    title: "Среднее значение за неделю",
                     value: viewModel.weekAverageText
                 )
             }
             .padding(18)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.92))
-                    .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .fill(cardBg)
+                    .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
             )
         }
     }
@@ -384,7 +400,7 @@ struct StepsDetailView: View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(color.opacity(0.12))
+                    .fill(color.opacity(isDarkMode ? 0.2 : 0.12))
                     .frame(width: 42, height: 42)
 
                 Image(systemName: icon)
@@ -395,10 +411,10 @@ struct StepsDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(red: 0.05, green: 0.12, blue: 0.18))
-                Text("Данные из HealthKit")
+                    .foregroundColor(primaryText)
+                Text("Данные телеметрии HealthKit")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(red: 0.42, green: 0.60, blue: 0.68))
+                    .foregroundColor(secondaryText)
             }
 
             Spacer()
@@ -413,22 +429,24 @@ struct StepsDetailView: View {
         VStack(spacing: 16) {
             Image(systemName: "figure.walk.motion")
                 .font(.system(size: 46, weight: .light))
-                .foregroundColor(accent.opacity(0.35))
+                .foregroundColor(accent.opacity(isDarkMode ? 0.6 : 0.35))
 
-            Text("Нет данных по шагам")
+            Text("Нет данных телеметрии активности")
                 .font(.system(size: 18, weight: .black))
-                .foregroundColor(Color(red: 0.05, green: 0.12, blue: 0.18))
+                .foregroundColor(primaryText)
 
-            Text("Разреши доступ к шагам в HealthKit и походи немного с iPhone или Apple Watch.")
+            Text("Убедитесь, что Apple Watch или совместимое устройство синхронизирует измерения активности с HealthKit.")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(Color(red: 0.42, green: 0.60, blue: 0.68))
+                .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
         }
         .padding(36)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.92))
+                .fill(cardBg)
+                .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
         )
     }
 }
@@ -440,6 +458,7 @@ private struct StepsInteractiveRhythmChart: View {
     let accent3: Color
 
     @State private var selectedIndex: Int?
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
     private var maxSteps: Double {
         Double(max(data.map(\.steps).max() ?? 1, 1))
@@ -621,7 +640,7 @@ private struct StepsInteractiveRhythmChart: View {
         VStack(spacing: 4) {
             Text("\(hour.steps.formattedWithSeparator) шагов")
                 .font(.system(size: 11, weight: .black))
-                .foregroundColor(Color(red: 0.02, green: 0.12, blue: 0.18))
+                .foregroundColor(isDarkMode ? .white : Color(red: 0.02, green: 0.12, blue: 0.18))
 
             Text(hour.displayRangeText)
                 .font(.system(size: 9, weight: .bold))
@@ -631,9 +650,9 @@ private struct StepsInteractiveRhythmChart: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white)
+                .fill(isDarkMode ? Color(red: 0.12, green: 0.18, blue: 0.24) : Color.white)
         )
-        .shadow(color: accent3.opacity(0.25), radius: 12, x: 0, y: 6)
+        .shadow(color: accent3.opacity(isDarkMode ? 0.5 : 0.25), radius: 12, x: 0, y: 6)
     }
 
     private func currentSelection(barWidth: CGFloat, spacing: CGFloat, size: CGSize) -> (index: Int, hour: HourlySteps, x: CGFloat, y: CGFloat)? {
@@ -731,7 +750,7 @@ private final class StepsDetailViewModel: ObservableObject {
     }
 
     var titleText: String {
-        guard let selectedDay else { return "Шаги" }
+        guard let selectedDay else { return "Двигательная активность" }
         if Calendar.current.isDateInToday(selectedDay.date) { return "Сегодня" }
         if Calendar.current.isDateInYesterday(selectedDay.date) { return "Вчера" }
         return fullDateFormatter.string(from: selectedDay.date)
@@ -758,8 +777,8 @@ private final class StepsDetailViewModel: ObservableObject {
     }
 
     var bestHourBadgeText: String {
-        guard let best = hourly.max(by: { $0.steps < $1.steps }), best.steps > 0 else { return "Пик не найден" }
-        return "Пик: \(best.shortHour)"
+        guard let best = hourly.max(by: { $0.steps < $1.steps }), best.steps > 0 else { return "Максимум не зафиксирован" }
+        return "Макс.: \(best.shortHour)"
     }
 
     var activeHoursText: String {
@@ -952,4 +971,8 @@ private extension Int {
         formatter.locale = Locale(identifier: "ru_RU")
         return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
+}
+
+#Preview {
+    StepsDetailView()
 }

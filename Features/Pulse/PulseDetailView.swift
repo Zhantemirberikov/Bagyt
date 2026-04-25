@@ -6,16 +6,28 @@ import HealthKit
 struct PulseDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = PulseDetailViewModel()
+    
+    // Включаем темную тему
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
     private let accent = Color(red: 0.95, green: 0.25, blue: 0.25)
     private let accent2 = Color(red: 1.0, green: 0.42, blue: 0.38)
     private let accent3 = Color(red: 1.0, green: 0.72, blue: 0.72)
     private let bg = Color(red: 0.995, green: 0.95, blue: 0.96)
+    
+    // Динамическая палитра
+    private var primaryText: Color { isDarkMode ? .white : Color(red: 0.16, green: 0.08, blue: 0.12) }
+    private var secondaryText: Color { isDarkMode ? .white.opacity(0.6) : Color(red: 0.64, green: 0.50, blue: 0.56) }
+    private var cardBg: Color { isDarkMode ? Color(red: 0.12, green: 0.08, blue: 0.10).opacity(0.85) : Color.white.opacity(0.92) }
+    private var cardStroke: Color { isDarkMode ? Color.white.opacity(0.1) : .clear }
 
     var body: some View {
         ZStack {
+            // Динамический фон
             LinearGradient(
-                colors: [bg, Color.white, Color(red: 1.0, green: 0.97, blue: 0.98)],
+                colors: isDarkMode
+                    ? [Color(red: 0.08, green: 0.04, blue: 0.05), Color(red: 0.05, green: 0.02, blue: 0.03), Color(red: 0.04, green: 0.01, blue: 0.02)]
+                    : [bg, Color.white, Color(red: 1.0, green: 0.97, blue: 0.98)],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -43,6 +55,7 @@ struct PulseDetailView: View {
                 }
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
         .onAppear {
             viewModel.load()
         }
@@ -55,13 +68,13 @@ struct PulseDetailView: View {
             } label: {
                 ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.82))
+                        .fill(isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.82))
                         .frame(width: 40, height: 40)
                         .shadow(color: accent.opacity(0.12), radius: 6, x: 0, y: 2)
 
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color(red: 0.45, green: 0.33, blue: 0.36))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.8) : Color(red: 0.45, green: 0.33, blue: 0.36))
                 }
             }
 
@@ -70,12 +83,12 @@ struct PulseDetailView: View {
             VStack(spacing: 2) {
                 Text("ПУЛЬС")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(accent.opacity(0.75))
+                    .foregroundColor(accent.opacity(isDarkMode ? 0.9 : 0.75))
                     .tracking(1.5)
 
                 Text(viewModel.titleText)
                     .font(.system(size: 18, weight: .black))
-                    .foregroundColor(Color(red: 0.16, green: 0.08, blue: 0.12))
+                    .foregroundColor(primaryText)
             }
 
             Spacer()
@@ -98,7 +111,7 @@ struct PulseDetailView: View {
                         endPoint: .bottomTrailing
                     )
                 )
-                .shadow(color: accent.opacity(0.32), radius: 18, x: 0, y: 8)
+                .shadow(color: accent.opacity(isDarkMode ? 0.15 : 0.32), radius: 18, x: 0, y: 8)
 
             Circle()
                 .fill(Color.white.opacity(0.09))
@@ -112,7 +125,7 @@ struct PulseDetailView: View {
 
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("СРЕДНИЙ ПУЛЬС")
+                    Text("СРЕДНЯЯ ЧСС")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.white.opacity(0.76))
                         .tracking(1.0)
@@ -129,9 +142,9 @@ struct PulseDetailView: View {
                     }
 
                     HStack(spacing: 16) {
-                        infoPill(title: "Мин", value: viewModel.selectedDay?.minShortText ?? "—")
-                        infoPill(title: "Макс", value: viewModel.selectedDay?.maxShortText ?? "—")
-                        infoPill(title: "Последний", value: viewModel.selectedDay?.latestShortText ?? "—")
+                        infoPill(title: "Мин.", value: viewModel.selectedDay?.minShortText ?? "—")
+                        infoPill(title: "Макс.", value: viewModel.selectedDay?.maxShortText ?? "—")
+                        infoPill(title: "Тек.", value: viewModel.selectedDay?.latestShortText ?? "—")
                     }
                 }
 
@@ -165,15 +178,16 @@ struct PulseDetailView: View {
 
     private var weekCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("НЕДЕЛЯ")
+            Text("НЕДЕЛЬНАЯ СВОДКА")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.64, green: 0.50, blue: 0.56))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             ZStack {
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.92))
-                    .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .fill(cardBg)
+                    .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
 
                 LazyVGrid(
                     columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 7),
@@ -189,7 +203,7 @@ struct PulseDetailView: View {
                                     .foregroundColor(
                                         viewModel.isSelected(day)
                                         ? .white.opacity(0.86)
-                                        : Color(red: 0.62, green: 0.50, blue: 0.56)
+                                        : secondaryText
                                     )
 
                                 Text(viewModel.dayNumber(day.date))
@@ -197,7 +211,7 @@ struct PulseDetailView: View {
                                     .foregroundColor(
                                         viewModel.isSelected(day)
                                         ? .white
-                                        : Color(red: 0.16, green: 0.08, blue: 0.12)
+                                        : primaryText
                                     )
 
                                 Text(day.hasData ? day.averageText : "—")
@@ -207,7 +221,7 @@ struct PulseDetailView: View {
                                         ? .white.opacity(0.86)
                                         : day.hasData
                                             ? accent
-                                            : Color(red: 0.78, green: 0.70, blue: 0.74)
+                                            : secondaryText.opacity(0.6)
                                     )
                             }
                             .frame(maxWidth: .infinity)
@@ -223,7 +237,7 @@ struct PulseDetailView: View {
                                                 endPoint: .bottomTrailing
                                             )
                                         )
-                                        : AnyShapeStyle(Color(red: 0.99, green: 0.96, blue: 0.97))
+                                        : AnyShapeStyle(isDarkMode ? Color.white.opacity(0.08) : Color(red: 0.99, green: 0.96, blue: 0.97))
                                     )
                             )
                         }
@@ -237,12 +251,13 @@ struct PulseDetailView: View {
 
     private var ecgCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ЭКГ РИТМ")
+            Text("ГРАФИК СЕРДЕЧНОГО РИТМА")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.64, green: 0.50, blue: 0.56))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             ZStack {
+                // График всегда темный, чтобы выглядеть как медицинский монитор
                 RoundedRectangle(cornerRadius: 28, style: .continuous)
                     .fill(
                         LinearGradient(
@@ -255,7 +270,7 @@ struct PulseDetailView: View {
                             endPoint: .bottomTrailing
                         )
                     )
-                    .shadow(color: accent.opacity(0.24), radius: 20, x: 0, y: 10)
+                    .shadow(color: accent.opacity(isDarkMode ? 0.1 : 0.24), radius: 20, x: 0, y: 10)
 
                 Circle()
                     .fill(accent.opacity(0.18))
@@ -272,12 +287,12 @@ struct PulseDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Живая линия сердца")
+                            Text("Амплитуда ритма")
                                 .font(.system(size: 18, weight: .black))
                                 .foregroundColor(.white)
 
-                            Text("Проведи пальцем по графику и смотри пульс в конкретный момент")
-                                .font(.system(size: 12, weight: .medium))
+                            Text("Коснитесь графика для просмотра ЧСС в выбранный момент времени")
+                                .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(Color.white.opacity(0.66))
                         }
 
@@ -289,12 +304,12 @@ struct PulseDetailView: View {
                                     .fill(accent3)
                                     .frame(width: 8, height: 8)
 
-                                Text("INTERACTIVE")
+                                Text("АНАЛИЗ ЧСС")
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(Color.white.opacity(0.82))
                             }
 
-                            Text(viewModel.selectedDay?.peakBadgeText ?? "Пик не найден")
+                            Text(viewModel.selectedDay?.peakBadgeText ?? "Максимум не найден")
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundColor(accent3)
                         }
@@ -328,22 +343,23 @@ struct PulseDetailView: View {
 
     private var statsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ПОКАЗАТЕЛИ")
+            Text("КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ")
                 .font(.system(size: 11, weight: .bold))
-                .foregroundColor(Color(red: 0.64, green: 0.50, blue: 0.56))
+                .foregroundColor(secondaryText)
                 .tracking(0.9)
 
             VStack(spacing: 12) {
-                statRow(icon: "heart.fill", color: accent, title: "Средний пульс", value: viewModel.selectedDay?.averageFullText ?? "—")
-                statRow(icon: "arrow.down.heart.fill", color: Color(red: 1.0, green: 0.55, blue: 0.55), title: "Минимум", value: viewModel.selectedDay?.minFullText ?? "—")
-                statRow(icon: "arrow.up.heart.fill", color: Color(red: 1.0, green: 0.40, blue: 0.40), title: "Максимум", value: viewModel.selectedDay?.maxFullText ?? "—")
-                statRow(icon: "bed.double.fill", color: Color(red: 0.75, green: 0.60, blue: 1.0), title: "Пульс в покое", value: viewModel.restingHeartRateText)
+                statRow(icon: "heart.fill", color: accent, title: "Средняя ЧСС", value: viewModel.selectedDay?.averageFullText ?? "—")
+                statRow(icon: "arrow.down.heart.fill", color: Color(red: 1.0, green: 0.55, blue: 0.55), title: "Мин. ЧСС", value: viewModel.selectedDay?.minFullText ?? "—")
+                statRow(icon: "arrow.up.heart.fill", color: Color(red: 1.0, green: 0.40, blue: 0.40), title: "Макс. ЧСС", value: viewModel.selectedDay?.maxFullText ?? "—")
+                statRow(icon: "bed.double.fill", color: Color(red: 0.75, green: 0.60, blue: 1.0), title: "ЧСС в покое", value: viewModel.restingHeartRateText)
             }
             .padding(18)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.92))
-                    .shadow(color: accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .fill(cardBg)
+                    .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                    .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
             )
         }
     }
@@ -352,7 +368,7 @@ struct PulseDetailView: View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(color.opacity(0.12))
+                    .fill(color.opacity(isDarkMode ? 0.2 : 0.12))
                     .frame(width: 42, height: 42)
 
                 Image(systemName: icon)
@@ -363,10 +379,10 @@ struct PulseDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(red: 0.16, green: 0.08, blue: 0.12))
-                Text("На основе реальных измерений")
+                    .foregroundColor(primaryText)
+                Text("Данные телеметрии HealthKit")
                     .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(Color(red: 0.64, green: 0.50, blue: 0.56))
+                    .foregroundColor(secondaryText)
             }
 
             Spacer()
@@ -381,22 +397,24 @@ struct PulseDetailView: View {
         VStack(spacing: 16) {
             Image(systemName: "heart.slash.fill")
                 .font(.system(size: 46, weight: .light))
-                .foregroundColor(accent.opacity(0.35))
+                .foregroundColor(accent.opacity(isDarkMode ? 0.6 : 0.35))
 
-            Text("Нет данных о пульсе")
+            Text("Нет данных телеметрии ЧСС")
                 .font(.system(size: 18, weight: .black))
-                .foregroundColor(Color(red: 0.16, green: 0.08, blue: 0.12))
+                .foregroundColor(primaryText)
 
-            Text("Проверь доступ к HealthKit и убедись, что Apple Watch или iPhone записывают измерения пульса.")
+            Text("Убедитесь, что Apple Watch или совместимое устройство синхронизирует измерения пульса с HealthKit.")
                 .font(.system(size: 14, weight: .medium))
-                .foregroundColor(Color(red: 0.64, green: 0.50, blue: 0.56))
+                .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
         }
         .padding(36)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color.white.opacity(0.92))
+                .fill(cardBg)
+                .shadow(color: isDarkMode ? .clear : accent.opacity(0.08), radius: 12, x: 0, y: 4)
+                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(cardStroke, lineWidth: 1))
         )
     }
 }
@@ -408,6 +426,7 @@ private struct PulseInteractiveECGChart: View {
     let accent3: Color
 
     @State private var selectedIndex: Int?
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
     private var sortedSamples: [PulseDaySample] {
         samples.sorted { $0.date < $1.date }
@@ -520,7 +539,7 @@ private struct PulseInteractiveECGChart: View {
                             )
                     }
                 } else {
-                    Text("Недостаточно замеров для графика")
+                    Text("Недостаточно замеров для формирования графика")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.58))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -543,7 +562,7 @@ private struct PulseInteractiveECGChart: View {
         VStack(spacing: 4) {
             Text("\(Int(sample.bpm.rounded())) уд/мин")
                 .font(.system(size: 11, weight: .black))
-                .foregroundColor(Color(red: 0.16, green: 0.08, blue: 0.12))
+                .foregroundColor(isDarkMode ? .white : Color(red: 0.16, green: 0.08, blue: 0.12))
 
             Text(sample.timeText)
                 .font(.system(size: 9, weight: .bold))
@@ -553,9 +572,9 @@ private struct PulseInteractiveECGChart: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.white)
+                .fill(isDarkMode ? Color(red: 0.18, green: 0.12, blue: 0.14) : Color.white)
         )
-        .shadow(color: accent.opacity(0.25), radius: 12, x: 0, y: 6)
+        .shadow(color: accent.opacity(isDarkMode ? 0.5 : 0.25), radius: 12, x: 0, y: 6)
     }
 
     private func currentPoint(from points: [CGPoint]) -> (sample: PulseDaySample, point: CGPoint)? {
@@ -849,8 +868,8 @@ private struct PulseDay: Identifiable, Hashable {
     }
 
     var peakBadgeText: String {
-        guard let peakSample else { return "Пик не найден" }
-        return "Пик: \(Int(peakSample.bpm.rounded())) в \(peakSample.timeText)"
+        guard let peakSample else { return "Максимум не зафиксирован" }
+        return "Макс.: \(Int(peakSample.bpm.rounded())) в \(peakSample.timeText)"
     }
 
     var startLabel: String {
@@ -860,4 +879,8 @@ private struct PulseDay: Identifiable, Hashable {
     var endLabel: String {
         samples.last?.timeText ?? "23:59"
     }
+}
+
+#Preview {
+    PulseDetailView()
 }

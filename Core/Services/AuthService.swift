@@ -12,8 +12,8 @@ final class AuthService {
     private init() {}
 
     // ✅ Прямые URL эндпоинтов
-    private let registerURL = URL(string: "https://a2e3-185-18-253-5.ngrok-free.app/api/register")!
-    private let loginURL = URL(string: "https://a2e3-185-18-253-5.ngrok-free.app/api/login")!
+    private let registerURL = URL(string: "https://https://839c-185-18-253-5.ngrok-free.app/api/register")!
+    private let loginURL = URL(string: "https://839c-185-18-253-5.ngrok-free.app/api/login")!
 
     // MARK: - Login
     func login(email: String, password: String, completion: @escaping (Result<String, Error>) -> Void) {
@@ -251,7 +251,7 @@ final class AuthService {
         name: String?,
         completion: ((Result<String, Error>) -> Void)? = nil
     ) {
-        let url = URL(string: "https://a2e3-185-18-253-5.ngrok-free.app/api/social-login")!
+        let url = URL(string: "https://839c-185-18-253-5.ngrok-free.app/api/social-login")!
 
         let body: [String: Any] = [
             "provider": provider,   // "google" или "apple"

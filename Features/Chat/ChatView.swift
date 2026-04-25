@@ -43,7 +43,7 @@ class ChatStore: ObservableObject {
     // 🔄 ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМОВ
     // true  = Фейковые ответы (для тестов без интернета)
     // false = Реальные запросы на сервер через ChatService
-    let isTestMode: Bool = true
+    let isTestMode: Bool = false
     
     private let key       = "bagyt_chat_sessions_v4"
     private let activeKey = "bagyt_active_session_id"
@@ -274,6 +274,8 @@ struct ChatView: View {
     @StateObject private var store = ChatStore()
     @State private var currentSessionId: UUID? = nil
     @State private var showHistory = false
+    
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
     private let bg = Color(red: 0.878, green: 0.949, blue: 0.992)
 
@@ -284,9 +286,13 @@ struct ChatView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [bg, Color(red:0.941,green:0.976,blue:1.0), bg],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
+            LinearGradient(
+                colors: isDarkMode
+                    ? [Color(red: 0.05, green: 0.07, blue: 0.10), Color(red: 0.08, green: 0.10, blue: 0.15), Color(red: 0.05, green: 0.07, blue: 0.10)]
+                    : [bg, Color(red:0.941,green:0.976,blue:1.0), bg],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             if let session = activeSession {
                 ChatSessionView(
@@ -308,6 +314,7 @@ struct ChatView: View {
                     }
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
         .onAppear {
             if currentSessionId == nil {
                 let s = store.lastOrNew()
@@ -331,6 +338,8 @@ struct ChatHistoryView: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject var store: ChatStore
     let onSelect: (ChatSession) -> Void
+    
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
     @State private var renamingID    : UUID? = nil
     @State private var renameText    = ""
@@ -343,25 +352,31 @@ struct ChatHistoryView: View {
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [bg, Color(red:0.941,green:0.976,blue:1.0), bg],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
+            LinearGradient(
+                colors: isDarkMode
+                    ? [Color(red: 0.05, green: 0.07, blue: 0.10), Color(red: 0.08, green: 0.10, blue: 0.15), Color(red: 0.05, green: 0.07, blue: 0.10)]
+                    : [bg, Color(red:0.941,green:0.976,blue:1.0), bg],
+                startPoint: .topLeading, endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
 
             VStack(spacing: 0) {
                 HStack {
                     Button { dismiss() } label: {
                         ZStack {
-                            Circle().fill(Color.white.opacity(0.75)).frame(width: 40, height: 40)
+                            Circle()
+                                .fill(isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.75))
+                                .frame(width: 40, height: 40)
                                 .shadow(color: accent.opacity(0.10), radius: 6, x: 0, y: 2)
                             Image(systemName: "xmark")
                                 .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(Color(red:0.3,green:0.45,blue:0.6))
+                                .foregroundColor(isDarkMode ? .white.opacity(0.8) : Color(red:0.3,green:0.45,blue:0.6))
                         }
                     }
                     Spacer()
                     Text("История чатов")
                         .font(.system(size: 18, weight: .black))
-                        .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                        .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16))
                     Spacer()
                     if !store.sessions.isEmpty {
                         Button {
@@ -390,7 +405,7 @@ struct ChatHistoryView: View {
                             .foregroundColor(accent.opacity(0.35))
                         Text("Нет сохранённых чатов")
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(Color(red:0.4,green:0.55,blue:0.65))
+                            .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65))
                     }
                     Spacer()
                 } else {
@@ -410,12 +425,14 @@ struct ChatHistoryView: View {
                 }
             }
         }
+        .preferredColorScheme(isDarkMode ? .dark : .light)
         .confirmationDialog("Удалить все чаты?", isPresented: $showDeleteAll, titleVisibility: .visible) {
             Button("Удалить все", role: .destructive) { withAnimation { store.deleteAll() }; dismiss() }
             Button("Отмена", role: .cancel) {}
         }
         .alert("Переименовать чат", isPresented: $showRename) {
             TextField("Название", text: $renameText)
+                .colorScheme(isDarkMode ? .dark : .light)
             Button("Сохранить") {
                 if let id = renamingID, !renameText.trimmingCharacters(in: .whitespaces).isEmpty {
                     store.rename(id, to: renameText)
@@ -433,7 +450,7 @@ struct ChatHistoryView: View {
             HStack(spacing: 14) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.white.opacity(0.1))
+                        .fill(isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.1))
                         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -454,30 +471,30 @@ struct ChatHistoryView: View {
                     HStack {
                         Text(session.title)
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundColor(Color(red:0.06,green:0.09,blue:0.16)).lineLimit(1)
+                            .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16)).lineLimit(1)
                         Spacer()
                         Text(formatDate(session.updatedAt))
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(Color(red:0.55,green:0.67,blue:0.75))
+                            .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75))
                     }
                     Text(session.preview)
                         .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(Color(red:0.4,green:0.55,blue:0.65)).lineLimit(1)
+                        .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65)).lineLimit(1)
                     Text("\(session.messages.count) сообщ.")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Color(red:0.6,green:0.72,blue:0.78))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.6,green:0.72,blue:0.78))
                 }
                 Image(systemName: "chevron.right")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(Color(red:0.75,green:0.85,blue:0.90))
+                    .foregroundColor(isDarkMode ? .white.opacity(0.3) : Color(red:0.75,green:0.85,blue:0.90))
             }
             .padding(16)
             .background(
                 RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color.white.opacity(0.88))
-                    .shadow(color: accent.opacity(0.07), radius: 8, x: 0, y: 3)
+                    .fill(isDarkMode ? Color(red: 0.12, green: 0.14, blue: 0.18) : Color.white.opacity(0.88))
+                    .shadow(color: accent.opacity(isDarkMode ? 0 : 0.07), radius: 8, x: 0, y: 3)
                     .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.90), lineWidth: 1))
+                        .strokeBorder(isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.90), lineWidth: 1))
             )
         }
         .buttonStyle(PlainButtonStyle())
@@ -511,6 +528,8 @@ struct ChatHistoryView: View {
 // MARK: - ThinkingIndicator
 
 struct ThinkingIndicator: View {
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
+    
     private let accent  = Color(red: 0.055, green: 0.647, blue: 0.914)
     private let accent2 = Color(red: 0.024, green: 0.714, blue: 0.831)
     private let phases  = ["Думаю над ответом","Анализирую информацию","Формулирую ответ","Почти готово"]
@@ -541,7 +560,7 @@ struct ThinkingIndicator: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(phases[min(phase, phases.count-1)])
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(Color(red:0.4,green:0.55,blue:0.65))
+                    .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65))
                     .animation(.easeInOut, value: phase)
                 ZStack(alignment: .leading) {
                     Capsule().fill(accent.opacity(0.12)).frame(width: 120, height: 3)
@@ -560,9 +579,11 @@ struct ThinkingIndicator: View {
                     }
                 }
                 .padding(.horizontal, 14).padding(.vertical, 10)
-                .background(Color.white.opacity(0.90)
+                .background(
+                    (isDarkMode ? Color(red: 0.12, green: 0.14, blue: 0.18).opacity(0.9) : Color.white.opacity(0.90))
                     .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2))
+                    .shadow(color: isDarkMode ? .clear : .black.opacity(0.05), radius: 4, x: 0, y: 2)
+                )
             }
             Spacer(minLength: 60)
         }
@@ -586,6 +607,7 @@ struct ThinkingIndicator: View {
 struct ChatSessionView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var lang: LanguageManager
+    @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
     let sessionId    : UUID
     @ObservedObject var store: ChatStore
@@ -635,11 +657,11 @@ struct ChatSessionView: View {
         HStack(spacing: 10) {
             Button { onDismiss() } label: {
                 ZStack {
-                    Circle().fill(Color.white.opacity(0.75)).frame(width: 38, height: 38)
+                    Circle().fill(isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.75)).frame(width: 38, height: 38)
                         .shadow(color: accent.opacity(0.10), radius: 5, x: 0, y: 2)
                     Image(systemName: "chevron.left")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(Color(red:0.3,green:0.45,blue:0.6))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.8) : Color(red:0.3,green:0.45,blue:0.6))
                 }
             }
             ZStack {
@@ -664,7 +686,7 @@ struct ChatSessionView: View {
 
                 LottieView(animationName: "aiaia").frame(width: 42, height: 42).clipShape(Circle())
                 
-                // Pulse ring (White glass effect instead of blue)
+                // Pulse ring
                 Circle().stroke(Color.white.opacity(0.4), lineWidth: 1.5).frame(width: 42, height: 42)
                     .scaleEffect(orbPulse ? 1.35 : 1.0)
                     .opacity(orbPulse ? 0.0 : 0.8)
@@ -672,7 +694,7 @@ struct ChatSessionView: View {
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text("Bagyt").font(.system(size: 16, weight: .black))
-                    .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                    .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16))
                 HStack(spacing: 4) {
                     Circle()
                         .fill(isGenerating ? Color(red:1.0,green:0.65,blue:0.10) : Color(red:0.1,green:0.78,blue:0.48))
@@ -680,16 +702,16 @@ struct ChatSessionView: View {
                         .animation(.easeInOut(duration: 0.3), value: isGenerating)
                     Text(isGenerating ? "Bagyt печатает..." : "AI помощник · онлайн")
                         .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(Color(red:0.4,green:0.55,blue:0.65)).lineLimit(1)
+                        .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65)).lineLimit(1)
                 }
             }
             Spacer()
             Button { onShowHistory() } label: {
                 ZStack {
-                    Circle().fill(Color.white.opacity(0.75)).frame(width: 38, height: 38)
+                    Circle().fill(isDarkMode ? Color.white.opacity(0.1) : Color.white.opacity(0.75)).frame(width: 38, height: 38)
                         Image(systemName: "clock.arrow.circlepath")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(red:0.3,green:0.45,blue:0.6))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.8) : Color(red:0.3,green:0.45,blue:0.6))
                 }
             }
             Button { UIImpactFeedbackGenerator(style: .medium).impactOccurred(); onNewChat() } label: {
@@ -702,7 +724,7 @@ struct ChatSessionView: View {
         .padding(.horizontal, 14).padding(.vertical, 12)
         .background(
             Rectangle().fill(.ultraThinMaterial)
-                .overlay(Rectangle().fill(Color.white.opacity(0.50)))
+                .overlay(Rectangle().fill(isDarkMode ? Color.black.opacity(0.4) : Color.white.opacity(0.50)))
                 .ignoresSafeArea(edges: .top)
         )
     }
@@ -763,15 +785,15 @@ struct ChatSessionView: View {
             }
             VStack(spacing: 8) {
                 Text("Привет! Я Bagyt 👋").font(.system(size: 22, weight: .black))
-                    .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                    .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16))
                 Text("Ваш персональный AI-помощник по здоровью.\nСпросите меня о симптомах или получите рекомендации.")
                     .font(.system(size: 14, weight: .medium))
-                    .foregroundColor(Color(red:0.4,green:0.55,blue:0.65))
+                    .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65))
                     .multilineTextAlignment(.center).lineSpacing(4)
             }
             VStack(spacing: 8) {
                 Text("Попробуйте спросить:").font(.system(size: 12, weight: .bold))
-                    .foregroundColor(Color(red:0.55,green:0.67,blue:0.75)).tracking(0.5)
+                    .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75)).tracking(0.5)
                 ForEach(["Как улучшить качество сна?",
                          "У меня болит голова, что делать?",
                          "Сколько воды нужно пить в день?"], id: \.self) { q in
@@ -788,17 +810,17 @@ struct ChatSessionView: View {
                         }
                         .padding(.horizontal, 16).padding(.vertical, 11)
                         .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .fill(accent.opacity(0.07))
+                            .fill(accent.opacity(isDarkMode ? 0.15 : 0.07))
                             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .strokeBorder(accent.opacity(0.14), lineWidth: 1)))
+                                .strokeBorder(accent.opacity(isDarkMode ? 0.25 : 0.14), lineWidth: 1)))
                     }
                 }
             }
         }
         .padding(24)
         .background(RoundedRectangle(cornerRadius: 24, style: .continuous)
-            .fill(Color.white.opacity(0.85))
-            .shadow(color: accent.opacity(0.08), radius: 14, x: 0, y: 5))
+            .fill(isDarkMode ? Color(red: 0.12, green: 0.14, blue: 0.18) : Color.white.opacity(0.85))
+            .shadow(color: accent.opacity(isDarkMode ? 0 : 0.08), radius: 14, x: 0, y: 5))
         .padding(.vertical, 10)
     }
 
@@ -831,10 +853,9 @@ struct ChatSessionView: View {
                 HStack(spacing: 4) {
                     Text(msg.text.isEmpty ? " " : msg.text)
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(msg.isUser ? .white : Color(red:0.06,green:0.09,blue:0.16))
+                        .foregroundColor(msg.isUser ? .white : (isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16)))
                         .padding(.horizontal, 14).padding(.vertical, 10)
                         .background(bubbleBg(isUser: msg.isUser))
-                    // Курсор стриминга убран по запросу
                 }
                 .contextMenu {
                     if msg.isUser {
@@ -852,9 +873,9 @@ struct ChatSessionView: View {
 
                 HStack(spacing: 4) {
                     Text(fmtTime(msg.timestamp)).font(.system(size: 10, weight: .medium))
-                        .foregroundColor(Color(red:0.55,green:0.67,blue:0.75))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75))
                     if msg.isEdited { Text("· изм.").font(.system(size: 10, weight: .medium))
-                        .foregroundColor(Color(red:0.55,green:0.67,blue:0.75)) }
+                        .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75)) }
                 }
             }
             if !msg.isUser { Spacer(minLength: 50) }
@@ -866,11 +887,11 @@ struct ChatSessionView: View {
         if isUser {
             LinearGradient(colors: [accent, accent2], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .shadow(color: accent.opacity(0.28), radius: 6, x: 0, y: 2)
+                .shadow(color: accent.opacity(isDarkMode ? 0.1 : 0.28), radius: 6, x: 0, y: 2)
         } else {
-            Color.white.opacity(0.90)
+            (isDarkMode ? Color(red: 0.16, green: 0.18, blue: 0.22) : Color.white.opacity(0.90))
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
+                .shadow(color: isDarkMode ? .clear : .black.opacity(0.06), radius: 4, x: 0, y: 2)
         }
     }
 
@@ -882,22 +903,23 @@ struct ChatSessionView: View {
                 HStack(spacing: 10) {
                     TextField("Напишите Bagyt...", text: $inputText, axis: .vertical)
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(Color(red:0.06,green:0.09,blue:0.16))
+                        .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16))
                         .lineLimit(1...5).focused($focused)
+                        .colorScheme(isDarkMode ? .dark : .light)
                     if !inputText.isEmpty {
                         Button {
                             withAnimation(.spring(response: 0.3)) { inputText = "" }
                         } label: {
                             Image(systemName: "xmark.circle.fill").font(.system(size: 18))
-                                .foregroundColor(Color(red:0.6,green:0.72,blue:0.78))
+                                .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.6,green:0.72,blue:0.78))
                         }
                         .transition(.scale.combined(with: .opacity))
                     }
                 }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .background(RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .fill(Color.white.opacity(0.88))
-                    .shadow(color: accent.opacity(0.08), radius: 8, x: 0, y: 2))
+                    .fill(isDarkMode ? Color(red: 0.12, green: 0.14, blue: 0.18) : Color.white.opacity(0.88))
+                    .shadow(color: accent.opacity(isDarkMode ? 0 : 0.08), radius: 8, x: 0, y: 2))
 
                 if isGenerating {
                     Button {
@@ -916,7 +938,7 @@ struct ChatSessionView: View {
                     Button { sendMessage() } label: {
                         ZStack {
                             Circle().fill(sendColor).frame(width: 44, height: 44)
-                                .shadow(color: inputText.isEmpty ? .clear : accent.opacity(0.35), radius: 10, x: 0, y: 4)
+                                .shadow(color: inputText.isEmpty ? .clear : accent.opacity(isDarkMode ? 0.15 : 0.35), radius: 10, x: 0, y: 4)
                             Image(systemName: "arrow.up").font(.system(size: 17, weight: .bold)).foregroundColor(.white)
                         }
                     }
@@ -926,12 +948,12 @@ struct ChatSessionView: View {
             }
             Text("ИИ может ошибаться. Не заменяет консультацию врача.")
                 .font(.system(size: 10, weight: .medium))
-                .foregroundColor(Color(red:0.55,green:0.67,blue:0.75))
+                .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75))
                 .multilineTextAlignment(.center)
         }
         .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 6)
         .background(Rectangle().fill(.ultraThinMaterial)
-            .overlay(Rectangle().fill(Color.white.opacity(0.55)))
+            .overlay(Rectangle().fill(isDarkMode ? Color.black.opacity(0.4) : Color.white.opacity(0.55)))
             .ignoresSafeArea(edges: .bottom))
     }
 
@@ -940,15 +962,21 @@ struct ChatSessionView: View {
     private func editSheet(_ msg: BagytChatMessage) -> some View {
         NavigationStack {
             ZStack {
-                LinearGradient(colors: [bg, Color(red:0.941,green:0.976,blue:1.0), bg],
-                               startPoint: .topLeading, endPoint: .bottomTrailing).ignoresSafeArea()
+                LinearGradient(
+                    colors: isDarkMode
+                        ? [Color(red: 0.05, green: 0.07, blue: 0.10), Color(red: 0.08, green: 0.10, blue: 0.15), Color(red: 0.05, green: 0.07, blue: 0.10)]
+                        : [bg, Color(red:0.941,green:0.976,blue:1.0), bg],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ).ignoresSafeArea()
+                
                 VStack(spacing: 20) {
                     Text("Редактировать").font(.system(size: 18, weight: .black))
-                        .foregroundColor(Color(red:0.06,green:0.09,blue:0.16)).padding(.top, 20)
+                        .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16)).padding(.top, 20)
                     TextEditor(text: $editText).font(.system(size: 15))
                         .padding(14)
+                        .colorScheme(isDarkMode ? .dark : .light)
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(Color.white.opacity(0.88)))
+                            .fill(isDarkMode ? Color(red: 0.12, green: 0.14, blue: 0.18) : Color.white.opacity(0.88)))
                         .frame(minHeight: 120).padding(.horizontal, 20)
                     Button {
                         store.editAndRegenerate(messageId: msg.id, in: sessionId, newText: editText)
@@ -958,7 +986,7 @@ struct ChatSessionView: View {
                         Text("Сохранить").font(.system(size: 16, weight: .bold)).foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 16)
                             .background(LinearGradient(colors: [accent, accent2], startPoint: .leading, endPoint: .trailing))
-                            .clipShape(Capsule()).shadow(color: accent.opacity(0.35), radius: 12, x: 0, y: 5)
+                            .clipShape(Capsule()).shadow(color: accent.opacity(isDarkMode ? 0.15 : 0.35), radius: 12, x: 0, y: 5)
                     }.padding(.horizontal, 20)
                     Spacer()
                 }
