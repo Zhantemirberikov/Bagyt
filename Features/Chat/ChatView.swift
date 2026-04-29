@@ -74,12 +74,19 @@ class ChatStore: ObservableObject {
         UserDefaults.standard.set(data, forKey: key)
     }
 
-    func lastOrNew() -> ChatSession {
+    // MARK: - Возвращает последний активный чат.
+    // Если activeKey сохранён и такой чат существует — возвращаем его.
+    // Иначе берём самый свежий из списка.
+    // Новый чат НЕ создаётся здесь — это делает вызывающий код явно.
+    func lastActive() -> ChatSession? {
+        // 1. Пробуем по сохранённому ID
         if let idStr = UserDefaults.standard.string(forKey: activeKey),
            let uuid  = UUID(uuidString: idStr),
-           let found = sessions.first(where: { $0.id == uuid }) { return found }
-        if let first = sessions.first { return first }
-        return createNew()
+           let found = sessions.first(where: { $0.id == uuid }) {
+            return found
+        }
+        // 2. Самый свежий из существующих
+        return sessions.first
     }
 
     @discardableResult
@@ -112,7 +119,16 @@ class ChatStore: ObservableObject {
     }
 
     func delete(_ session: ChatSession) {
-        sessions.removeAll { $0.id == session.id }; save()
+        sessions.removeAll { $0.id == session.id }
+        // Если удалили активный — сбрасываем на самый свежий (или убираем ключ)
+        if UserDefaults.standard.string(forKey: activeKey) == session.id.uuidString {
+            if let next = sessions.first {
+                UserDefaults.standard.set(next.id.uuidString, forKey: activeKey)
+            } else {
+                UserDefaults.standard.removeObject(forKey: activeKey)
+            }
+        }
+        save()
     }
 
     func deleteAll() {
@@ -143,14 +159,12 @@ class ChatStore: ObservableObject {
         // НЕ сохраняем здесь — сохраним после завершения
 
         if isTestMode {
-            // Тестовый режим (фейковые ответы)
             let delay = Double.random(in: 1.8...2.8)
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 guard let self else { return }
                 self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: self.mockReply(to: text))
             }
         } else {
-            // Боевой режим (запрос на сервер)
             ChatService.shared.sendMessageToAI(userText: text) { [weak self] responseMsg in
                 guard let self else { return }
                 self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: responseMsg.text)
@@ -158,7 +172,7 @@ class ChatStore: ObservableObject {
         }
     }
     
-    // МЕТОД ДЛЯ РЕДАКТИРОВАНИЯ И ПОВТОРНОЙ ГЕНЕРАЦИИ
+    // MARK: - Редактирование и повторная генерация
     func editAndRegenerate(messageId: UUID, in sessionId: UUID, newText: String) {
         guard let sIdx = sessions.firstIndex(where: { $0.id == sessionId }),
               let mIdx = sessions[sIdx].messages.firstIndex(where: { $0.id == messageId }) else { return }
@@ -166,12 +180,10 @@ class ChatStore: ObservableObject {
         sessions[sIdx].messages[mIdx].text = newText
         sessions[sIdx].messages[mIdx].isEdited = true
 
-        // Убираем все сообщения ПОСЛЕ отредактированного
         if mIdx + 1 < sessions[sIdx].messages.count {
             sessions[sIdx].messages.removeSubrange((mIdx + 1)...)
         }
 
-        // Добавляем плейсхолдер AI
         let aiId = UUID()
         sessions[sIdx].messages.append(
             BagytChatMessage(id: aiId, text: "", isUser: false, isThinking: true)
@@ -181,14 +193,12 @@ class ChatStore: ObservableObject {
         sessions.sort { $0.updatedAt > $1.updatedAt }
         
         if isTestMode {
-            // Тестовый режим (фейковые ответы)
             let delay = Double.random(in: 1.8...2.8)
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 guard let self else { return }
                 self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: self.mockReply(to: newText))
             }
         } else {
-            // Боевой режим (запрос на сервер)
             ChatService.shared.sendMessageToAI(userText: newText) { [weak self] responseMsg in
                 guard let self else { return }
                 self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: responseMsg.text)
@@ -201,26 +211,23 @@ class ChatStore: ObservableObject {
               let mIdx = sessions[sIdx].messages.firstIndex(where: { $0.id == aiId })
         else { return }
 
-        // Переключаем isThinking → isStreaming
         sessions[sIdx].messages[mIdx].isThinking  = false
         sessions[sIdx].messages[mIdx].isStreaming  = true
 
         let chars = Array(fullText)
         var pos   = 0
 
-        // Используем DispatchQueue вместо Timer
         func appendNext() {
             guard let si = self.sessions.firstIndex(where: { $0.id == sessionId }),
                   let mi = self.sessions[si].messages.firstIndex(where: { $0.id == aiId }),
                   self.sessions[si].messages[mi].isStreaming
-            else { return }  // остановлено
+            else { return }
 
             if pos < chars.count {
                 self.sessions[si].messages[mi].text.append(chars[pos])
                 pos += 1
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.025) { appendNext() }
             } else {
-                // Готово
                 self.sessions[si].messages[mi].isStreaming = false
                 self.sessions[si].updatedAt = Date()
                 self.sessions.sort { $0.updatedAt > $1.updatedAt }
@@ -254,7 +261,6 @@ class ChatStore: ObservableObject {
         return s.messages.contains { $0.isThinking || $0.isStreaming }
     }
 
-    // Сохраняем моки на всякий случай для тестов
     private func mockReply(to text: String) -> String {
         ["Я понимаю ваш вопрос. На основе медицинских данных — это нормальная ситуация. Рекомендую обратиться к специалисту для детальной консультации.",
          "Регулярные нагрузки и сбалансированное питание значительно улучшают самочувствие. Постарайтесь выпивать не менее 2 литров воды в день.",
@@ -284,6 +290,24 @@ struct ChatView: View {
         return store.sessions.first(where: { $0.id == id })
     }
 
+    /// Находит последний активный чат или создаёт новый если сессий нет.
+    /// Вызывается при onAppear и при изменении списка сессий.
+    private func resolveActiveSession() {
+        if let id = currentSessionId, store.sessions.first(where: { $0.id == id }) != nil {
+            // Текущая сессия жива — ничего не делаем
+            return
+        }
+        if let existing = store.lastActive() {
+            currentSessionId = existing.id
+            store.setActive(existing)
+        } else {
+            // Сессий нет совсем (первый запуск или удалили все)
+            let s = store.createNew()
+            currentSessionId = s.id
+            store.setActive(s)
+        }
+    }
+
     var body: some View {
         ZStack {
             LinearGradient(
@@ -294,32 +318,38 @@ struct ChatView: View {
             )
             .ignoresSafeArea()
 
+            // ✅ FIX: activeSession может быть nil только в первый момент до onAppear.
+            // Не создаём новый чат здесь — всё в onAppear.
             if let session = activeSession {
                 ChatSessionView(
                     sessionId: session.id,
                     store: store,
                     onDismiss:     { dismiss() },
-                    onNewChat:     { let s = store.createNew(); store.setActive(s); currentSessionId = s.id },
+                    onNewChat:     {
+                        let s = store.createNew()
+                        store.setActive(s)
+                        currentSessionId = s.id
+                    },
                     onShowHistory: { showHistory = true }
                 )
                 .id(session.id)
                 .environmentObject(appState)
                 .environmentObject(lang)
             } else {
+                // Пустой экран пока onAppear не отработал (мгновенно)
                 Color.clear
-                    .onAppear {
-                        let s = store.createNew()
-                        currentSessionId = s.id
-                        store.setActive(s)
-                    }
             }
         }
         .preferredColorScheme(isDarkMode ? .dark : .light)
         .onAppear {
-            if currentSessionId == nil {
-                let s = store.lastOrNew()
-                currentSessionId = s.id
-                store.setActive(s)
+            resolveActiveSession()
+        }
+        // ✅ FIX: Реагируем на любое изменение списка сессий (deleteAll, delete).
+        // Если текущая сессия пропала — сразу находим или создаём новую.
+        .onChange(of: store.sessions) { sessions in
+            let stillExists = sessions.first(where: { $0.id == currentSessionId }) != nil
+            if !stillExists {
+                resolveActiveSession()
             }
         }
         .sheet(isPresented: $showHistory) {
@@ -665,28 +695,24 @@ struct ChatSessionView: View {
                 }
             }
             ZStack {
-                // Liquid Base
                 Circle()
                     .fill(Color.white.opacity(0.1))
                     .background(.ultraThinMaterial, in: Circle())
                     .frame(width: 42, height: 42)
                     .shadow(color: Color.black.opacity(0.1), radius: 5, x: 0, y: 3)
                 
-                // Chromatic Aberration
                 Circle()
                     .strokeBorder(LinearGradient(stops: [.init(color: Color.cyan.opacity(0.6), location: 0.0), .init(color: .clear, location: 0.3), .init(color: .clear, location: 0.7), .init(color: Color.purple.opacity(0.6), location: 1.0)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 2)
                     .frame(width: 42, height: 42)
                     .blur(radius: 1.5)
                     .blendMode(.plusLighter)
 
-                // White Highlight
                 Circle()
                     .strokeBorder(LinearGradient(stops: [.init(color: .white.opacity(0.9), location: 0), .init(color: .white.opacity(0.1), location: 0.3), .init(color: .white.opacity(0.1), location: 0.7), .init(color: .white.opacity(0.4), location: 1)], startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
                     .frame(width: 42, height: 42)
 
                 LottieView(animationName: "aiaia").frame(width: 42, height: 42).clipShape(Circle())
                 
-                // Pulse ring
                 Circle().stroke(Color.white.opacity(0.4), lineWidth: 1.5).frame(width: 42, height: 42)
                     .scaleEffect(orbPulse ? 1.35 : 1.0)
                     .opacity(orbPulse ? 0.0 : 0.8)
