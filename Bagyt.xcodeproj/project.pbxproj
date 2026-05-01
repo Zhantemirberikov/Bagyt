@@ -21,6 +21,7 @@
 		1394712D2F9A303100DE4019 /* StepsDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1394712C2F9A302700DE4019 /* StepsDetailView.swift */; };
 		139471342F9CE70700DE4019 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139471322F9CE70700DE4019 /* APIClient.swift */; };
 		139471352F9CE70700DE4019 /* APIConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139471332F9CE70700DE4019 /* APIConfig.swift */; };
+		1394713C2FA4B00100DE4019 /* HealthMetricsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1394713B2FA4B00100DE4019 /* HealthMetricsService.swift */; };
 		1394713A2FA1E3BF00DE4019 /* AnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139471392FA1E3B400DE4019 /* AnalysisView.swift */; };
 		13A15AE32F93930B007A58B1 /* GlassCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A15AE22F93930B007A58B1 /* GlassCard.swift */; };
 		13A15AE52F939744007A58B1 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13A15AE42F939738007A58B1 /* AuthViewModel.swift */; };
@@ -71,6 +72,7 @@
 		139471332F9CE70700DE4019 /* APIConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfig.swift; sourceTree = "<group>"; };
 		139471372F9CE73000DE4019 /* APIDTOs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIDTOs.swift; sourceTree = "<group>"; };
 		139471392FA1E3B400DE4019 /* AnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisView.swift; sourceTree = "<group>"; };
+		1394713B2FA4B00100DE4019 /* HealthMetricsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthMetricsService.swift; sourceTree = "<group>"; };
 		13A15AE22F93930B007A58B1 /* GlassCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassCard.swift; sourceTree = "<group>"; };
 		13A15AE42F939738007A58B1 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		13A15AE82F939BC8007A58B1 /* GlassPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassPanel.swift; sourceTree = "<group>"; };
@@ -235,6 +237,7 @@
 				13CE3E702F9377840091C508 /* ChatService.swift */,
 				139471322F9CE70700DE4019 /* APIClient.swift */,
 				139471332F9CE70700DE4019 /* APIConfig.swift */,
+				1394713B2FA4B00100DE4019 /* HealthMetricsService.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -453,6 +456,7 @@
 			files = (
 				139471342F9CE70700DE4019 /* APIClient.swift in Sources */,
 				139471352F9CE70700DE4019 /* APIConfig.swift in Sources */,
+				1394713C2FA4B00100DE4019 /* HealthMetricsService.swift in Sources */,
 				13CE3E852F9377840091C508 /* AuthService.swift in Sources */,
 				13CE3E862F9377840091C508 /* BagytApp.swift in Sources */,
 				139471202F9A1EBA00DE4019 /* UserProfileStore.swift in Sources */,

@@ -127,6 +127,22 @@ final class HealthKitManager: ObservableObject {
         fetchSteps()
         fetchHeartRate()
         fetchSleepWeek()
+
+        // The three fetches above are async and update @Published values
+        // on the main queue as their HK queries complete. Wait a few
+        // seconds for them to settle, then ship a snapshot to the
+        // Panacea API so the React dashboard's Health Summary card
+        // reflects what's on the phone. Service handles auth + skips
+        // when there's nothing to send.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self else { return }
+            let sleepHours = self.homeSleepDay?.hours ?? self.sleep
+            HealthMetricsService.shared.uploadSnapshot(
+                steps: self.steps,
+                heartRate: self.heartRate,
+                sleepMinutes: Int(round(sleepHours * 60))
+            )
+        }
     }
 
     func selectSleepDay(_ day: SleepDay) {
