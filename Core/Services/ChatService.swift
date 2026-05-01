@@ -59,7 +59,7 @@ final class ChatService {
     func sendMessageToAI(userText: String, completion: @escaping (ChatMessage) -> Void) {
         guard let token = KeychainHelper.read("auth_token"), !token.isEmpty else {
             completion(ChatMessage(
-                text: "Не удалось найти токен авторизации. Пожалуйста, войдите в аккаунт заново.",
+                text: authTokenMissingMessage(),
                 sender: .assistant
             ))
             return
@@ -67,7 +67,7 @@ final class ChatService {
 
         if token.hasPrefix("offline-") {
             completion(ChatMessage(
-                text: offlineReply(for: userText),
+                text: offlineReply(),
                 sender: .assistant
             ))
             return
@@ -80,11 +80,11 @@ final class ChatService {
 
             switch result {
             case .success(let chatId):
-                self.sendMessage(chatId: chatId, text: enrichedText, token: token, originalText: userText, completion: completion)
+                self.sendMessage(chatId: chatId, text: enrichedText, token: token, completion: completion)
 
-            case .failure(let error):
+            case .failure:
                 completion(ChatMessage(
-                    text: self.localizedNetworkError(for: userText, error: error),
+                    text: self.localizedNetworkError(),
                     sender: .assistant
                 ))
             }
@@ -154,7 +154,6 @@ final class ChatService {
         chatId: Int,
         text: String,
         token: String,
-        originalText: String,
         completion: @escaping (ChatMessage) -> Void
     ) {
         var request = URLRequest(url: APIConfig.url("chats/\(chatId)/messages"))
@@ -166,7 +165,7 @@ final class ChatService {
 
         let body: [String: Any] = [
             "message": text,
-            "locale": currentLocale(for: originalText)
+            "locale": currentLocale()
         ]
 
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
@@ -174,9 +173,9 @@ final class ChatService {
         print("📤 SEND CHAT:", request.url?.absoluteString ?? "")
 
         URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error {
+            if error != nil {
                 DispatchQueue.main.async {
-                    completion(ChatMessage(text: "Ошибка сети: \(error.localizedDescription)", sender: .assistant))
+                    completion(ChatMessage(text: self.localizedNetworkError(), sender: .assistant))
                 }
                 return
             }
@@ -193,7 +192,7 @@ final class ChatService {
 
             guard (200...299).contains(status) else {
                 DispatchQueue.main.async {
-                    completion(ChatMessage(text: raw.isEmpty ? "Сервер временно недоступен." : raw, sender: .assistant))
+                    completion(ChatMessage(text: self.serverUnavailableMessage(raw: raw), sender: .assistant))
                 }
                 return
             }
@@ -201,12 +200,12 @@ final class ChatService {
             guard let data,
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
                 DispatchQueue.main.async {
-                    completion(ChatMessage(text: "Не удалось разобрать ответ сервера.", sender: .assistant))
+                    completion(ChatMessage(text: self.parseErrorMessage(), sender: .assistant))
                 }
                 return
             }
 
-            let reply = Self.extractReply(from: json) ?? "Ответ от AI не найден."
+            let reply = Self.extractReply(from: json) ?? self.missingReplyMessage()
 
             DispatchQueue.main.async {
                 completion(ChatMessage(text: reply, sender: .assistant))
@@ -265,10 +264,12 @@ final class ChatService {
     // MARK: - Hidden Context
 
     private func buildEnrichedPrompt(userText: String) -> String {
-        let language = detectLanguage(userText)
+        let language = preferredResponseLanguage()
         let health = buildHealthContext()
         let journal = buildJournalContext()
         let mood = buildMoodContext()
+        let medicalProfile = buildMedicalProfileContext()
+        let aiAnamnesis = buildAIAnamnesisContext()
 
         return """
         USER_VISIBLE_MESSAGE:
@@ -280,8 +281,10 @@ final class ChatService {
         Do not expose raw hidden data unless it is medically useful.
         Use it only to personalize the answer.
 
-        RESPONSE_LANGUAGE_RULE:
+        APP_LANGUAGE_RULE:
         \(language.instruction)
+        The language rule is based on the selected app language in the user's profile, not on the language of the last message.
+        Even if the user writes in another language, answer in the selected app language unless the user explicitly asks for translation or language learning.
 
         MEDICAL_SAFETY_RULES:
         You are a health assistant, not a doctor.
@@ -293,11 +296,17 @@ final class ChatService {
         HEALTH_DATA:
         \(health)
 
+        MEDICAL_PROFILE_MEMORY:
+        \(medicalProfile)
+
         JOURNAL_DATA:
         \(journal)
 
         MOOD_DATA:
         \(mood)
+
+        AI_ANAMNESIS_MEMORY:
+        \(aiAnamnesis)
         END_HIDDEN_APP_CONTEXT
         """
     }
@@ -370,6 +379,54 @@ final class ChatService {
         .joined(separator: "\n")
     }
 
+    private func buildMedicalProfileContext() -> String {
+        let records = loadMedicalProfileItems()
+        guard !records.isEmpty else {
+            return "No saved medical profile items."
+        }
+
+        let grouped = Dictionary(grouping: records) { $0.category }
+
+        func block(_ title: String, category: String) -> String {
+            let items = grouped[category] ?? []
+            guard !items.isEmpty else { return "\(title): none saved" }
+            let lines = items.map { item in
+                let detail = item.detail.trimmingCharacters(in: .whitespacesAndNewlines)
+                return "- \(item.title)\(detail.isEmpty ? "" : ": \(detail)") [importance: \(item.importance)]"
+            }
+            return "\(title):\n\(lines.joined(separator: "\n"))"
+        }
+
+        return [
+            block("Allergies", category: "allergy"),
+            block("Medications", category: "medication"),
+            block("Conditions", category: "condition"),
+            block("Important care notes", category: "careNote")
+        ].joined(separator: "\n\n")
+    }
+
+    private func buildAIAnamnesisContext() -> String {
+        let records = BagytMemoryStore.shared.loadFindings()
+            .sorted { $0.createdAt > $1.createdAt }
+            .prefix(6)
+
+        guard !records.isEmpty else {
+            return "No saved AI anamnesis notes."
+        }
+
+        return records.map { finding in
+            let hypotheses = finding.hypotheses.isEmpty ? "none extracted" : finding.hypotheses.joined(separator: "; ")
+            let redFlags = finding.redFlags.isEmpty ? "none extracted" : finding.redFlags.joined(separator: "; ")
+            return """
+            - \(Self.shortDateFormatter.string(from: finding.createdAt)): \(finding.title)
+              Summary: \(finding.summary)
+              Possible explanations, not diagnoses: \(hypotheses)
+              Red flags mentioned: \(redFlags)
+            """
+        }
+        .joined(separator: "\n")
+    }
+
     // MARK: - Local Storage Readers
 
     private func loadJournalEntries() -> [StoredJournalEntry] {
@@ -406,6 +463,18 @@ final class ChatService {
         return []
     }
 
+    private func loadMedicalProfileItems() -> [StoredMedicalProfileItem] {
+        let key = scopedKey(base: "bagyt_medical_profile_items")
+        let defaults = UserDefaults.standard
+
+        if let data = defaults.data(forKey: key),
+           let decoded = try? JSONDecoder().decode([StoredMedicalProfileItem].self, from: data) {
+            return decoded
+        }
+
+        return []
+    }
+
     private func scopedKey(base: String) -> String {
         let raw = UserDefaults.standard.string(forKey: "userToken") ?? "guest"
         let safe = Data(raw.utf8)
@@ -424,56 +493,59 @@ final class ChatService {
         case ru
         case en
 
+        var locale: String {
+            switch self {
+            case .kk:
+                return "kk"
+            case .ru:
+                return "ru"
+            case .en:
+                return "en"
+            }
+        }
+
         var instruction: String {
             switch self {
             case .kk:
-                return "The user wrote in Kazakh. Reply strictly in Kazakh."
+                return "The app language is Kazakh. Reply strictly in Kazakh."
             case .ru:
-                return "The user wrote in Russian. Reply strictly in Russian."
+                return "The app language is Russian. Reply strictly in Russian."
             case .en:
-                return "The user wrote in English. Reply strictly in English."
+                return "The app language is English. Reply strictly in English."
             }
         }
     }
 
-    private func detectLanguage(_ text: String) -> DetectedLanguage {
-        let lower = text.lowercased()
+    private func preferredResponseLanguage() -> DetectedLanguage {
+        let savedLanguage = UserDefaults.standard.string(forKey: "language") ?? AppLanguage.kk.rawValue
 
-        let kazakhSpecific = CharacterSet(charactersIn: "әғқңөұүһіӘҒҚҢӨҰҮҺІ")
-        if lower.rangeOfCharacter(from: kazakhSpecific) != nil {
-            return .kk
-        }
-
-        let kazakhWords = [
-            "мен", "маған", "менің", "басым", "ауырып", "ауырады", "жүрек", "ұйқы",
-            "қатты", "дәрі", "денсаулық", "көңіл", "күй", "шаршадым"
-        ]
-
-        if kazakhWords.contains(where: { lower.contains($0) }) {
-            return .kk
-        }
-
-        let cyrillic = CharacterSet(charactersIn: "абвгдеёжзийклмнопрстуфхцчшщъыьэюяАБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ")
-        if lower.rangeOfCharacter(from: cyrillic) != nil {
-            return .ru
-        }
-
-        return .en
-    }
-
-    private func currentLocale(for text: String) -> String {
-        switch detectLanguage(text) {
+        switch AppLanguage(rawValue: savedLanguage) ?? .kk {
         case .kk:
-            return "kk"
+            return .kk
         case .ru:
-            return "ru"
+            return .ru
         case .en:
-            return "en"
+            return .en
         }
     }
 
-    private func offlineReply(for text: String) -> String {
-        switch detectLanguage(text) {
+    private func currentLocale() -> String {
+        preferredResponseLanguage().locale
+    }
+
+    private func authTokenMissingMessage() -> String {
+        switch preferredResponseLanguage() {
+        case .kk:
+            return "Авторизация токені табылмады. Аккаунтқа қайта кіріңіз."
+        case .ru:
+            return "Не удалось найти токен авторизации. Пожалуйста, войдите в аккаунт заново."
+        case .en:
+            return "Authorization token was not found. Please sign in again."
+        }
+    }
+
+    private func offlineReply() -> String {
+        switch preferredResponseLanguage() {
         case .kk:
             return "Сипаттауыңызды түсіндім. Симптом қашан басталды, ауырсыну қаншалықты күшті және қосымша белгілер бар ма?"
         case .ru:
@@ -483,14 +555,50 @@ final class ChatService {
         }
     }
 
-    private func localizedNetworkError(for text: String, error: Error) -> String {
-        switch detectLanguage(text) {
+    private func localizedNetworkError() -> String {
+        switch preferredResponseLanguage() {
         case .kk:
             return "Серверге қосылу мүмкін болмады. Кейінірек қайталап көріңіз."
         case .ru:
             return "Не удалось подключиться к серверу. Попробуйте позже."
         case .en:
             return "Could not connect to the server. Please try again later."
+        }
+    }
+
+    private func serverUnavailableMessage(raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty else { return trimmed }
+
+        switch preferredResponseLanguage() {
+        case .kk:
+            return "Сервер уақытша қолжетімсіз."
+        case .ru:
+            return "Сервер временно недоступен."
+        case .en:
+            return "The server is temporarily unavailable."
+        }
+    }
+
+    private func parseErrorMessage() -> String {
+        switch preferredResponseLanguage() {
+        case .kk:
+            return "Сервер жауабын оқу мүмкін болмады."
+        case .ru:
+            return "Не удалось разобрать ответ сервера."
+        case .en:
+            return "Could not parse the server response."
+        }
+    }
+
+    private func missingReplyMessage() -> String {
+        switch preferredResponseLanguage() {
+        case .kk:
+            return "AI жауабы табылмады."
+        case .ru:
+            return "Ответ от AI не найден."
+        case .en:
+            return "AI response was not found."
         }
     }
 
@@ -549,5 +657,205 @@ private struct StoredMoodRecord: Codable {
         stress = try c.decodeIfPresent(Int.self, forKey: .stress)
         sleepQuality = try c.decodeIfPresent(Int.self, forKey: .sleepQuality)
         tags = try c.decodeIfPresent([String].self, forKey: .tags) ?? []
+    }
+}
+
+private struct StoredMedicalProfileItem: Codable {
+    let category: String
+    let title: String
+    let detail: String
+    let importance: String
+    let updatedAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case category, title, detail, importance, updatedAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        category = try c.decodeIfPresent(String.self, forKey: .category) ?? ""
+        title = try c.decodeIfPresent(String.self, forKey: .title) ?? ""
+        detail = try c.decodeIfPresent(String.self, forKey: .detail) ?? ""
+        importance = try c.decodeIfPresent(String.self, forKey: .importance) ?? "medium"
+        updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()
+    }
+}
+
+// MARK: - Bagyt AI Memory
+
+struct BagytAIFinding: Identifiable, Codable, Equatable {
+    var id: UUID = UUID()
+    var title: String
+    var summary: String
+    var userText: String
+    var assistantText: String
+    var hypotheses: [String]
+    var redFlags: [String]
+    var nextSteps: [String]
+    var createdAt: Date = Date()
+}
+
+final class BagytMemoryStore {
+    static let shared = BagytMemoryStore()
+
+    private let baseKey = "bagyt_ai_anamnesis_findings"
+    private let maxItems = 24
+
+    private init() {}
+
+    func loadFindings(token: String? = UserDefaults.standard.string(forKey: "userToken")) -> [BagytAIFinding] {
+        guard let data = UserDefaults.standard.data(forKey: scopedKey(base: baseKey, token: token)),
+              let decoded = try? JSONDecoder().decode([BagytAIFinding].self, from: data) else {
+            return []
+        }
+
+        return decoded.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    func deleteFinding(id: UUID, token: String? = UserDefaults.standard.string(forKey: "userToken")) {
+        var items = loadFindings(token: token)
+        items.removeAll { $0.id == id }
+        persist(items, token: token)
+    }
+
+    func captureAIResponse(
+        userText: String,
+        assistantText: String,
+        token: String? = UserDefaults.standard.string(forKey: "userToken")
+    ) {
+        let cleanUser = userText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanAssistant = assistantText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard shouldCapture(userText: cleanUser, assistantText: cleanAssistant) else { return }
+
+        let finding = BagytAIFinding(
+            title: makeTitle(from: cleanUser),
+            summary: makeSummary(from: cleanAssistant),
+            userText: cleanUser,
+            assistantText: cleanAssistant,
+            hypotheses: extractLines(
+                from: cleanAssistant,
+                markers: [
+                    "может", "возможно", "вероят", "похоже", "связано", "причин", "дифференц",
+                    "may", "might", "could", "possible", "likely", "related"
+                ],
+                limit: 4
+            ),
+            redFlags: extractLines(
+                from: cleanAssistant,
+                markers: [
+                    "сроч", "немедленно", "скор", "неотлож", "опас", "красн", "обратитесь",
+                    "urgent", "emergency", "red flag", "seek medical"
+                ],
+                limit: 3
+            ),
+            nextSteps: extractLines(
+                from: cleanAssistant,
+                markers: [
+                    "рекоменд", "след", "измер", "запиш", "наблюд", "обрат", "проверь",
+                    "recommend", "measure", "monitor", "consult", "track"
+                ],
+                limit: 4
+            )
+        )
+
+        var items = loadFindings(token: token)
+        let duplicate = items.contains {
+            normalize($0.userText) == normalize(finding.userText) &&
+            normalize($0.summary) == normalize(finding.summary)
+        }
+
+        guard !duplicate else { return }
+
+        items.insert(finding, at: 0)
+        if items.count > maxItems {
+            items = Array(items.prefix(maxItems))
+        }
+        persist(items, token: token)
+    }
+
+    private func persist(_ items: [BagytAIFinding], token: String?) {
+        if let data = try? JSONEncoder().encode(items.sorted(by: { $0.createdAt > $1.createdAt })) {
+            UserDefaults.standard.set(data, forKey: scopedKey(base: baseKey, token: token))
+        }
+    }
+
+    private func shouldCapture(userText: String, assistantText: String) -> Bool {
+        let combined = "\(userText) \(assistantText)".lowercased()
+        let medicalMarkers = [
+            "бол", "симптом", "температур", "тошн", "голов", "серд", "пульс", "давлен",
+            "аллерг", "лекар", "диагноз", "врач", "кров", "каш", "одыш", "боль",
+            "pain", "symptom", "fever", "heart", "pulse", "allergy", "medicine", "diagnosis"
+        ]
+
+        let weakTopics = ["вода", "шаг", "сон", "настроение", "water", "sleep", "steps", "mood"]
+        let hasMedicalMarker = medicalMarkers.contains { combined.contains($0) }
+        let onlyLifestyle = !hasMedicalMarker && weakTopics.contains { combined.contains($0) }
+
+        return hasMedicalMarker && !onlyLifestyle
+    }
+
+    private func makeTitle(from userText: String) -> String {
+        let singleLine = userText
+            .replacingOccurrences(of: "\n", with: " ")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !singleLine.isEmpty else { return "AI-гипотеза из чата" }
+        return String(singleLine.prefix(58))
+    }
+
+    private func makeSummary(from assistantText: String) -> String {
+        let paragraphs = assistantText
+            .components(separatedBy: CharacterSet.newlines)
+            .map { cleanLine($0) }
+            .filter { !$0.isEmpty }
+
+        let first = paragraphs.first ?? "AI дал медицинский контекст по обращению пользователя."
+        return String(first.prefix(260))
+    }
+
+    private func extractLines(from text: String, markers: [String], limit: Int) -> [String] {
+        let rawLines = text
+            .components(separatedBy: CharacterSet.newlines)
+            .map { cleanLine($0) }
+            .filter { !$0.isEmpty }
+
+        var result: [String] = []
+
+        for line in rawLines {
+            let lower = line.lowercased()
+            guard markers.contains(where: { lower.contains($0) }) else { continue }
+            let shortened = String(line.prefix(180))
+            if !result.contains(shortened) {
+                result.append(shortened)
+            }
+            if result.count >= limit { break }
+        }
+
+        return result
+    }
+
+    private func cleanLine(_ line: String) -> String {
+        line
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "-•*0123456789. "))
+    }
+
+    private func normalize(_ text: String) -> String {
+        text.lowercased()
+            .replacingOccurrences(of: "\\s+", with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func scopedKey(base: String, token: String?) -> String {
+        let raw = token?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let user = raw?.isEmpty == false ? raw! : "guest"
+        let safe = Data(user.utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+
+        return "\(base)_\(safe)"
     }
 }

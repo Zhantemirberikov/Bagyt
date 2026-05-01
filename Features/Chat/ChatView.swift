@@ -162,12 +162,12 @@ class ChatStore: ObservableObject {
             let delay = Double.random(in: 1.8...2.8)
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 guard let self else { return }
-                self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: self.mockReply(to: text))
+                self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: self.mockReply(to: text), sourceUserText: text)
             }
         } else {
             ChatService.shared.sendMessageToAI(userText: text) { [weak self] responseMsg in
                 guard let self else { return }
-                self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: responseMsg.text)
+                self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: responseMsg.text, sourceUserText: text)
             }
         }
     }
@@ -196,17 +196,17 @@ class ChatStore: ObservableObject {
             let delay = Double.random(in: 1.8...2.8)
             DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
                 guard let self else { return }
-                self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: self.mockReply(to: newText))
+                self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: self.mockReply(to: newText), sourceUserText: newText)
             }
         } else {
             ChatService.shared.sendMessageToAI(userText: newText) { [weak self] responseMsg in
                 guard let self else { return }
-                self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: responseMsg.text)
+                self.beginStreaming(aiId: aiId, sessionId: sessionId, fullText: responseMsg.text, sourceUserText: newText)
             }
         }
     }
 
-    private func beginStreaming(aiId: UUID, sessionId: UUID, fullText: String) {
+    private func beginStreaming(aiId: UUID, sessionId: UUID, fullText: String, sourceUserText: String) {
         guard let sIdx = sessions.firstIndex(where: { $0.id == sessionId }),
               let mIdx = sessions[sIdx].messages.firstIndex(where: { $0.id == aiId })
         else { return }
@@ -231,6 +231,7 @@ class ChatStore: ObservableObject {
                 self.sessions[si].messages[mi].isStreaming = false
                 self.sessions[si].updatedAt = Date()
                 self.sessions.sort { $0.updatedAt > $1.updatedAt }
+                BagytMemoryStore.shared.captureAIResponse(userText: sourceUserText, assistantText: fullText)
                 self.save()
             }
         }

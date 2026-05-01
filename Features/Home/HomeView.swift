@@ -39,6 +39,7 @@ struct HomeView: View {
 
     @State private var liquidDragX: CGFloat? = nil
     @State private var isLiquidDragging = false
+    @State private var isCrystalLensPressed = false
 
     // Аватар из UserDefaults
     @State private var avatarImage: UIImage? = nil
@@ -99,17 +100,25 @@ struct HomeView: View {
 
                 ZStack {
                     switch selectedTab {
-                    case 0: homeContent
-                    case 1: JournalView().environmentObject(appState).environmentObject(lang)
-                    case 2: HealthMetricsView()
-                    case 3: MoodView()
-                    default: homeContent
+                    case 0:
+                        homeContent
+                    case 1:
+                        JournalView()
+                            .environmentObject(appState)
+                            .environmentObject(lang)
+                    case 2:
+                        HealthMetricsView()
+                    case 3:
+                        AnalysisView()
+                            .environmentObject(appState)
+                            .environmentObject(lang)
+                    default:
+                        homeContent
                     }
+
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                // Увеличенный отступ, чтобы контент не прятался за орбом при скролле
-                Color.clear.frame(height: 140)
             }
 
             liquidBottomBar
@@ -233,38 +242,20 @@ struct HomeView: View {
         }
     // MARK: - Health Index Card
 
+    private var healthIndexBreakdown: HealthIndexBreakdown {
+        HealthIndexCalculator.make(from: health)
+    }
+
     private var healthIndex: Int {
-        var score = 60
-        let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
-        let stepsPct = min(Double(health.steps) / Double(stepsGoal), 1.0)
-        score += Int(stepsPct * 20)
-        if health.heartRate > 0 {
-            score += (health.heartRate >= 60 && health.heartRate <= 80) ? 10 : 5
-        } else {
-            score += 7
-        }
-        let sleepGoal = UserDefaults.standard.double(forKey: "sleepGoal").nonZero ?? 8.0
-        let sleepPct = todaySleepHours > 0 ? min(todaySleepHours / sleepGoal, 1.0) : 0.7
-        score += Int(sleepPct * 10)
-        return min(score, 100)
+        healthIndexBreakdown.score
     }
 
     private var healthIndexLabel: String {
-        switch healthIndex {
-        case 90...100: return "Отличный показатель"
-        case 75..<90:  return "Хорошее состояние"
-        case 60..<75:  return "В пределах нормы"
-        default:       return "Требует внимания"
-        }
+        healthIndexBreakdown.label
     }
 
     private var healthIndexIcon: String {
-        switch healthIndex {
-        case 90...100: return "waveform.path.ecg"
-        case 75..<90:  return "checkmark.shield.fill"
-        case 60..<75:  return "bolt.heart.fill"
-        default:       return "exclamationmark.triangle.fill"
-        }
+        healthIndexBreakdown.icon
     }
 
     // 👇 Обернули карточку в Button, чтобы сделать ее кликабельной
@@ -614,7 +605,9 @@ struct HomeView: View {
             // Эффект "растягивания" при перетаскивании
             let distanceToActive = abs(currentDragX - activeX)
             let stretchAmount = isLiquidDragging ? min(distanceToActive * 0.25, 25) : 0
-            let finalLensWidth = slotWidth + 14 + stretchAmount
+            let crystalLensActive = isCrystalLensPressed || isLiquidDragging
+            let finalLensWidth = crystalLensActive ? 72 : slotWidth + 14 + stretchAmount
+            let finalLensHeight: CGFloat = crystalLensActive ? 72 : 56
 
             ZStack(alignment: .top) {
                 // Стекло и иконки
@@ -644,56 +637,21 @@ struct HomeView: View {
                     .frame(width: barWidth, height: panelHeight)
 
                     // 2. ЖИДКАЯ ЛИНЗА (Кристалл + Искажение)
-                    ZStack {
-                        // Само стекло линзы
-                        Capsule(style: .continuous)
-                            .fill(Color.white.opacity(0.15))
-                            .background(.ultraThinMaterial, in: Capsule())
-                            
-                        // Эффект хроматической аберрации (дисперсия света по краям)
-                        Capsule(style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    stops: [
-                                        .init(color: Color.cyan.opacity(0.5), location: 0.0),
-                                        .init(color: Color.clear, location: 0.2),
-                                        .init(color: Color.clear, location: 0.8),
-                                        .init(color: Color.purple.opacity(0.5), location: 1.0)
-                                    ],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 3
-                            )
-                            .blur(radius: 2)
-                            .blendMode(.plusLighter)
-
-                        // Яркие белые блики
-                        Capsule(style: .continuous)
-                            .strokeBorder(
-                                LinearGradient(
-                                    stops: [
-                                        .init(color: .white, location: 0),
-                                        .init(color: .white.opacity(0.0), location: 0.25),
-                                        .init(color: .white.opacity(0.0), location: 0.75),
-                                        .init(color: .white.opacity(0.6), location: 1)
-                                    ],
-                                    startPoint: .topLeading, endPoint: .bottomTrailing
-                                ),
-                                lineWidth: 1.5
-                            )
-                    }
+                    crystalLiquidLens(width: finalLensWidth, height: finalLensHeight, isCrystal: crystalLensActive)
                     .shadow(color: Color.black.opacity(isDarkMode ? 0.5 : 0.12), radius: 10, x: 0, y: 6)
                     .shadow(color: Color.white.opacity(isDarkMode ? 0.1 : 0.3), radius: 12, x: -2, y: -2) // Внешний светлый блик сверху
-                    .frame(width: finalLensWidth, height: 56)
+                    .frame(width: finalLensWidth, height: finalLensHeight)
                     .position(x: currentDragX, y: panelHeight / 2 - 8)
                     .animation(.interactiveSpring(response: 0.35, dampingFraction: 0.7, blendDuration: 0.1), value: currentDragX)
                     .animation(.interactiveSpring(response: 0.35, dampingFraction: 0.7, blendDuration: 0.1), value: stretchAmount)
+                    .animation(.interactiveSpring(response: 0.34, dampingFraction: 0.74, blendDuration: 0.1), value: crystalLensActive)
 
                     // 3. ИКОНКИ
                     liquidTabItem(icon: "house.fill", label: localized("home"), index: 0, centerX: centers[0] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
                     liquidTabItem(icon: "book.fill", label: localized("journal"), index: 1, centerX: centers[1] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
                     liquidTabItem(icon: "waveform.path.ecg", label: localized("metrics"), index: 2, centerX: centers[2] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
-                    liquidTabItem(icon: "face.smiling.fill", label: "Настроение", index: 3, centerX: centers[3] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
+                    liquidTabItem(icon: "chart.line.uptrend.xyaxis", label: "Анализ", index: 3, centerX: centers[3] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
+
                 }
                 .frame(width: barWidth, height: panelHeight)
                 .contentShape(Rectangle()) // Ограничиваем зону нажатия ТОЛЬКО самим баром!
@@ -720,7 +678,28 @@ struct HomeView: View {
                             UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                             withAnimation(.spring(response: 0.4, dampingFraction: 0.65)) {
                                 isLiquidDragging = false
+                                isCrystalLensPressed = false
                                 liquidDragX = nil
+                            }
+                        }
+                )
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            let touchX = min(max(value.location.x, innerPadding), barWidth - innerPadding)
+                            let lensTarget = liquidDragX ?? activeX
+                            let touchIsOnLens = abs(touchX - lensTarget) <= max(finalLensWidth, 72) * 0.62
+
+                            if (touchIsOnLens || isLiquidDragging), !isCrystalLensPressed {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                withAnimation(.interactiveSpring(response: 0.24, dampingFraction: 0.72)) {
+                                    isCrystalLensPressed = true
+                                }
+                            }
+                        }
+                        .onEnded { _ in
+                            withAnimation(.interactiveSpring(response: 0.36, dampingFraction: 0.78)) {
+                                isCrystalLensPressed = false
                             }
                         }
                 )
@@ -735,6 +714,122 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
         }
         .frame(height: 126 + safeAreaBottomInset())
+    }
+
+    private func crystalLiquidLens(width: CGFloat, height: CGFloat, isCrystal: Bool) -> some View {
+        let lensWidth = isCrystal ? 72.0 : width
+        let lensHeight = isCrystal ? 72.0 : height
+        let cornerRadius = lensHeight / 2
+
+        return ZStack {
+            if isCrystal {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(
+                        LinearGradient(
+                            stops: [
+                                .init(color: Color.white.opacity(isDarkMode ? 0.40 : 0.78), location: 0.0),
+                                .init(color: accent.opacity(isDarkMode ? 0.24 : 0.18), location: 0.48),
+                                .init(color: Color.black.opacity(isDarkMode ? 0.32 : 0.12), location: 1.0)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.58), lineWidth: 1)
+                    )
+                    .frame(width: 15, height: 39)
+                    .rotationEffect(.degrees(-42))
+                    .offset(x: 33, y: 29)
+                    .shadow(color: Color.black.opacity(isDarkMode ? 0.34 : 0.14), radius: 8, x: 3, y: 5)
+                    .transition(.scale.combined(with: .opacity))
+            }
+
+            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                .fill(Color.white.opacity(isDarkMode ? 0.13 : 0.24))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(
+                            RadialGradient(
+                                colors: [
+                                    Color.white.opacity(isCrystal ? 0.58 : 0.24),
+                                    accent.opacity(isCrystal ? 0.16 : 0.08),
+                                    Color.clear
+                                ],
+                                center: .topLeading,
+                                startRadius: 0,
+                                endRadius: isCrystal ? 82 : 118
+                            )
+                        )
+                        .blendMode(.screen)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: Color.cyan.opacity(isCrystal ? 0.88 : 0.50), location: 0.0),
+                                    .init(color: Color.white.opacity(isCrystal ? 0.88 : 0.0), location: 0.18),
+                                    .init(color: Color.clear, location: 0.52),
+                                    .init(color: Color.purple.opacity(isCrystal ? 0.78 : 0.50), location: 1.0)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isCrystal ? 3.4 : 3
+                        )
+                        .blur(radius: isCrystal ? 1.2 : 2)
+                        .blendMode(.plusLighter)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .white.opacity(0.95), location: 0),
+                                    .init(color: .white.opacity(0.0), location: 0.26),
+                                    .init(color: .white.opacity(0.0), location: 0.74),
+                                    .init(color: .white.opacity(0.64), location: 1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: isCrystal ? 2.0 : 1.5
+                        )
+                )
+                .frame(width: lensWidth, height: lensHeight)
+
+            if isCrystal {
+                Circle()
+                    .strokeBorder(Color.white.opacity(0.72), lineWidth: 1.2)
+                    .frame(width: 58, height: 58)
+                    .offset(x: -1, y: -1)
+
+                Capsule()
+                    .fill(Color.white.opacity(0.82))
+                    .frame(width: 25, height: 4)
+                    .rotationEffect(.degrees(-22))
+                    .offset(x: -15, y: -21)
+                    .blur(radius: 0.4)
+
+                Capsule()
+                    .fill(Color.cyan.opacity(0.42))
+                    .frame(width: 28, height: 3)
+                    .rotationEffect(.degrees(24))
+                    .offset(x: 11, y: 13)
+                    .blendMode(.plusLighter)
+
+                Image(systemName: "sparkle")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundColor(.white.opacity(0.92))
+                    .offset(x: 21, y: -20)
+                    .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .frame(width: isCrystal ? 104 : lensWidth, height: isCrystal ? 96 : lensHeight)
+        .compositingGroup()
     }
 
     // MARK: - Live Orb (LIQUID GLASS)
@@ -897,7 +992,8 @@ struct HomeView: View {
     }
 
     private func switchOrbTab(horizontal: CGFloat) {
-        let orbTabs = [0, 1, 2]
+        let orbTabs = [0, 1, 2, 3]
+
 
         let currentIndex: Int
         if let index = orbTabs.firstIndex(of: selectedTab) {
@@ -1035,34 +1131,34 @@ struct HealthIndexDetailSheet: View {
     private var cardBg: Color { isDarkMode ? Color.white.opacity(0.05) : Color.white.opacity(0.8) }
     private var primaryText: Color { isDarkMode ? .white : Color(red: 0.06, green: 0.09, blue: 0.16) }
     private var secondaryText: Color { isDarkMode ? .white.opacity(0.6) : Color(red: 0.5, green: 0.63, blue: 0.72) }
-    private var todaySleepHours: Double {
-            if let today = health.sleepWeek.first(where: { Calendar.current.isDateInToday($0.date) }) {
-                return today.hours
-            }
-            return 0.0
-        }
+
+    private var breakdown: HealthIndexBreakdown {
+        HealthIndexCalculator.make(from: health)
+    }
+
     // Расчеты баллов (вынесены отдельно для визуализации)
     private var stepsPoints: Int {
-        let goal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
-        let pct = min(Double(health.steps) / Double(goal), 1.0)
-        return Int(pct * 20)
+        breakdown.stepsPoints
     }
     
     private var hrPoints: Int {
-        if health.heartRate > 0 {
-            return (health.heartRate >= 60 && health.heartRate <= 80) ? 10 : 5
-        }
-        return 7 // Значение по умолчанию, если нет данных
+        breakdown.heartPoints
     }
     
     private var sleepPoints: Int {
-            let goal = UserDefaults.standard.double(forKey: "sleepGoal").nonZero ?? 8.0
-            let pct = todaySleepHours > 0 ? min(todaySleepHours / goal, 1.0) : 0.7
-            return Int(pct * 10)
-        }
+        breakdown.sleepPoints
+    }
     
     private var totalScore: Int {
-        min(60 + stepsPoints + hrPoints + sleepPoints, 100)
+        breakdown.score
+    }
+
+    private func formatNumber(_ value: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.groupingSeparator = " "
+        formatter.locale = Locale(identifier: "ru_RU")
+        return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
     var body: some View {
@@ -1110,23 +1206,23 @@ struct HealthIndexDetailSheet: View {
                         VStack(spacing: 12) {
                             metricBreakdownRow(
                                 icon: "person.fill", color: accent,
-                                title: "Базовый уровень", points: 60, max: 60,
+                                title: "Базовый уровень", points: breakdown.basePoints, max: 60,
                                 desc: "Стартовые баллы профиля"
                             )
                             metricBreakdownRow(
                                 icon: "figure.walk", color: Color(red: 0.1, green: 0.78, blue: 0.48),
                                 title: "Активность", points: stepsPoints, max: 20,
-                                desc: "На основе дневной цели по шагам"
+                                desc: "\(formatNumber(health.steps)) из \(formatNumber(breakdown.stepsGoal)) шагов"
                             )
                             metricBreakdownRow(
                                 icon: "heart.fill", color: Color(red: 0.95, green: 0.25, blue: 0.35),
                                 title: "Пульс", points: hrPoints, max: 10,
-                                desc: health.heartRate > 0 ? "Средний пульс в пределах нормы" : "Нет актуальных данных"
+                                desc: breakdown.hasHeartRateData ? "\(health.heartRate) уд/мин, учитывается по единой формуле" : "Нет актуальных данных"
                             )
                             metricBreakdownRow(
                                 icon: "moon.stars.fill", color: Color(red: 0.55, green: 0.35, blue: 1.0),
                                 title: "Сон", points: sleepPoints, max: 10,
-                                desc: "На основе времени отдыха"
+                                desc: breakdown.hasSleepData ? "\(String(format: "%.1f", breakdown.sleepHours)) из \(String(format: "%.1f", breakdown.sleepGoal)) ч" : "Нет актуальных данных"
                             )
                         }
                         

@@ -281,6 +281,9 @@ struct JournalView: View {
     private var secondaryText: Color { isDarkMode ? Color.white.opacity(0.64) : Color(red: 0.38, green: 0.52, blue: 0.62) }
     private var panelFill: Color { isDarkMode ? Color.white.opacity(0.075) : Color.white.opacity(0.78) }
     private var panelStroke: Color { isDarkMode ? Color.white.opacity(0.10) : Color.white.opacity(0.70) }
+    private var floatingAddButtonBottomPadding: CGFloat {
+        safeAreaBottomInset() + 112
+    }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -682,23 +685,75 @@ struct JournalView: View {
         } label: {
             ZStack {
                 Circle()
-                    .fill(LinearGradient(colors: [accent, accent2], startPoint: .topLeading, endPoint: .bottomTrailing))
+                    .fill(Color.white.opacity(isDarkMode ? 0.12 : 0.24))
+                    .background(.ultraThinMaterial, in: Circle())
 
                 Circle()
-                    .strokeBorder(Color.white.opacity(0.42), lineWidth: 1.5)
+                    .fill(
+                        RadialGradient(
+                            colors: [
+                                Color.white.opacity(isDarkMode ? 0.34 : 0.58),
+                                accent.opacity(isDarkMode ? 0.18 : 0.14),
+                                Color.clear
+                            ],
+                            center: .topLeading,
+                            startRadius: 0,
+                            endRadius: 72
+                        )
+                    )
+                    .blendMode(.screen)
+
+                Circle()
+                    .strokeBorder(
+                        LinearGradient(
+                            stops: [
+                                .init(color: .white.opacity(0.95), location: 0),
+                                .init(color: .white.opacity(0.16), location: 0.42),
+                                .init(color: accent2.opacity(0.42), location: 1)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1.6
+                    )
+
+                Circle()
+                    .stroke(
+                        LinearGradient(
+                            colors: [
+                                Color.cyan.opacity(0.42),
+                                Color.purple.opacity(0.30),
+                                Color.white.opacity(0.20)
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 4
+                    )
+                    .blur(radius: 4)
+                    .opacity(0.72)
+
+                Capsule()
+                    .fill(Color.white.opacity(0.78))
+                    .frame(width: 24, height: 4)
+                    .rotationEffect(.degrees(-24))
+                    .offset(x: -12, y: -18)
+                    .blur(radius: 0.4)
 
                 Image(systemName: "plus")
-                    .font(.system(size: 26, weight: .medium))
-                    .foregroundColor(.white)
-                    .shadow(color: .black.opacity(0.25), radius: 2, x: 0, y: 1)
+                    .font(.system(size: 25, weight: .bold, design: .rounded))
+                    .foregroundColor(isDarkMode ? .white : Color(red: 0.05, green: 0.09, blue: 0.14))
+                    .shadow(color: .white.opacity(isDarkMode ? 0.12 : 0.55), radius: 3, x: -1, y: -1)
+                    .shadow(color: .black.opacity(isDarkMode ? 0.34 : 0.16), radius: 2, x: 0, y: 1)
             }
-            .frame(width: 66, height: 66)
-            .shadow(color: Color.black.opacity(isDarkMode ? 0.34 : 0.14), radius: 14, x: 0, y: 8)
-            .shadow(color: accent.opacity(0.22), radius: 16, x: 0, y: 7)
+            .frame(width: 64, height: 64)
+            .compositingGroup()
+            .shadow(color: Color.black.opacity(isDarkMode ? 0.34 : 0.13), radius: 16, x: 0, y: 9)
+            .shadow(color: accent.opacity(isDarkMode ? 0.18 : 0.25), radius: 20, x: 0, y: 8)
         }
         .buttonStyle(.plain)
         .padding(.trailing, 24)
-        .padding(.bottom, 110)
+        .padding(.bottom, floatingAddButtonBottomPadding)
         .scaleEffect(appear ? 1 : 0.1)
         .animation(.spring(response: 0.42, dampingFraction: 0.72).delay(0.12), value: appear)
     }
@@ -742,6 +797,15 @@ struct JournalView: View {
         formatter.locale = Locale(identifier: "ru_RU")
         formatter.dateFormat = "EE"
         return formatter.string(from: date).replacingOccurrences(of: ".", with: "")
+    }
+
+    private func safeAreaBottomInset() -> CGFloat {
+        guard let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = scene.windows.first(where: { $0.isKeyWindow }) else {
+            return 0
+        }
+
+        return window.safeAreaInsets.bottom
     }
 }
 

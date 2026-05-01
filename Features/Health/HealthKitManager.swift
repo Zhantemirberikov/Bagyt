@@ -380,3 +380,99 @@ final class HealthKitManager: ObservableObject {
         sleep > 0 ? min(sleep / goal, 1.0) : 0.0
     }
 }
+
+struct HealthIndexBreakdown {
+    let basePoints: Int
+    let stepsPoints: Int
+    let heartPoints: Int
+    let sleepPoints: Int
+    let score: Int
+    let stepsGoal: Int
+    let sleepGoal: Double
+    let sleepHours: Double
+    let hasHeartRateData: Bool
+    let hasSleepData: Bool
+
+    var label: String {
+        switch score {
+        case 90...100: return "Отличный показатель"
+        case 75..<90:  return "Хорошее состояние"
+        case 60..<75:  return "В пределах нормы"
+        default:       return "Требует внимания"
+        }
+    }
+
+    var shortLabel: String {
+        switch score {
+        case 90...100: return "Отлично"
+        case 75..<90:  return "Хорошо"
+        case 60..<75:  return "Норма"
+        default:       return "Внимание"
+        }
+    }
+
+    var icon: String {
+        switch score {
+        case 90...100: return "waveform.path.ecg"
+        case 75..<90:  return "checkmark.shield.fill"
+        case 60..<75:  return "bolt.heart.fill"
+        default:       return "exclamationmark.triangle.fill"
+        }
+    }
+}
+
+enum HealthIndexCalculator {
+    static func make(from health: HealthKitManager) -> HealthIndexBreakdown {
+        let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal")
+        let sleepGoal = UserDefaults.standard.double(forKey: "sleepGoal")
+
+        return make(
+            steps: health.steps,
+            heartRate: health.heartRate,
+            sleepHours: health.homeSleepDay?.hours ?? health.sleep,
+            stepsGoal: stepsGoal > 0 ? stepsGoal : 8000,
+            sleepGoal: sleepGoal > 0 ? sleepGoal : 8.0
+        )
+    }
+
+    static func make(
+        steps: Int,
+        heartRate: Int,
+        sleepHours: Double,
+        stepsGoal: Int,
+        sleepGoal: Double
+    ) -> HealthIndexBreakdown {
+        let safeStepsGoal = max(stepsGoal, 1)
+        let safeSleepGoal = max(sleepGoal, 0.1)
+        let normalizedSteps = max(steps, 0)
+        let normalizedSleep = max(sleepHours, 0)
+
+        let stepsRatio = min(Double(normalizedSteps) / Double(safeStepsGoal), 1.0)
+        let stepsPoints = Int(stepsRatio * 20)
+
+        let heartPoints: Int
+        if heartRate > 0 {
+            heartPoints = (60...80).contains(heartRate) ? 10 : 5
+        } else {
+            heartPoints = 7
+        }
+
+        let sleepRatio = normalizedSleep > 0 ? min(normalizedSleep / safeSleepGoal, 1.0) : 0.7
+        let sleepPoints = Int(sleepRatio * 10)
+        let basePoints = 60
+        let score = min(basePoints + stepsPoints + heartPoints + sleepPoints, 100)
+
+        return HealthIndexBreakdown(
+            basePoints: basePoints,
+            stepsPoints: stepsPoints,
+            heartPoints: heartPoints,
+            sleepPoints: sleepPoints,
+            score: score,
+            stepsGoal: safeStepsGoal,
+            sleepGoal: safeSleepGoal,
+            sleepHours: normalizedSleep,
+            hasHeartRateData: heartRate > 0,
+            hasSleepData: normalizedSleep > 0
+        )
+    }
+}
