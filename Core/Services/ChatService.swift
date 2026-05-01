@@ -604,7 +604,7 @@ final class ChatService {
 
     private static let shortDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "d MMM yyyy, HH:mm"
         return formatter
     }()

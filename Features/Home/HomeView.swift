@@ -557,9 +557,9 @@ struct HomeView: View {
                 Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundColor(color)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14, weight: .bold, design: .rounded))
+                Text(BagytL10n.tr(title)).font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(primaryText).lineLimit(1)
-                Text(sub).font(.system(size: 11, weight: .medium))
+                Text(BagytL10n.tr(sub)).font(.system(size: 11, weight: .medium))
                     .foregroundColor(secondaryText)
             }
             Spacer()
@@ -650,7 +650,7 @@ struct HomeView: View {
                     liquidTabItem(icon: "house.fill", label: localized("home"), index: 0, centerX: centers[0] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
                     liquidTabItem(icon: "book.fill", label: localized("journal"), index: 1, centerX: centers[1] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
                     liquidTabItem(icon: "waveform.path.ecg", label: localized("metrics"), index: 2, centerX: centers[2] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
-                    liquidTabItem(icon: "chart.line.uptrend.xyaxis", label: "Анализ", index: 3, centerX: centers[3] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
+                    liquidTabItem(icon: "chart.line.uptrend.xyaxis", label: BagytL10n.tr("Анализ"), index: 3, centerX: centers[3] ?? 0, lensX: currentDragX, slotWidth: slotWidth)
 
                 }
                 .frame(width: barWidth, height: panelHeight)
@@ -1157,7 +1157,7 @@ struct HealthIndexDetailSheet: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         return formatter.string(from: NSNumber(value: value)) ?? "\(value)"
     }
 
@@ -1279,7 +1279,7 @@ struct HealthIndexDetailSheet: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text(title)
+                    Text(BagytL10n.tr(title))
                         .font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundColor(primaryText)
                     Spacer()
@@ -1302,7 +1302,7 @@ struct HealthIndexDetailSheet: View {
                 .frame(height: 6)
                 .padding(.vertical, 2)
                 
-                Text(desc)
+                Text(BagytL10n.tr(desc))
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(secondaryText)
             }

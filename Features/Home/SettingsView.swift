@@ -65,7 +65,7 @@ struct SettingsView: View {
 
     private var displayName: String {
         let trimmed = (appState.userName ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? "Пользователь" : trimmed
+        return trimmed.isEmpty ? BagytL10n.tr("Пользователь") : trimmed
     }
 
     private var goalLabel: String {
@@ -75,9 +75,9 @@ struct SettingsView: View {
     private var accountSubtitle: String {
         var parts: [String] = []
         if profile.age > 0 { parts.append(profile.age.formattedAge) }
-        if profile.height > 0 { parts.append("\(Int(profile.height.rounded())) см") }
-        if profile.weight > 0 { parts.append("\(Int(profile.weight.rounded())) кг") }
-        return parts.isEmpty ? "Заполните медицинский профиль" : parts.joined(separator: " · ")
+        if profile.height > 0 { parts.append("\(Int(profile.height.rounded())) \(BagytL10n.tr("см"))") }
+        if profile.weight > 0 { parts.append("\(Int(profile.weight.rounded())) \(BagytL10n.tr("кг"))") }
+        return parts.isEmpty ? BagytL10n.tr("Заполните медицинский профиль") : parts.joined(separator: " · ")
     }
 
     var body: some View {
@@ -282,7 +282,7 @@ struct SettingsView: View {
                         .minimumScaleFactor(0.6)
                         .multilineTextAlignment(.leading)
 
-                    Text(goalLabel)
+                    Text(BagytL10n.tr(goalLabel))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(.white.opacity(0.82))
                 }
@@ -387,7 +387,7 @@ struct SettingsView: View {
 
     private func heroMetric(title: String, value: String, subtitle: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundColor(.white.opacity(0.62))
 
@@ -395,7 +395,7 @@ struct SettingsView: View {
                 .font(.system(size: 19, weight: .black, design: .rounded))
                 .foregroundColor(.white)
 
-            Text(subtitle)
+            Text(BagytL10n.tr(subtitle))
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundColor(.white.opacity(0.64))
         }
@@ -446,7 +446,7 @@ struct SettingsView: View {
                 .frame(width: 34, height: 34)
                 .background(color.opacity(isDarkModeEnabled ? 0.16 : 0.11), in: Circle())
 
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 10, weight: .black, design: .rounded))
                 .foregroundColor(mutedText)
                 .textCase(.uppercase)
@@ -456,7 +456,7 @@ struct SettingsView: View {
                     .font(.system(size: 19, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text(unit)
+                Text(BagytL10n.tr(unit))
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(secondaryText)
                     .lineLimit(1)
@@ -472,7 +472,7 @@ struct SettingsView: View {
 
     private func sectionTitle(_ title: String) -> some View {
         HStack {
-            Text(title.uppercased())
+            Text(BagytL10n.tr(title).uppercased())
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .foregroundColor(mutedText)
                 .tracking(1.2)
@@ -581,11 +581,11 @@ struct SettingsView: View {
                     .background(accent.opacity(isDarkModeEnabled ? 0.16 : 0.11), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(BagytL10n.tr(title))
                         .font(.system(size: 16, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
 
-                    Text(subtitle)
+                    Text(BagytL10n.tr(subtitle))
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(secondaryText)
                 }
@@ -700,11 +700,11 @@ struct SettingsView: View {
                 settingIcon(icon: icon, color: iconColor)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(title)
+                    Text(BagytL10n.tr(title))
                         .font(.system(size: 17, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
 
-                    Text(subtitle)
+                    Text(BagytL10n.tr(subtitle))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(secondaryText)
                         .lineLimit(1)
@@ -728,11 +728,11 @@ struct SettingsView: View {
             settingIcon(icon: icon, color: color)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 17, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text(subtitle)
+                Text(BagytL10n.tr(subtitle))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(secondaryText)
             }
@@ -1178,11 +1178,11 @@ private struct AccountEditorView: View {
                 .background(accent.opacity(isDarkModeEnabled ? 0.16 : 0.11), in: Circle())
 
             VStack(alignment: .leading, spacing: 5) {
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 24, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text(subtitle)
+                Text(BagytL10n.tr(subtitle))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(3)
@@ -1219,7 +1219,7 @@ private struct AccountEditorView: View {
                             Image(systemName: item.2)
                                 .font(.system(size: 16, weight: .black))
 
-                            Text(item.1)
+                            Text(BagytL10n.tr(item.1))
                                 .font(.system(size: 12, weight: .black, design: .rounded))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.75)
@@ -1290,7 +1290,7 @@ private struct AccountEditorView: View {
     private func sliderBlock(title: String, value: String, binding: Binding<Double>, range: ClosedRange<Double>, step: Double, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 15, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
@@ -1309,7 +1309,7 @@ private struct AccountEditorView: View {
     }
 
     private func label(_ text: String) -> some View {
-        Text(text.uppercased())
+        Text(BagytL10n.tr(text).uppercased())
             .font(.system(size: 12, weight: .black, design: .rounded))
             .foregroundColor(secondaryText)
             .tracking(0.8)
@@ -1496,7 +1496,7 @@ private struct GoalsEditorView: View {
                             Image(systemName: item.2)
                                 .font(.system(size: 13, weight: .black))
 
-                            Text(item.1)
+                            Text(BagytL10n.tr(item.1))
                                 .font(.system(size: 12, weight: .black, design: .rounded))
                                 .lineLimit(2)
                                 .multilineTextAlignment(.leading)
@@ -1560,7 +1560,7 @@ private struct GoalsEditorView: View {
                     .frame(width: 34, height: 34)
                     .background(tint.opacity(isDarkModeEnabled ? 0.16 : 0.11), in: Circle())
 
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 15, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
@@ -1579,7 +1579,7 @@ private struct GoalsEditorView: View {
     }
 
     private func label(_ text: String) -> some View {
-        Text(text.uppercased())
+        Text(BagytL10n.tr(text).uppercased())
             .font(.system(size: 12, weight: .black, design: .rounded))
             .foregroundColor(secondaryText)
             .tracking(0.8)
@@ -1603,7 +1603,7 @@ private extension Int {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
     
@@ -1612,16 +1612,16 @@ private extension Int {
         let mod100 = self % 100
         
         if mod100 >= 11 && mod100 <= 14 {
-            return "лет"
+            return BagytL10n.tr("лет")
         }
         
         switch mod10 {
         case 1:
-            return "год"
+            return BagytL10n.tr("год")
         case 2, 3, 4:
-            return "года"
+            return BagytL10n.tr("года")
         default:
-            return "лет"
+            return BagytL10n.tr("лет")
         }
     }
     

@@ -22,6 +22,7 @@ struct BagytApp: App {
             SplashView()
                 .environmentObject(appState)
                 .environmentObject(langManager)
+                .environment(\.locale, Locale(identifier: langManager.currentLanguage.localeIdentifier))
                 .preferredColorScheme(isDarkModeEnabled ? .dark : .light)
                 .onAppear {
                     print("✅ BagytApp started")

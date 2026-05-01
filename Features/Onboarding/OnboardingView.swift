@@ -67,7 +67,7 @@ struct OnboardingView: View {
                     Menu {
                         ForEach(AppLanguage.allCases, id: \.self) { langCode in
                             Button(action: {
-                                lang.currentLanguage = langCode
+                                lang.changeLanguage(to: langCode)
                             }) {
                                 Text("\(langCode.flag) \(langCode.title)")
                             }
@@ -108,7 +108,7 @@ struct OnboardingView: View {
                 .tabViewStyle(PageTabViewStyle())
 
                 NavigationLink(destination: LoginView()) {
-                    Text(currentPage == pages.count - 1 ? "Start" : "Next")
+                    Text(lang.localized(currentPage == pages.count - 1 ? "Start" : "Next"))
                         .font(.headline)
                         .frame(maxWidth: .infinity)
                         .padding()

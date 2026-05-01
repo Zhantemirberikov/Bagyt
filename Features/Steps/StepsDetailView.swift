@@ -750,9 +750,9 @@ private final class StepsDetailViewModel: ObservableObject {
     }
 
     var titleText: String {
-        guard let selectedDay else { return "Двигательная активность" }
-        if Calendar.current.isDateInToday(selectedDay.date) { return "Сегодня" }
-        if Calendar.current.isDateInYesterday(selectedDay.date) { return "Вчера" }
+        guard let selectedDay else { return BagytL10n.tr("Двигательная активность") }
+        if Calendar.current.isDateInToday(selectedDay.date) { return BagytL10n.tr("Сегодня") }
+        if Calendar.current.isDateInYesterday(selectedDay.date) { return BagytL10n.tr("Вчера") }
         return fullDateFormatter.string(from: selectedDay.date)
     }
 
@@ -777,13 +777,13 @@ private final class StepsDetailViewModel: ObservableObject {
     }
 
     var bestHourBadgeText: String {
-        guard let best = hourly.max(by: { $0.steps < $1.steps }), best.steps > 0 else { return "Максимум не зафиксирован" }
-        return "Макс.: \(best.shortHour)"
+        guard let best = hourly.max(by: { $0.steps < $1.steps }), best.steps > 0 else { return BagytL10n.tr("Максимум не зафиксирован") }
+        return String(format: BagytL10n.tr("Макс.: %@"), best.shortHour)
     }
 
     var activeHoursText: String {
         let count = hourly.filter { $0.steps >= 250 }.count
-        return count > 0 ? "\(count) ч" : "—"
+        return count > 0 ? "\(count) \(BagytL10n.tr("ч"))" : "—"
     }
 
     var weekAverageText: String {
@@ -893,7 +893,7 @@ private final class StepsDetailViewModel: ObservableObject {
 
     private static var weekCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.locale = Locale(identifier: "ru_RU")
+        calendar.locale = BagytL10n.currentLocale
         calendar.firstWeekday = 2
         calendar.minimumDaysInFirstWeek = 4
         return calendar
@@ -901,21 +901,21 @@ private final class StepsDetailViewModel: ObservableObject {
 
     private var shortWeekdayFormatter: DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
+        f.locale = BagytL10n.currentLocale
         f.dateFormat = "EE"
         return f
     }
 
     private var dayFormatter: DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
+        f.locale = BagytL10n.currentLocale
         f.dateFormat = "d"
         return f
     }
 
     private var fullDateFormatter: DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
+        f.locale = BagytL10n.currentLocale
         f.dateFormat = "d MMMM"
         return f
     }
@@ -948,14 +948,14 @@ private struct HourlySteps: Identifiable, Hashable {
 
     var shortHour: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "HH:mm"
         return formatter.string(from: date)
     }
 
     var displayRangeText: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "HH:mm"
 
         let end = Calendar.current.date(byAdding: .hour, value: 1, to: date) ?? date
@@ -968,7 +968,7 @@ private extension Int {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
 }

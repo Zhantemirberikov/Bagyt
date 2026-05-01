@@ -40,7 +40,7 @@ final class AuthViewModel: ObservableObject {
         }
 
         guard !email.isEmpty, !password.isEmpty else {
-            errorMessage = "Введите email и пароль"
+            errorMessage = BagytL10n.tr("Введите email и пароль")
             return
         }
 
@@ -72,12 +72,12 @@ final class AuthViewModel: ObservableObject {
               !email.isEmpty,
               !password.isEmpty,
               !confirmPassword.isEmpty else {
-            errorMessage = "Пожалуйста, заполните все поля"
+            errorMessage = BagytL10n.tr("Пожалуйста, заполните все поля")
             return
         }
 
         guard password == confirmPassword else {
-            errorMessage = "Пароли не совпадают"
+            errorMessage = BagytL10n.tr("Пароли не совпадают")
             return
         }
 

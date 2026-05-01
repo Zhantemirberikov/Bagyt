@@ -72,6 +72,10 @@ struct MoodTagOption: Identifiable, Hashable {
         self.icon = icon
         self.color = color
     }
+
+    var localizedTitle: String {
+        BagytL10n.tr(title)
+    }
 }
 
 struct MoodInsight: Identifiable {
@@ -184,6 +188,10 @@ final class MoodViewModel: ObservableObject {
         records.sort { $0.date > $1.date }
         save()
         syncTodayForm()
+    }
+
+    func refreshLanguage() {
+        recalculateMetrics()
     }
 
     func delete(record: MoodRecord) {
@@ -310,25 +318,55 @@ final class MoodViewModel: ObservableObject {
         var newInsights: [MoodInsight] = []
 
         if averageMood >= 4 {
-            newInsights.append(MoodInsight(icon: "sparkles", title: "Хорошая динамика", text: "Среднее настроение за неделю \(String(format: "%.1f", averageMood))/5. Продолжайте отмечать факторы дня.", color: Color(red: 0.10, green: 0.78, blue: 0.48)))
+            newInsights.append(MoodInsight(
+                icon: "sparkles",
+                title: BagytL10n.tr("Хорошая динамика"),
+                text: String(format: BagytL10n.tr("Среднее настроение за неделю %@/5. Продолжайте отмечать факторы дня."), String(format: "%.1f", averageMood)),
+                color: Color(red: 0.10, green: 0.78, blue: 0.48)
+            ))
         } else if averageMood > 0 && averageMood <= 2.7 {
-            newInsights.append(MoodInsight(icon: "heart.text.square.fill", title: "Нужен ресурс", text: "Настроение ниже обычного. Проверьте сон, стресс, нагрузку и симптомы в журнале.", color: Color(red: 1.00, green: 0.58, blue: 0.12)))
+            newInsights.append(MoodInsight(
+                icon: "heart.text.square.fill",
+                title: BagytL10n.tr("Нужен ресурс"),
+                text: BagytL10n.tr("Настроение ниже обычного. Проверьте сон, стресс, нагрузку и симптомы в журнале."),
+                color: Color(red: 1.00, green: 0.58, blue: 0.12)
+            ))
         }
 
         if averageStress >= 4 {
-            newInsights.append(MoodInsight(icon: "brain.head.profile", title: "Стресс повышен", text: "Средний стресс \(String(format: "%.1f", averageStress))/5. Заметки помогут ИИ найти повторяющиеся причины.", color: Color(red: 1.00, green: 0.48, blue: 0.16)))
+            newInsights.append(MoodInsight(
+                icon: "brain.head.profile",
+                title: BagytL10n.tr("Стресс повышен"),
+                text: String(format: BagytL10n.tr("Средний стресс %@/5. Заметки помогут ИИ найти повторяющиеся причины."), String(format: "%.1f", averageStress)),
+                color: Color(red: 1.00, green: 0.48, blue: 0.16)
+            ))
         }
 
         if let tag = dominantTag {
-            newInsights.append(MoodInsight(icon: tag.icon, title: "Частый фактор: \(tag.title)", text: "Этот фактор часто встречается в последних записях. Сравните его с настроением и энергией.", color: tag.color))
+            newInsights.append(MoodInsight(
+                icon: tag.icon,
+                title: String(format: BagytL10n.tr("Частый фактор: %@"), tag.localizedTitle),
+                text: BagytL10n.tr("Этот фактор часто встречается в последних записях. Сравните его с настроением и энергией."),
+                color: tag.color
+            ))
         }
 
         if streak >= 3 {
-            newInsights.append(MoodInsight(icon: "flame.fill", title: "Серия \(streak) дней", text: "Регулярные чек-ины делают когнитивный анализ Bagyt точнее.", color: Color(red: 1.00, green: 0.65, blue: 0.12)))
+            newInsights.append(MoodInsight(
+                icon: "flame.fill",
+                title: String(format: BagytL10n.tr("Серия %d дней"), streak),
+                text: BagytL10n.tr("Регулярные чек-ины делают когнитивный анализ Bagyt точнее."),
+                color: Color(red: 1.00, green: 0.65, blue: 0.12)
+            ))
         }
 
         if newInsights.isEmpty {
-            newInsights.append(MoodInsight(icon: "waveform.path.ecg", title: "Начните с чек-ина", text: "Отметьте настроение, энергию, стресс и пару факторов дня.", color: Color(red: 0.055, green: 0.647, blue: 0.914)))
+            newInsights.append(MoodInsight(
+                icon: "waveform.path.ecg",
+                title: BagytL10n.tr("Начните с чек-ина"),
+                text: BagytL10n.tr("Отметьте настроение, энергию, стресс и пару факторов дня."),
+                color: Color(red: 0.055, green: 0.647, blue: 0.914)
+            ))
         }
 
         self.insights = Array(newInsights.prefix(3))
@@ -352,6 +390,7 @@ final class MoodViewModel: ObservableObject {
 
 struct MoodView: View {
     @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var lang: LanguageManager
     @Environment(\.dismiss) private var dismiss
     @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
@@ -464,6 +503,9 @@ struct MoodView: View {
         }
         .onChange(of: appState.userToken) { _, token in
             vm.configureUser(token: token)
+        }
+        .onChange(of: lang.currentLanguage) { _, _ in
+            vm.refreshLanguage()
         }
         .alert("Очистить историю?", isPresented: $showResetAlert) {
             Button("Отмена", role: .cancel) { }
@@ -578,7 +620,7 @@ struct MoodView: View {
                             .padding(.bottom, 8)
                     }
 
-                    Text(vm.todayMood.map { moodLabel($0) } ?? "Выберите настроение")
+                    Text(BagytL10n.tr(vm.todayMood.map { moodLabel($0) } ?? "Выберите настроение"))
                         .font(.system(size: 15, weight: .black, design: .rounded))
                         .foregroundColor(.white.opacity(0.92))
 
@@ -608,7 +650,7 @@ struct MoodView: View {
 
     private func topInfoPill(title: String, value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 10, weight: .bold))
                 .foregroundColor(.white.opacity(0.72))
 
@@ -655,7 +697,7 @@ struct MoodView: View {
                 .font(.system(size: 20, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
 
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundColor(secondaryText)
         }
@@ -762,11 +804,11 @@ struct MoodView: View {
                 .background(signal.color.opacity(isDarkMode ? 0.18 : 0.12), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(signal.title)
+                Text(BagytL10n.tr(signal.title))
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text(signal.text)
+                Text(BagytL10n.tr(signal.text))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(3)
@@ -845,11 +887,11 @@ struct MoodView: View {
                     .background(color.opacity(isDarkMode ? 0.18 : 0.12), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(BagytL10n.tr(title))
                         .font(.system(size: 14, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
 
-                    Text(valueText)
+                    Text(BagytL10n.tr(valueText))
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(secondaryText)
                 }
@@ -910,7 +952,7 @@ struct MoodView: View {
                             Image(systemName: tag.icon)
                                 .font(.system(size: 11, weight: .black))
 
-                            Text(tag.title)
+                            Text(tag.localizedTitle)
                                 .font(.system(size: 12, weight: .black, design: .rounded))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.75)
@@ -974,7 +1016,7 @@ struct MoodView: View {
                 Image(systemName: vm.todayMood == nil ? "face.smiling" : "checkmark.circle.fill")
                     .font(.system(size: 18, weight: .black))
 
-                Text(vm.todayMood == nil ? "Выберите настроение" : "Сохранить состояние")
+                Text(BagytL10n.tr(vm.todayMood == nil ? "Выберите настроение" : "Сохранить состояние"))
                     .font(.system(size: 16, weight: .black, design: .rounded))
             }
             .foregroundColor(.white)
@@ -1050,7 +1092,7 @@ struct MoodView: View {
 
     private func weekMetric(title: String, value: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 10, weight: .bold, design: .rounded))
                 .foregroundColor(secondaryText)
 
@@ -1092,7 +1134,7 @@ struct MoodView: View {
                             .font(.system(size: 13, weight: .black, design: .rounded))
                             .foregroundColor(primaryText)
 
-                        Text(dominant.title)
+                        Text(dominant.localizedTitle)
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(secondaryText)
                     }
@@ -1116,11 +1158,11 @@ struct MoodView: View {
                 .background(insight.color.opacity(isDarkMode ? 0.18 : 0.12), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(insight.title)
+                Text(BagytL10n.tr(insight.title))
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text(insight.text)
+                Text(BagytL10n.tr(insight.text))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(3)
@@ -1173,11 +1215,11 @@ struct MoodView: View {
                 .background(row.option.color.opacity(isDarkMode ? 0.18 : 0.12), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(row.option.title)
+                Text(row.option.localizedTitle)
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text("\(row.count) раз · среднее \(String(format: "%.1f", row.averageMood))/5")
+                Text(String(format: BagytL10n.tr("%d раз · среднее %@/5"), row.count, String(format: "%.1f", row.averageMood)))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(secondaryText)
             }
@@ -1355,7 +1397,7 @@ struct MoodView: View {
                         Image(systemName: tag.icon)
                             .font(.system(size: 9, weight: .black))
 
-                        Text(tag.title)
+                        Text(tag.localizedTitle)
                             .font(.system(size: 10, weight: .black, design: .rounded))
                     }
                     .foregroundColor(tag.color)
@@ -1414,12 +1456,12 @@ struct MoodView: View {
 
     private func sectionHeaderText(eyebrow: String, title: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(eyebrow)
+            Text(BagytL10n.tr(eyebrow))
                 .font(.system(size: 11, weight: .black, design: .rounded))
                 .foregroundColor(mutedText)
                 .tracking(1.0)
 
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 17, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
                 .lineLimit(1)
@@ -1475,7 +1517,7 @@ struct MoodView: View {
 
     private func chartDays() -> [ChartDay] {
         let calendar = Calendar.current
-        let labels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+        let labels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map { BagytL10n.tr($0) }
         let today = calendar.startOfDay(for: Date())
         let recentRecords = vm.last14Records
 
@@ -1542,11 +1584,11 @@ struct MoodView: View {
     }
 
     private func moodLabel(_ value: Int) -> String {
-        ["Плохо", "Так себе", "Нормально", "Хорошо", "Отлично"][max(0, min(value - 1, 4))]
+        ["Плохо", "Так себе", "Нормально", "Хорошо", "Отлично"].map { BagytL10n.tr($0) }[max(0, min(value - 1, 4))]
     }
 
     private func moodShortLabel(_ value: Int) -> String {
-        ["Плохо", "Так себе", "Норм", "Хорошо", "Класс"][max(0, min(value - 1, 4))]
+        ["Плохо", "Так себе", "Норм", "Хорошо", "Класс"].map { BagytL10n.tr($0) }[max(0, min(value - 1, 4))]
     }
 
     private func moodColor(_ value: Int) -> Color {
@@ -1565,15 +1607,15 @@ struct MoodView: View {
     }
 
     private func energyLabel(_ value: Int) -> String {
-        ["Очень низкая", "Низкая", "Средняя", "Высокая", "Максимум"][max(0, min(value - 1, 4))]
+        ["Очень низкая", "Низкая", "Средняя", "Высокая", "Максимум"].map { BagytL10n.tr($0) }[max(0, min(value - 1, 4))]
     }
 
     private func stressLabel(_ value: Int) -> String {
-        ["Спокойно", "Легкий", "Средний", "Высокий", "Очень высокий"][max(0, min(value - 1, 4))]
+        ["Спокойно", "Легкий", "Средний", "Высокий", "Очень высокий"].map { BagytL10n.tr($0) }[max(0, min(value - 1, 4))]
     }
 
     private func sleepLabel(_ value: Int) -> String {
-        ["Очень плохо", "Плохо", "Нормально", "Хорошо", "Отлично"][max(0, min(value - 1, 4))]
+        ["Очень плохо", "Плохо", "Нормально", "Хорошо", "Отлично"].map { BagytL10n.tr($0) }[max(0, min(value - 1, 4))]
     }
 
     private func deltaText(_ value: Int) -> String {
@@ -1581,25 +1623,34 @@ struct MoodView: View {
     }
 
     private func todayDateString() -> String {
-        Self.fullDayFormatter.string(from: Date()).capitalized
+        localizedDateString(Date(), format: "EEEE, d MMMM").capitalized
     }
 
     private func shortDateString(_ date: Date) -> String {
-        if Calendar.current.isDateInToday(date) { return "Сегодня" }
-        if Calendar.current.isDateInYesterday(date) { return "Вчера" }
-        return Self.shortDateFormatter.string(from: date)
+        if Calendar.current.isDateInToday(date) { return BagytL10n.tr("Сегодня") }
+        if Calendar.current.isDateInYesterday(date) { return BagytL10n.tr("Вчера") }
+        return localizedDateString(date, format: "d MMM")
+    }
+
+    private func localizedDateString(_ date: Date, format: String) -> String {
+        let formatter = DateFormatter()
+        let rawLanguage = UserDefaults.standard.string(forKey: "language") ?? AppLanguage.kk.rawValue
+        let language = AppLanguage(rawValue: rawLanguage) ?? .kk
+        formatter.locale = Locale(identifier: language.localeIdentifier)
+        formatter.dateFormat = format
+        return formatter.string(from: date)
     }
 
     private static let fullDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "EEEE, d MMMM"
         return formatter
     }()
 
     private static let shortDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "d MMM"
         return formatter
     }()
@@ -2655,14 +2706,14 @@ private struct LegacyMoodView: View {
 
     private static let fullDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "EEEE, d MMMM"
         return formatter
     }()
 
     private static let shortDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "d MMM"
         return formatter
     }()

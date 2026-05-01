@@ -52,19 +52,19 @@ final class UserProfileStore: ObservableObject {
 
     var genderLabel: String {
         switch gender {
-        case "male":   return "Мужской"
-        case "female": return "Женский"
-        default:       return "Другой"
+        case "male":   return BagytL10n.tr("Мужской")
+        case "female": return BagytL10n.tr("Женский")
+        default:       return BagytL10n.tr("Другой")
         }
     }
 
     var goalLabel: String {
         switch goal {
-        case "chronic_disease": return "Хронические болезни"
-        case "prevention":      return "Профилактика"
-        case "stress_relief":   return "Снижение стресса"
-        case "weight_control":  return "Контроль веса"
-        default:                return "Общее самочувствие"
+        case "chronic_disease": return BagytL10n.tr("Хронические болезни")
+        case "prevention":      return BagytL10n.tr("Профилактика")
+        case "stress_relief":   return BagytL10n.tr("Снижение стресса")
+        case "weight_control":  return BagytL10n.tr("Контроль веса")
+        default:                return BagytL10n.tr("Общее самочувствие")
         }
     }
 
@@ -75,10 +75,10 @@ final class UserProfileStore: ObservableObject {
 
     var bmiLabel: String {
         switch bmi {
-        case ..<18.5:   return "Недовес"
-        case 18.5..<25: return "Норма"
-        case 25..<30:   return "Избыток"
-        default:        return "Ожирение"
+        case ..<18.5:   return BagytL10n.tr("Недовес")
+        case 18.5..<25: return BagytL10n.tr("Норма")
+        case 25..<30:   return BagytL10n.tr("Избыток")
+        default:        return BagytL10n.tr("Ожирение")
         }
     }
 

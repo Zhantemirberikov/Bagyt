@@ -109,9 +109,17 @@ struct HealthMetricsView: View {
 
     private var healthIndexPeriodSubtitle: String {
         switch selectedPeriod {
-        case 1: return "Средний индекс за неделю"
-        case 2: return "Средний индекс за месяц"
-        default: return "Индекс за сегодня"
+        case 1: return BagytL10n.tr("Средний индекс за неделю")
+        case 2: return BagytL10n.tr("Средний индекс за месяц")
+        default: return BagytL10n.tr("Индекс за сегодня")
+        }
+    }
+
+    private var heartPeriodSubtitle: String {
+        switch selectedPeriod {
+        case 1: return BagytL10n.tr("В среднем за неделю")
+        case 2: return BagytL10n.tr("В среднем за месяц")
+        default: return BagytL10n.tr("Сегодня в среднем")
         }
     }
 
@@ -194,7 +202,7 @@ struct HealthMetricsView: View {
 
     private func sectionHeader(_ title: String) -> some View {
         HStack {
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 17, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
             Spacer()
@@ -288,7 +296,7 @@ struct HealthMetricsView: View {
                 Button {
                     selectedPeriod = i
                 } label: {
-                    Text(periods[i])
+                    Text(BagytL10n.tr(periods[i]))
                         .font(.system(size: 14, weight: selectedPeriod == i ? .bold : .semibold, design: .rounded))
                         .foregroundColor(selectedPeriod == i ? .white : secondaryText)
                         .frame(maxWidth: .infinity)
@@ -332,7 +340,7 @@ struct HealthMetricsView: View {
                         }
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Пульс").font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(primaryText)
-                            Text(selectedPeriod == 0 ? "Сегодня в среднем" : "В среднем за \(periods[selectedPeriod].lowercased())")
+                            Text(heartPeriodSubtitle)
                                 .font(.system(size: 12, weight: .medium)).foregroundColor(secondaryText)
                         }
                     }
@@ -441,7 +449,7 @@ struct HealthMetricsView: View {
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text("AI ИНСАЙТ").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(accent).tracking(1.2)
-                    Text(insight.isEmpty ? "Ваш пульс в пределах нормы, а активность приближается к цели. Так держать!" : insight)
+                    Text(insight.isEmpty ? BagytL10n.tr("Ваш пульс в пределах нормы, а активность приближается к цели. Так держать!") : BagytL10n.tr(insight))
                         .font(.system(size: 14, weight: .medium)).foregroundColor(primaryText).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -796,9 +804,9 @@ struct HealthMetricsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text(value).font(.system(size: 28, weight: .black, design: .rounded)).foregroundColor(primaryText).contentTransition(.numericText())
-                    Text(unit).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundColor(secondaryText)
+                    Text(BagytL10n.tr(unit)).font(.system(size: 12, weight: .bold, design: .rounded)).foregroundColor(secondaryText)
                 }
-                Text(label).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(secondaryText)
+                Text(BagytL10n.tr(label)).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(secondaryText)
             }
 
             Spacer(minLength: 0)
@@ -813,7 +821,7 @@ struct HealthMetricsView: View {
                             .animation(.easeOut(duration: 1.0).delay(0.2), value: animateRings)
                     }
                 }.frame(height: 6)
-                Text(target).font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundColor(secondaryText)
+                Text(localizedMetricText(target)).font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundColor(secondaryText)
             }
         }
         .padding(18).frame(maxWidth: .infinity, minHeight: 180)
@@ -861,18 +869,18 @@ struct HealthMetricsView: View {
                         .font(.system(size: 28, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
                         .contentTransition(.numericText())
-                    Text(unit)
+                    Text(BagytL10n.tr(unit))
                         .font(.system(size: 12, weight: .bold, design: .rounded))
                         .foregroundColor(secondaryText)
                 }
-                Text(label)
+                Text(BagytL10n.tr(label))
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(secondaryText)
             }
 
             Spacer(minLength: 0)
 
-            Text(note)
+            Text(localizedMetricText(note))
                 .font(.system(size: 11, weight: .semibold, design: .rounded))
                 .foregroundColor(secondaryText)
                 .lineLimit(2)
@@ -899,8 +907,8 @@ struct HealthMetricsView: View {
         HStack(spacing: 12) {
             Circle().fill(color).frame(width: 10, height: 10)
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(primaryText)
-                Text(value).font(.system(size: 12, weight: .medium)).foregroundColor(secondaryText)
+                Text(BagytL10n.tr(label)).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(primaryText)
+                Text(localizedMetricText(value)).font(.system(size: 12, weight: .medium)).foregroundColor(secondaryText)
             }
         }
     }
@@ -910,19 +918,30 @@ struct HealthMetricsView: View {
             Image(systemName: icon).foregroundColor(color).font(.system(size: 12))
             VStack(alignment: .leading, spacing: 0) {
                 Text(value).font(.system(size: 16, weight: .black, design: .rounded)).foregroundColor(.white).contentTransition(.numericText())
-                Text(unit).font(.system(size: 10, weight: .bold)).foregroundColor(.white.opacity(0.7))
+                Text(BagytL10n.tr(unit)).font(.system(size: 10, weight: .bold)).foregroundColor(.white.opacity(0.7))
             }
         }
     }
 
+    private func localizedMetricText(_ text: String) -> String {
+        let direct = BagytL10n.tr(text)
+        if direct != text { return direct }
+
+        if text.hasPrefix("Цель: ") {
+            return "\(BagytL10n.tr("Цель")): \(text.dropFirst(6))"
+        }
+
+        return text
+    }
+
     // MARK: - ИМТ хелперы
     private var bmiLabel: String {
-        if bmi <= 0 { return "Нет данных" }
+        if bmi <= 0 { return BagytL10n.tr("Нет данных") }
         switch bmi {
-        case ..<18.5: return "Дефицит веса"
-        case 18.5..<25: return "Норма"
-        case 25..<30: return "Избыточный вес"
-        default: return "Ожирение"
+        case ..<18.5: return BagytL10n.tr("Дефицит веса")
+        case 18.5..<25: return BagytL10n.tr("Норма")
+        case 25..<30: return BagytL10n.tr("Избыточный вес")
+        default: return BagytL10n.tr("Ожирение")
         }
     }
 
@@ -1291,7 +1310,7 @@ private extension Int {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
 }

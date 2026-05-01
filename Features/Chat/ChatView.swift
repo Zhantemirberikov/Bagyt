@@ -27,11 +27,11 @@ struct ChatSession: Identifiable, Codable, Equatable {
 
     var preview: String {
         if let last = messages.last {
-            if last.isThinking  { return "Bagyt думает..." }
-            if last.isStreaming { return "Bagyt печатает..." }
-            return last.text.isEmpty ? "Начните диалог с Bagyt" : last.text
+            if last.isThinking  { return BagytL10n.tr("Bagyt думает...") }
+            if last.isStreaming { return BagytL10n.tr("Bagyt печатает...") }
+            return last.text.isEmpty ? BagytL10n.tr("Начните диалог с Bagyt") : last.text
         }
-        return "Начните диалог с Bagyt"
+        return BagytL10n.tr("Начните диалог с Bagyt")
     }
 }
 
@@ -61,7 +61,7 @@ class ChatStore: ObservableObject {
                     decoded[i].messages[j].isThinking  = false
                     decoded[i].messages[j].isStreaming = false
                     if decoded[i].messages[j].text.isEmpty {
-                        decoded[i].messages[j].text = "Генерация была прервана."
+                        decoded[i].messages[j].text = BagytL10n.tr("Генерация была прервана.")
                     }
                 }
             }
@@ -91,7 +91,7 @@ class ChatStore: ObservableObject {
 
     @discardableResult
     func createNew() -> ChatSession {
-        let s = ChatSession(title: "Новый чат", messages: [])
+        let s = ChatSession(title: BagytL10n.tr("Новый чат"), messages: [])
         sessions.insert(s, at: 0)
         save()
         return s
@@ -246,7 +246,7 @@ class ChatStore: ObservableObject {
                 sessions[sIdx].messages[mIdx].isThinking  = false
                 sessions[sIdx].messages[mIdx].isStreaming  = false
                 if sessions[sIdx].messages[mIdx].text.isEmpty {
-                    sessions[sIdx].messages[mIdx].text = "Генерация остановлена."
+                    sessions[sIdx].messages[mIdx].text = BagytL10n.tr("Генерация остановлена.")
                 }
             }
         }
@@ -263,10 +263,10 @@ class ChatStore: ObservableObject {
     }
 
     private func mockReply(to text: String) -> String {
-        ["Я понимаю ваш вопрос. На основе медицинских данных — это нормальная ситуация. Рекомендую обратиться к специалисту для детальной консультации.",
-         "Регулярные нагрузки и сбалансированное питание значительно улучшают самочувствие. Постарайтесь выпивать не менее 2 литров воды в день.",
-         "Каждый организм индивидуален. Рекомендую вести дневник самочувствия в разделе «Журнал» и отслеживать изменения.",
-         "Ваши симптомы могут быть связаны с несколькими факторами. Увеличьте потребление воды, наладьте режим сна и снизьте уровень стресса."
+        [BagytL10n.tr("Я понимаю ваш вопрос. На основе медицинских данных — это нормальная ситуация. Рекомендую обратиться к специалисту для детальной консультации."),
+         BagytL10n.tr("Регулярные нагрузки и сбалансированное питание значительно улучшают самочувствие. Постарайтесь выпивать не менее 2 литров воды в день."),
+         BagytL10n.tr("Каждый организм индивидуален. Рекомендую вести дневник самочувствия в разделе «Журнал» и отслеживать изменения."),
+         BagytL10n.tr("Ваши симптомы могут быть связаны с несколькими факторами. Увеличьте потребление воды, наладьте режим сна и снизьте уровень стресса.")
         ].randomElement()!
     }
 }
@@ -550,8 +550,8 @@ struct ChatHistoryView: View {
         let cal = Calendar.current
         if cal.isDateInToday(date) {
             let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: date)
-        } else if cal.isDateInYesterday(date) { return "Вчера" }
-        let f = DateFormatter(); f.dateFormat = "d MMM"; f.locale = Locale(identifier: "ru_RU")
+        } else if cal.isDateInYesterday(date) { return BagytL10n.tr("Вчера") }
+        let f = DateFormatter(); f.dateFormat = "d MMM"; f.locale = BagytL10n.currentLocale
         return f.string(from: date)
     }
 }
@@ -563,7 +563,14 @@ struct ThinkingIndicator: View {
     
     private let accent  = Color(red: 0.055, green: 0.647, blue: 0.914)
     private let accent2 = Color(red: 0.024, green: 0.714, blue: 0.831)
-    private let phases  = ["Думаю над ответом","Анализирую информацию","Формулирую ответ","Почти готово"]
+    private var phases: [String] {
+        [
+            BagytL10n.tr("Думаю над ответом"),
+            BagytL10n.tr("Анализирую информацию"),
+            BagytL10n.tr("Формулирую ответ"),
+            BagytL10n.tr("Почти готово")
+        ]
+    }
 
     @State private var phase = 0
     @State private var dot   = 0
@@ -727,7 +734,7 @@ struct ChatSessionView: View {
                         .fill(isGenerating ? Color(red:1.0,green:0.65,blue:0.10) : Color(red:0.1,green:0.78,blue:0.48))
                         .frame(width: 6, height: 6)
                         .animation(.easeInOut(duration: 0.3), value: isGenerating)
-                    Text(isGenerating ? "Bagyt печатает..." : "AI помощник · онлайн")
+                    Text(isGenerating ? BagytL10n.tr("Bagyt печатает...") : BagytL10n.tr("AI помощник · онлайн"))
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65)).lineLimit(1)
                 }
@@ -821,9 +828,11 @@ struct ChatSessionView: View {
             VStack(spacing: 8) {
                 Text("Попробуйте спросить:").font(.system(size: 12, weight: .bold))
                     .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75)).tracking(0.5)
-                ForEach(["Как улучшить качество сна?",
-                         "У меня болит голова, что делать?",
-                         "Сколько воды нужно пить в день?"], id: \.self) { q in
+                ForEach([
+                    BagytL10n.tr("Как улучшить качество сна?"),
+                    BagytL10n.tr("У меня болит голова, что делать?"),
+                    BagytL10n.tr("Сколько воды нужно пить в день?")
+                ], id: \.self) { q in
                     Button {
                         inputText = q; sendMessage()
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()

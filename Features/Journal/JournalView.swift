@@ -54,6 +54,10 @@ enum JournalCategory: String, CaseIterable, Codable {
     }
 
     var bgColor: Color { color.opacity(0.12) }
+
+    var title: String {
+        BagytL10n.tr(rawValue)
+    }
 }
 
 struct JournalEntry: Identifiable, Codable {
@@ -519,7 +523,7 @@ struct JournalView: View {
 
                 ForEach(JournalCategory.allCases, id: \.self) { category in
                     filterChip(
-                        label: category.rawValue,
+                        label: category.title,
                         icon: category.icon,
                         count: vm.entries.filter { $0.category == category }.count,
                         isSelected: vm.selectedFilter == category,
@@ -787,14 +791,14 @@ struct JournalView: View {
         if Calendar.current.isDateInYesterday(date) { return "Вчера" }
 
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "d MMMM"
         return formatter.string(from: date)
     }
 
     private func shortWeekday(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "EE"
         return formatter.string(from: date).replacingOccurrences(of: ".", with: "")
     }
@@ -874,7 +878,7 @@ struct JournalEntryCard: View {
                         Image(systemName: entry.category.icon)
                             .font(.system(size: 10, weight: .black))
 
-                        Text(entry.category.rawValue)
+                        Text(entry.category.title)
                             .font(.system(size: 11, weight: .black, design: .rounded))
                     }
                     .foregroundColor(entry.category.color)
@@ -967,7 +971,7 @@ struct JournalEntryCard: View {
 
     private static let fullFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "d MMM, HH:mm"
         return formatter
     }()
@@ -1061,7 +1065,7 @@ struct AddEntrySheet: View {
                                     .foregroundColor(category == cat ? .white : cat.color)
                             }
 
-                            Text(cat.rawValue)
+                            Text(cat.title)
                                 .font(.system(size: 11, weight: .black, design: .rounded))
                                 .foregroundColor(category == cat ? cat.color : secondaryText)
                                 .lineLimit(1)
@@ -1463,7 +1467,7 @@ struct EntryDetailSheet: View {
                 Image(systemName: entry.category.icon)
                     .font(.system(size: 13, weight: .black))
 
-                Text(entry.category.rawValue)
+                Text(entry.category.title)
                     .font(.system(size: 13, weight: .black, design: .rounded))
             }
             .foregroundColor(entry.category.color)
@@ -1652,7 +1656,7 @@ struct EntryDetailSheet: View {
         var parts = [
             "Bagyt · Журнал здоровья",
             entry.title,
-            "Категория: \(entry.category.rawValue)",
+            "\(BagytL10n.tr("Категория")): \(entry.category.title)",
             "Дата: \(fullDateString(entry.date))"
         ]
 
@@ -1673,7 +1677,7 @@ struct EntryDetailSheet: View {
 
     private func fullDateString(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "EEEE, d MMMM yyyy · HH:mm"
         return formatter.string(from: date).capitalized
     }

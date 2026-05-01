@@ -30,6 +30,7 @@
 		13A15AF02F93B3CF007A58B1 /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 13A15AEF2F93B3CF007A58B1 /* GoogleSignInSwift */; };
 		13CE3E832F9377840091C508 /* aiaia.json in Resources */ = {isa = PBXBuildFile; fileRef = 13CE3E6C2F9377840091C508 /* aiaia.json */; };
 		13CE3E842F9377840091C508 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13CE3E6D2F9377840091C508 /* Assets.xcassets */; };
+		13CE3EB12FA33C010091C508 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 13CE3EB52FA33C010091C508 /* Localizable.strings */; };
 		13CE3E852F9377840091C508 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E6E2F9377840091C508 /* AuthService.swift */; };
 		13CE3E862F9377840091C508 /* BagytApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E6F2F9377840091C508 /* BagytApp.swift */; };
 		13CE3E872F9377840091C508 /* ChatService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3E702F9377840091C508 /* ChatService.swift */; };
@@ -95,6 +96,9 @@
 		13CE3E812F9377840091C508 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		13CE3E822F9377840091C508 /* VisualEffectBlur.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualEffectBlur.swift; sourceTree = "<group>"; };
 		13CE3EAF2F938FF90091C508 /* AnimatedGradientBackground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedGradientBackground.swift; sourceTree = "<group>"; };
+		13CE3EB22FA33C010091C508 /* kk */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = kk; path = kk.lproj/Localizable.strings; sourceTree = "<group>"; };
+		13CE3EB32FA33C010091C508 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
+		13CE3EB42FA33C010091C508 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		13DC10412EB5FF6D00352509 /* Bagyt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bagyt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13DE826D2EB76F9300AF2047 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -218,6 +222,7 @@
 			children = (
 				13CE3E6C2F9377840091C508 /* aiaia.json */,
 				13CE3E6D2F9377840091C508 /* Assets.xcassets */,
+				13CE3EB52FA33C010091C508 /* Localizable.strings */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -395,6 +400,8 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				kk,
+				ru,
 				Base,
 			);
 			mainGroup = 13DC10382EB5FF6C00352509;
@@ -420,10 +427,24 @@
 			files = (
 				13CE3E832F9377840091C508 /* aiaia.json in Resources */,
 				13CE3E842F9377840091C508 /* Assets.xcassets in Resources */,
+				13CE3EB12FA33C010091C508 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		13CE3EB52FA33C010091C508 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				13CE3EB22FA33C010091C508 /* kk */,
+				13CE3EB32FA33C010091C508 /* ru */,
+				13CE3EB42FA33C010091C508 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin PBXSourcesBuildPhase section */
 		13DC103D2EB5FF6D00352509 /* Sources */ = {

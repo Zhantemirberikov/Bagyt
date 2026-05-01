@@ -496,9 +496,9 @@ struct SleepDetailView: View {
     }
 
     private var screenTitle: String {
-        guard let selectedDay else { return "Сон за неделю" }
-        if Calendar.current.isDateInToday(selectedDay.date) { return "Сегодня" }
-        if Calendar.current.isDateInYesterday(selectedDay.date) { return "Вчера" }
+        guard let selectedDay else { return BagytL10n.tr("Сон за неделю") }
+        if Calendar.current.isDateInToday(selectedDay.date) { return BagytL10n.tr("Сегодня") }
+        if Calendar.current.isDateInYesterday(selectedDay.date) { return BagytL10n.tr("Вчера") }
         return fullDayFormatter.string(from: selectedDay.date)
     }
 
@@ -538,16 +538,16 @@ struct SleepDetailView: View {
         let h = totalMinutes / 60
         let m = totalMinutes % 60
 
-        if h > 0 && m > 0 { return "\(h)ч \(m)м" }
-        if h > 0 { return "\(h)ч" }
-        return "\(m)м"
+        if h > 0 && m > 0 { return "\(h)\(BagytL10n.tr("ч")) \(m)\(BagytL10n.tr("м"))" }
+        if h > 0 { return "\(h)\(BagytL10n.tr("ч"))" }
+        return "\(m)\(BagytL10n.tr("м"))"
     }
 
     private func durationText(minutes: Int) -> String {
         let h = minutes / 60
         let m = minutes % 60
-        if h > 0 { return "\(h)ч \(m)мин" }
-        return "\(m) мин"
+        if h > 0 { return "\(h)\(BagytL10n.tr("ч")) \(m)\(BagytL10n.tr("мин"))" }
+        return "\(m) \(BagytL10n.tr("мин"))"
     }
 
     private func phaseIcon(_ phase: HealthKitManager.SleepPhase) -> String {
@@ -563,19 +563,19 @@ struct SleepDetailView: View {
     private func fmtHour(_ date: Date) -> String { hourFormatter.string(from: date) }
 
     private var timeFormatter: DateFormatter {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "HH:mm"; return f
+        let f = DateFormatter(); f.locale = BagytL10n.currentLocale; f.dateFormat = "HH:mm"; return f
     }
     private var hourFormatter: DateFormatter {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "HH"; return f
+        let f = DateFormatter(); f.locale = BagytL10n.currentLocale; f.dateFormat = "HH"; return f
     }
     private var weekdayFormatter: DateFormatter {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "EE"; return f
+        let f = DateFormatter(); f.locale = BagytL10n.currentLocale; f.dateFormat = "EE"; return f
     }
     private var dayNumberFormatter: DateFormatter {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "d"; return f
+        let f = DateFormatter(); f.locale = BagytL10n.currentLocale; f.dateFormat = "d"; return f
     }
     private var fullDayFormatter: DateFormatter {
-        let f = DateFormatter(); f.locale = Locale(identifier: "ru_RU"); f.dateFormat = "d MMMM"; return f
+        let f = DateFormatter(); f.locale = BagytL10n.currentLocale; f.dateFormat = "d MMMM"; return f
     }
 }
 

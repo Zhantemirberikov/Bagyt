@@ -362,7 +362,7 @@ final class HealthKitManager: ObservableObject {
 
     private static var weekCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.locale = Locale(identifier: "ru_RU")
+        calendar.locale = BagytL10n.currentLocale
         calendar.firstWeekday = 2
         calendar.minimumDaysInFirstWeek = 4
         return calendar
@@ -395,19 +395,19 @@ struct HealthIndexBreakdown {
 
     var label: String {
         switch score {
-        case 90...100: return "Отличный показатель"
-        case 75..<90:  return "Хорошее состояние"
-        case 60..<75:  return "В пределах нормы"
-        default:       return "Требует внимания"
+        case 90...100: return BagytL10n.tr("Отличный показатель")
+        case 75..<90:  return BagytL10n.tr("Хорошее состояние")
+        case 60..<75:  return BagytL10n.tr("В пределах нормы")
+        default:       return BagytL10n.tr("Требует внимания")
         }
     }
 
     var shortLabel: String {
         switch score {
-        case 90...100: return "Отлично"
-        case 75..<90:  return "Хорошо"
-        case 60..<75:  return "Норма"
-        default:       return "Внимание"
+        case 90...100: return BagytL10n.tr("Отлично")
+        case 75..<90:  return BagytL10n.tr("Хорошо")
+        case 60..<75:  return BagytL10n.tr("Норма")
+        default:       return BagytL10n.tr("Внимание")
         }
     }
 

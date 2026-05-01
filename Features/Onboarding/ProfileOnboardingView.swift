@@ -30,9 +30,9 @@ enum UserGender: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .male: return "Мужской"
-        case .female: return "Женский"
-        case .other: return "Другой"
+        case .male: return BagytL10n.tr("Мужской")
+        case .female: return BagytL10n.tr("Женский")
+        case .other: return BagytL10n.tr("Другой")
         }
     }
 
@@ -70,11 +70,11 @@ enum UserGoal: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .general: return "Общее самочувствие"
-        case .prevention: return "Профилактика"
-        case .stressRelief: return "Снижение стресса"
-        case .weightControl: return "Контроль веса"
-        case .chronicDisease: return "Хронические болезни"
+        case .general: return BagytL10n.tr("Общее самочувствие")
+        case .prevention: return BagytL10n.tr("Профилактика")
+        case .stressRelief: return BagytL10n.tr("Снижение стресса")
+        case .weightControl: return BagytL10n.tr("Контроль веса")
+        case .chronicDisease: return BagytL10n.tr("Хронические болезни")
         }
     }
 
@@ -100,11 +100,11 @@ enum UserGoal: String, CaseIterable {
 
     var desc: String {
         switch self {
-        case .general: return "Следить за состоянием, сном, активностью и настроением"
-        case .prevention: return "Замечать изменения раньше и поддерживать здоровые привычки"
-        case .stressRelief: return "Отслеживать стресс, энергию, сон и когнитивное состояние"
-        case .weightControl: return "Контролировать вес, активность, воду и дневные цели"
-        case .chronicDisease: return "Вести симптомы, визиты, заметки и контекст для врача"
+        case .general: return BagytL10n.tr("Следить за состоянием, сном, активностью и настроением")
+        case .prevention: return BagytL10n.tr("Замечать изменения раньше и поддерживать здоровые привычки")
+        case .stressRelief: return BagytL10n.tr("Отслеживать стресс, энергию, сон и когнитивное состояние")
+        case .weightControl: return BagytL10n.tr("Контролировать вес, активность, воду и дневные цели")
+        case .chronicDisease: return BagytL10n.tr("Вести симптомы, визиты, заметки и контекст для врача")
         }
     }
 
@@ -326,7 +326,7 @@ struct ProfileOnboardingView: View {
                 .opacity(appear ? 1 : 0)
 
                 VStack(spacing: 12) {
-                    Text("Привет, \(firstName(userName))")
+                    Text(String(format: BagytL10n.tr("Привет, %@"), firstName(userName)))
                         .font(.system(size: 31, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
                         .multilineTextAlignment(.center)
@@ -402,11 +402,11 @@ struct ProfileOnboardingView: View {
                 .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 15, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text(subtitle)
+                Text(BagytL10n.tr(subtitle))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineLimit(2)
@@ -619,7 +619,7 @@ struct ProfileOnboardingView: View {
                     .frame(width: 40, height: 40)
                     .background(color.opacity(0.12), in: Circle())
 
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
@@ -630,7 +630,7 @@ struct ProfileOnboardingView: View {
                         .font(.system(size: 28, weight: .black, design: .rounded))
                         .foregroundColor(color)
                         .contentTransition(.numericText())
-                    Text(unit)
+                    Text(BagytL10n.tr(unit))
                         .font(.system(size: 14, weight: .black, design: .rounded))
                         .foregroundColor(color.opacity(0.72))
                 }
@@ -773,7 +773,7 @@ struct ProfileOnboardingView: View {
                         value: Binding(get: { Double(stepsGoal) }, set: { stepsGoal = Int($0.rounded()) }),
                         range: 1000...20000,
                         step: 500,
-                        display: "\(stepsGoal.formattedWithSpaces) шагов"
+                        display: "\(stepsGoal.formattedWithSpaces) \(BagytL10n.tr("шагов"))"
                     )
 
                     goalSliderCard(
@@ -784,7 +784,7 @@ struct ProfileOnboardingView: View {
                         value: $waterGoal,
                         range: 0.5...5.0,
                         step: 0.1,
-                        display: String(format: "%.1f л", waterGoal)
+                        display: String(format: "%.1f %@", waterGoal, BagytL10n.tr("л"))
                     )
 
                     goalSliderCard(
@@ -795,7 +795,7 @@ struct ProfileOnboardingView: View {
                         value: $sleepGoal,
                         range: 4.0...12.0,
                         step: 0.5,
-                        display: String(format: "%.1f ч", sleepGoal)
+                        display: String(format: "%.1f %@", sleepGoal, BagytL10n.tr("ч"))
                     )
 
                     goalSliderCard(
@@ -806,7 +806,7 @@ struct ProfileOnboardingView: View {
                         value: Binding(get: { Double(caloriesGoal) }, set: { caloriesGoal = Int($0.rounded()) }),
                         range: 1000...4000,
                         step: 50,
-                        display: "\(caloriesGoal.formattedWithSpaces) ккал"
+                        display: "\(caloriesGoal.formattedWithSpaces) \(BagytL10n.tr("ккал"))"
                     )
                 }
                 .padding(.horizontal, 24)
@@ -835,11 +835,11 @@ struct ProfileOnboardingView: View {
                     .background(color.opacity(0.12), in: Circle())
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
+                    Text(BagytL10n.tr(title))
                         .font(.system(size: 15, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
 
-                    Text(subtitle)
+                    Text(BagytL10n.tr(subtitle))
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(secondaryText)
                 }
@@ -898,7 +898,7 @@ struct ProfileOnboardingView: View {
 
                 VStack(spacing: 10) {
                     summaryRow(icon: "person.fill", color: accent, label: "Возраст", value: "\(age) \(ageWord(age))")
-                    summaryRow(icon: "scalemass.fill", color: accent2, label: "Вес / рост", value: "\(Int(weight.rounded())) кг / \(Int(height.rounded())) см")
+                    summaryRow(icon: "scalemass.fill", color: accent2, label: "Вес / рост", value: "\(Int(weight.rounded())) \(BagytL10n.tr("кг")) / \(Int(height.rounded())) \(BagytL10n.tr("см"))")
                     summaryRow(icon: gender.icon, color: gender.color, label: "Пол", value: gender.label)
                     summaryRow(icon: goal.icon, color: goal.color, label: "Цель", value: goal.label)
                 }
@@ -927,7 +927,7 @@ struct ProfileOnboardingView: View {
                 .frame(width: 38, height: 38)
                 .background(color.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
-            Text(label)
+            Text(BagytL10n.tr(label))
                 .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundColor(secondaryText)
 
@@ -947,17 +947,17 @@ struct ProfileOnboardingView: View {
 
     private func stepHeader(eyebrow: String, title: String, subtitle: String) -> some View {
         VStack(spacing: 9) {
-            Text(eyebrow.uppercased())
+            Text(BagytL10n.tr(eyebrow).uppercased())
                 .font(.system(size: 11, weight: .black, design: .rounded))
                 .foregroundColor(accent)
                 .tracking(1.1)
 
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 28, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
                 .multilineTextAlignment(.center)
 
-            Text(subtitle)
+            Text(BagytL10n.tr(subtitle))
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
@@ -969,7 +969,7 @@ struct ProfileOnboardingView: View {
 
     private func primaryButtonLabel(_ title: String, icon: String) -> some View {
         HStack(spacing: 10) {
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 17, weight: .black, design: .rounded))
             Image(systemName: icon)
                 .font(.system(size: 15, weight: .black))
@@ -1139,7 +1139,7 @@ struct ProfileOnboardingView: View {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.components(separatedBy: " ").first?.isEmpty == false
             ? (trimmed.components(separatedBy: " ").first ?? trimmed)
-            : "Друг"
+            : BagytL10n.tr("Друг")
     }
 
     private func ageWord(_ value: Int) -> String {
@@ -1147,18 +1147,18 @@ struct ProfileOnboardingView: View {
         let mod100 = value % 100
 
         if mod100 >= 11 && mod100 <= 14 {
-            return "лет"
+            return BagytL10n.tr("лет")
         }
 
         if mod10 == 1 {
-            return "год"
+            return BagytL10n.tr("год")
         }
 
         if mod10 >= 2 && mod10 <= 4 {
-            return "года"
+            return BagytL10n.tr("года")
         }
 
-        return "лет"
+        return BagytL10n.tr("лет")
     }
 
     private func bmiColor(_ bmi: Double) -> Color {
@@ -1177,13 +1177,13 @@ struct ProfileOnboardingView: View {
     private func bmiLabel(_ bmi: Double) -> String {
         switch bmi {
         case ..<18.5:
-            return "Недовес"
+            return BagytL10n.tr("Недовес")
         case 18.5..<25:
-            return "Норма"
+            return BagytL10n.tr("Норма")
         case 25..<30:
-            return "Избыток"
+            return BagytL10n.tr("Избыток")
         default:
-            return "Высокий"
+            return BagytL10n.tr("Высокий")
         }
     }
 }
@@ -1195,7 +1195,7 @@ private extension Int {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         formatter.groupingSeparator = " "
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
 }

@@ -673,14 +673,14 @@ private final class PulseDetailViewModel: ObservableObject {
     }
 
     var titleText: String {
-        guard let selectedDay else { return "Пульс" }
-        if Calendar.current.isDateInToday(selectedDay.date) { return "Сегодня" }
-        if Calendar.current.isDateInYesterday(selectedDay.date) { return "Вчера" }
+        guard let selectedDay else { return BagytL10n.tr("Пульс") }
+        if Calendar.current.isDateInToday(selectedDay.date) { return BagytL10n.tr("Сегодня") }
+        if Calendar.current.isDateInYesterday(selectedDay.date) { return BagytL10n.tr("Вчера") }
         return fullDateFormatter.string(from: selectedDay.date)
     }
 
     var restingHeartRateText: String {
-        restingHeartRate > 0 ? "\(Int(restingHeartRate.rounded())) уд/мин" : "—"
+        restingHeartRate > 0 ? "\(Int(restingHeartRate.rounded())) \(BagytL10n.tr("уд/мин"))" : "—"
     }
 
     func shortWeekday(_ date: Date) -> String {
@@ -770,7 +770,7 @@ private final class PulseDetailViewModel: ObservableObject {
 
     private static var weekCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
-        calendar.locale = Locale(identifier: "ru_RU")
+        calendar.locale = BagytL10n.currentLocale
         calendar.firstWeekday = 2
         calendar.minimumDaysInFirstWeek = 4
         return calendar
@@ -778,21 +778,21 @@ private final class PulseDetailViewModel: ObservableObject {
 
     private var shortWeekdayFormatter: DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
+        f.locale = BagytL10n.currentLocale
         f.dateFormat = "EE"
         return f
     }
 
     private var dayFormatter: DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
+        f.locale = BagytL10n.currentLocale
         f.dateFormat = "d"
         return f
     }
 
     private var fullDateFormatter: DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "ru_RU")
+        f.locale = BagytL10n.currentLocale
         f.dateFormat = "d MMMM"
         return f
     }
@@ -805,7 +805,7 @@ private struct PulseDaySample: Identifiable, Hashable {
 
     var timeText: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "HH:mm"
         return formatter.string(from: date)
     }
@@ -844,7 +844,7 @@ private struct PulseDay: Identifiable, Hashable {
     }
 
     var averageFullText: String {
-        hasData ? "\(Int(average.rounded())) уд/мин" : "—"
+        hasData ? "\(Int(average.rounded())) \(BagytL10n.tr("уд/мин"))" : "—"
     }
 
     var minShortText: String {
@@ -860,16 +860,16 @@ private struct PulseDay: Identifiable, Hashable {
     }
 
     var minFullText: String {
-        hasData ? "\(Int(minValue.rounded())) уд/мин" : "—"
+        hasData ? "\(Int(minValue.rounded())) \(BagytL10n.tr("уд/мин"))" : "—"
     }
 
     var maxFullText: String {
-        hasData ? "\(Int(maxValue.rounded())) уд/мин" : "—"
+        hasData ? "\(Int(maxValue.rounded())) \(BagytL10n.tr("уд/мин"))" : "—"
     }
 
     var peakBadgeText: String {
-        guard let peakSample else { return "Максимум не зафиксирован" }
-        return "Макс.: \(Int(peakSample.bpm.rounded())) в \(peakSample.timeText)"
+        guard let peakSample else { return BagytL10n.tr("Максимум не зафиксирован") }
+        return String(format: BagytL10n.tr("Макс.: %d в %@"), Int(peakSample.bpm.rounded()), peakSample.timeText)
     }
 
     var startLabel: String {

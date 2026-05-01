@@ -149,57 +149,67 @@ struct AnalysisView: View {
         let conditions = items(for: .condition).count
 
         if medicalItems.isEmpty {
-            return "Медкарта, риски и готовая сводка для врача"
+            return BagytL10n.tr("Медкарта, риски и готовая сводка для врача")
         }
 
-        return "\(allergy) аллергий · \(meds) лекарств · \(conditions) диагнозов · \(aiFindings.count) AI-заметок"
+        return String(format: BagytL10n.tr("%d аллергий · %d лекарств · %d диагнозов · %d AI-заметок"), allergy, meds, conditions, aiFindings.count)
     }
 
     // MARK: - Picker
+    // ✅ FIX: Заменён LazyVGrid на HStack — каждая кнопка получает равную
+    // нажимаемую область. LazyVGrid с minimum:0 сжимал последнюю кнопку.
 
     private var sectionPicker: some View {
-        LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(minimum: 0), spacing: 8), count: AnalysisSection.allCases.count),
-            spacing: 8
-        ) {
+        HStack(spacing: 6) {
             ForEach(AnalysisSection.allCases, id: \.self) { section in
-                Button {
-                    UISelectionFeedbackGenerator().selectionChanged()
-                    withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
-                        selectedSection = section
-                    }
-                } label: {
-                    HStack(spacing: 7) {
-                        Image(systemName: section.icon)
-                            .font(.system(size: 12, weight: .black))
-                        Text(section.title)
-                            .font(.system(size: 12, weight: .black, design: .rounded))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.78)
-                    }
-                    .foregroundColor(selectedSection == section ? .white : secondaryText)
-                    .padding(.vertical, 10)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background {
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(cardBg)
-
-                        if selectedSection == section {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .fill(LinearGradient(colors: [accent, accent2], startPoint: .topLeading, endPoint: .bottomTrailing))
-                        }
-                    }
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .strokeBorder(selectedSection == section ? Color.white.opacity(0.22) : stroke, lineWidth: 1)
-                    )
-                    .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
+                pickerButton(section)
             }
         }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(isDarkMode ? Color.white.opacity(0.08) : Color.white.opacity(0.85))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(stroke, lineWidth: 1))
+                .shadow(color: Color.black.opacity(isDarkMode ? 0.2 : 0.05), radius: 8, x: 0, y: 3)
+        )
         .padding(.horizontal, 20)
+    }
+
+    private func pickerButton(_ section: AnalysisSection) -> some View {
+        Button {
+            UISelectionFeedbackGenerator().selectionChanged()
+            withAnimation(.spring(response: 0.32, dampingFraction: 0.84)) {
+                selectedSection = section
+            }
+        } label: {
+            VStack(spacing: 3) {
+                Image(systemName: section.icon)
+                    .font(.system(size: 13, weight: .black))
+                Text(section.title)
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+            }
+            .foregroundColor(selectedSection == section ? .white : secondaryText)
+            .frame(maxWidth: .infinity)
+            .frame(height: 52)
+            .background {
+                if selectedSection == section {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(LinearGradient(colors: [accent, accent2], startPoint: .topLeading, endPoint: .bottomTrailing))
+                } else {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.clear)
+                }
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(selectedSection == section ? Color.white.opacity(0.22) : Color.clear, lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Medical Card
@@ -271,7 +281,7 @@ struct AnalysisView: View {
             Text(value)
                 .font(.system(size: 20, weight: .black, design: .rounded))
                 .foregroundColor(.white)
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 9, weight: .black, design: .rounded))
                 .foregroundColor(.white.opacity(0.74))
                 .lineLimit(1)
@@ -543,10 +553,10 @@ struct AnalysisView: View {
                 .background(color.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
-                Text(text)
+                Text(BagytL10n.tr(text))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(3)
@@ -620,9 +630,35 @@ struct AnalysisView: View {
         .padding(.horizontal, 20)
     }
 
+    // MARK: - ✅ ПРОКАЧАННЫЙ блок AI гипотез
+
     private var aiMemoryCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionTitle("AI-гипотезы из чата", icon: "sparkle.magnifyingglass")
+            HStack {
+                sectionTitle("AI-гипотезы из чата", icon: "sparkle.magnifyingglass")
+
+                // Счётчик заметок
+                if !aiFindings.isEmpty {
+                    Text("\(aiFindings.count)")
+                        .font(.system(size: 11, weight: .black, design: .rounded))
+                        .foregroundColor(violet)
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(violet.opacity(isDarkMode ? 0.16 : 0.10), in: Capsule())
+                }
+            }
+
+            // Пояснение что это такое
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 13, weight: .black))
+                    .foregroundColor(violet)
+                Text("Bagyt сохраняет гипотезы когда вы обсуждаете симптомы в чате. Это не диагноз — это клинический контекст для врача.")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(secondaryText)
+                    .lineSpacing(2)
+            }
+            .padding(12)
+            .background(violet.opacity(isDarkMode ? 0.10 : 0.06), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             if aiFindings.isEmpty {
                 emptyPanel(
@@ -631,7 +667,8 @@ struct AnalysisView: View {
                     text: "Когда Bagyt в чате обсудит симптом и возможные причины, краткая заметка появится здесь и попадет в будущий контекст AI."
                 )
             } else {
-                ForEach(aiFindings.prefix(6)) { finding in
+                // ✅ Показываем ВСЕ заметки без ограничения prefix(6)
+                ForEach(aiFindings) { finding in
                     aiFindingRow(finding)
                 }
             }
@@ -639,8 +676,11 @@ struct AnalysisView: View {
         .padding(.horizontal, 20)
     }
 
+    // ✅ ПРОКАЧАННАЯ карточка гипотезы — показывает всё без обрезки
     private func aiFindingRow(_ finding: BagytAIFinding) -> some View {
-        VStack(alignment: .leading, spacing: 11) {
+        VStack(alignment: .leading, spacing: 0) {
+
+            // Заголовок + дата + удаление
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: finding.redFlags.isEmpty ? "brain.head.profile" : "exclamationmark.triangle.fill")
                     .font(.system(size: 15, weight: .black))
@@ -650,9 +690,9 @@ struct AnalysisView: View {
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(finding.title)
-                        .font(.system(size: 14, weight: .black, design: .rounded))
+                        .font(.system(size: 15, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
-                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(Self.shortDateFormatter.string(from: finding.createdAt))
                         .font(.system(size: 10, weight: .black, design: .rounded))
                         .foregroundColor(secondaryText)
@@ -671,41 +711,88 @@ struct AnalysisView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .padding(.bottom, 12)
 
-            Text(finding.summary)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(secondaryText)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
+            // Резюме (полностью, без ограничений)
+            if !finding.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    tagLabel("РЕЗЮМЕ", color: accent)
+                    Text(finding.summary)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(primaryText.opacity(0.85))
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(accent.opacity(isDarkMode ? 0.08 : 0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.bottom, 10)
+            }
 
+            // Возможные причины (ВСЕ без prefix)
             if !finding.hypotheses.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Возможные причины, не диагноз")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                        .foregroundColor(violet)
-                        .tracking(0.4)
-
-                    ForEach(finding.hypotheses.prefix(3), id: \.self) { item in
-                        bulletText(item, color: violet)
+                VStack(alignment: .leading, spacing: 8) {
+                    tagLabel("ВОЗМОЖНЫЕ ПРИЧИНЫ · НЕ ДИАГНОЗ", color: violet)
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(Array(finding.hypotheses.enumerated()), id: \.offset) { idx, item in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text("\(idx + 1)")
+                                    .font(.system(size: 10, weight: .black, design: .rounded))
+                                    .foregroundColor(.white)
+                                    .frame(width: 18, height: 18)
+                                    .background(violet, in: Circle())
+                                Text(item)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(primaryText.opacity(0.85))
+                                    .lineSpacing(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                     }
                 }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(violet.opacity(isDarkMode ? 0.08 : 0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.bottom, 10)
             }
 
+            // Красные флаги (ВСЕ без prefix)
             if !finding.redFlags.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Красные флаги")
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                        .foregroundColor(danger)
-                        .tracking(0.4)
-
-                    ForEach(finding.redFlags.prefix(2), id: \.self) { item in
-                        bulletText(item, color: danger)
+                VStack(alignment: .leading, spacing: 8) {
+                    tagLabel("🚨 КРАСНЫЕ ФЛАГИ", color: danger)
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(finding.redFlags, id: \.self) { item in
+                            HStack(alignment: .top, spacing: 8) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .font(.system(size: 14, weight: .black))
+                                    .foregroundColor(danger)
+                                Text(item)
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(primaryText.opacity(0.85))
+                                    .lineSpacing(3)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
                     }
                 }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(danger.opacity(isDarkMode ? 0.08 : 0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.bottom, 10)
             }
+
+
         }
         .padding(15)
         .background(analysisCard(cornerRadius: 20))
+    }
+
+    // Маленький тег-заголовок внутри карточки
+    private func tagLabel(_ text: String, color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .black, design: .rounded))
+            .foregroundColor(color)
+            .tracking(0.6)
     }
 
     private var moodAnamnesisCard: some View {
@@ -733,10 +820,10 @@ struct AnalysisView: View {
                     .background(mentalContext.color.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(mentalContext.title)
+                    Text(BagytL10n.tr(mentalContext.title))
                         .font(.system(size: 14, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
-                    Text("\(mentalContext.text) Поэтому дневник настроения лучше оставить здесь, как часть анамнеза и фона симптомов.")
+                    Text("\(BagytL10n.tr(mentalContext.text)) \(BagytL10n.tr("Поэтому дневник настроения лучше оставить здесь, как часть анамнеза и фона симптомов."))")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(secondaryText)
                         .lineSpacing(3)
@@ -773,7 +860,7 @@ struct AnalysisView: View {
                             Text(entry.title)
                                 .font(.system(size: 14, weight: .black, design: .rounded))
                                 .foregroundColor(primaryText)
-                            Text("\(entry.category.rawValue) · \(Self.shortDateFormatter.string(from: entry.date))")
+                            Text("\(entry.category.title) · \(Self.shortDateFormatter.string(from: entry.date))")
                                 .font(.system(size: 11, weight: .black, design: .rounded))
                                 .foregroundColor(secondaryText)
                             if !entry.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -964,10 +1051,10 @@ struct AnalysisView: View {
                         .background(factor.color.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(factor.title)
+                        Text(BagytL10n.tr(factor.title))
                             .font(.system(size: 14, weight: .black, design: .rounded))
                             .foregroundColor(primaryText)
-                        Text(factor.text)
+                        Text(BagytL10n.tr(factor.text))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(secondaryText)
                             .lineSpacing(3)
@@ -999,10 +1086,10 @@ struct AnalysisView: View {
                     .background(mentalContext.color.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(mentalContext.title)
+                    Text(BagytL10n.tr(mentalContext.title))
                         .font(.system(size: 14, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
-                    Text(mentalContext.text)
+                    Text(BagytL10n.tr(mentalContext.text))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(secondaryText)
                         .lineSpacing(3)
@@ -1098,10 +1185,10 @@ struct AnalysisView: View {
                         .foregroundColor(item.isReady ? success : secondaryText)
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(item.title)
+                        Text(BagytL10n.tr(item.title))
                             .font(.system(size: 14, weight: .black, design: .rounded))
                             .foregroundColor(primaryText)
-                        Text(item.text)
+                        Text(BagytL10n.tr(item.text))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(secondaryText)
                             .lineSpacing(3)
@@ -1139,7 +1226,7 @@ struct AnalysisView: View {
                             Text(entry.title)
                                 .font(.system(size: 14, weight: .black, design: .rounded))
                                 .foregroundColor(primaryText)
-                            Text("\(entry.category.rawValue) · \(Self.shortDateFormatter.string(from: entry.date))")
+                            Text("\(entry.category.title) · \(Self.shortDateFormatter.string(from: entry.date))")
                                 .font(.system(size: 11, weight: .black, design: .rounded))
                                 .foregroundColor(secondaryText)
                             if !entry.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -1230,8 +1317,8 @@ struct AnalysisView: View {
             alerts.append(.init(
                 severity: .critical,
                 icon: "exclamationmark.triangle.fill",
-                title: "Сильный симптом",
-                text: "В журнале есть симптом силой \(severe)/10. Если он сохраняется, усиливается или сопровождается одышкой, болью в груди, слабостью или высокой температурой, лучше обратиться за медицинской помощью."
+                title: BagytL10n.tr("Сильный симптом"),
+                text: String(format: BagytL10n.tr("В журнале есть симптом силой %d/10. Если он сохраняется, усиливается или сопровождается одышкой, болью в груди, слабостью или высокой температурой, лучше обратиться за медицинской помощью."), severe)
             ))
         }
 
@@ -1239,15 +1326,15 @@ struct AnalysisView: View {
             alerts.append(.init(
                 severity: .critical,
                 icon: "heart.fill",
-                title: "Высокий пульс",
-                text: "Последний пульс \(health.heartRate) уд/мин. Важно учитывать нагрузку, стресс, температуру и лекарства. При плохом самочувствии это повод не откладывать консультацию."
+                title: BagytL10n.tr("Высокий пульс"),
+                text: String(format: BagytL10n.tr("Последний пульс %d уд/мин. Важно учитывать нагрузку, стресс, температуру и лекарства. При плохом самочувствии это повод не откладывать консультацию."), health.heartRate)
             ))
         } else if health.heartRate > 0 && health.heartRate <= 45 {
             alerts.append(.init(
                 severity: .critical,
                 icon: "heart.fill",
-                title: "Низкий пульс",
-                text: "Последний пульс \(health.heartRate) уд/мин. Если есть слабость, головокружение или обмороки, лучше обсудить это с врачом."
+                title: BagytL10n.tr("Низкий пульс"),
+                text: String(format: BagytL10n.tr("Последний пульс %d уд/мин. Если есть слабость, головокружение или обмороки, лучше обсудить это с врачом."), health.heartRate)
             ))
         }
 
@@ -1255,8 +1342,8 @@ struct AnalysisView: View {
             alerts.append(.init(
                 severity: .info,
                 icon: "allergens.fill",
-                title: "Аллергии не заполнены",
-                text: "Это не значит, что аллергий нет. Заполненная аллергологическая карта делает отчет врачу гораздо безопаснее."
+                title: BagytL10n.tr("Аллергии не заполнены"),
+                text: BagytL10n.tr("Это не значит, что аллергий нет. Заполненная аллергологическая карта делает отчет врачу гораздо безопаснее.")
             ))
         }
 
@@ -1264,8 +1351,8 @@ struct AnalysisView: View {
             alerts.append(.init(
                 severity: .info,
                 icon: "pills.fill",
-                title: "Лекарства не указаны",
-                text: "Добавьте постоянные препараты, витамины и то, что принимаете по необходимости. Это особенно важно при новых симптомах."
+                title: BagytL10n.tr("Лекарства не указаны"),
+                text: BagytL10n.tr("Добавьте постоянные препараты, витамины и то, что принимаете по необходимости. Это особенно важно при новых симптомах.")
             ))
         }
 
@@ -1273,8 +1360,8 @@ struct AnalysisView: View {
             alerts.append(.init(
                 severity: .attention,
                 icon: "waveform.path.ecg.rectangle.fill",
-                title: "Повтор симптомов",
-                text: "\(symptomsLast14.count) симптома за 14 дней. Стоит посмотреть, повторяются ли они после еды, нагрузки, недосыпа или приема лекарств."
+                title: BagytL10n.tr("Повтор симптомов"),
+                text: String(format: BagytL10n.tr("%d симптома за 14 дней. Стоит посмотреть, повторяются ли они после еды, нагрузки, недосыпа или приема лекарств."), symptomsLast14.count)
             ))
         }
 
@@ -1282,8 +1369,8 @@ struct AnalysisView: View {
             alerts.append(.init(
                 severity: .attention,
                 icon: "moon.zzz.fill",
-                title: "Недосып как фактор",
-                text: "Последний сон около \(String(format: "%.1f", sleepHours)) ч. Это не диагноз, но недосып может усиливать головную боль, усталость и сердцебиение."
+                title: BagytL10n.tr("Недосып как фактор"),
+                text: String(format: BagytL10n.tr("Последний сон около %@ ч. Это не диагноз, но недосып может усиливать головную боль, усталость и сердцебиение."), String(format: "%.1f", sleepHours))
             ))
         }
 
@@ -1291,8 +1378,8 @@ struct AnalysisView: View {
             alerts.append(.init(
                 severity: .stable,
                 icon: "checkmark.shield.fill",
-                title: "Критичных сигналов нет",
-                text: "Сейчас Bagyt не видит явных красных флагов. Продолжайте вести медкарту и журнал, чтобы анализ был точнее."
+                title: BagytL10n.tr("Критичных сигналов нет"),
+                text: BagytL10n.tr("Сейчас Bagyt не видит явных красных флагов. Продолжайте вести медкарту и журнал, чтобы анализ был точнее.")
             ))
         }
 
@@ -1303,26 +1390,26 @@ struct AnalysisView: View {
         var factors: [AnalysisRiskFactor] = [
             .init(
                 icon: "allergens.fill",
-                title: "Аллергологический риск",
+                title: BagytL10n.tr("Аллергологический риск"),
                 text: items(for: .allergy).isEmpty
-                    ? "Аллергии пока не заполнены. Это один из самых важных блоков перед назначениями."
-                    : "Заполнено: \(items(for: .allergy).map(\.title).joined(separator: ", ")).",
+                    ? BagytL10n.tr("Аллергии пока не заполнены. Это один из самых важных блоков перед назначениями.")
+                    : String(format: BagytL10n.tr("Заполнено: %@."), items(for: .allergy).map(\.title).joined(separator: ", ")),
                 color: items(for: .allergy).isEmpty ? warning : success
             ),
             .init(
                 icon: "pills.fill",
-                title: "Лекарственная нагрузка",
+                title: BagytL10n.tr("Лекарственная нагрузка"),
                 text: items(for: .medication).isEmpty
-                    ? "Постоянные лекарства не указаны."
-                    : "\(items(for: .medication).count) активных записей. Проверяйте дозировки и реакции в журнале.",
+                    ? BagytL10n.tr("Постоянные лекарства не указаны.")
+                    : String(format: BagytL10n.tr("%d активных записей. Проверяйте дозировки и реакции в журнале."), items(for: .medication).count),
                 color: items(for: .medication).isEmpty ? secondaryText : violet
             ),
             .init(
                 icon: "cross.case.fill",
-                title: "Хронический фон",
+                title: BagytL10n.tr("Хронический фон"),
                 text: items(for: .condition).isEmpty
-                    ? "Диагнозы не указаны. При хронических состояниях анализ должен учитывать базовый фон."
-                    : "Указано: \(items(for: .condition).map(\.title).joined(separator: ", ")).",
+                    ? BagytL10n.tr("Диагнозы не указаны. При хронических состояниях анализ должен учитывать базовый фон.")
+                    : String(format: BagytL10n.tr("Указано: %@."), items(for: .condition).map(\.title).joined(separator: ", ")),
                 color: items(for: .condition).isEmpty ? secondaryText : accent
             )
         ]
@@ -1330,8 +1417,8 @@ struct AnalysisView: View {
         if health.heartRate > 0 {
             factors.append(.init(
                 icon: "heart.text.square.fill",
-                title: "Пульс как клинический контекст",
-                text: "Последнее значение: \(health.heartRate) уд/мин. Оно учитывается только как сигнал, а не как отдельный индекс здоровья.",
+                title: BagytL10n.tr("Пульс как клинический контекст"),
+                text: String(format: BagytL10n.tr("Последнее значение: %d уд/мин. Оно учитывается только как сигнал, а не как отдельный индекс здоровья."), health.heartRate),
                 color: heartRateColor
             ))
         }
@@ -1339,8 +1426,8 @@ struct AnalysisView: View {
         if sleepHours > 0 {
             factors.append(.init(
                 icon: "bed.double.fill",
-                title: "Восстановление",
-                text: "Сон: \(String(format: "%.1f", sleepHours)) ч. В анализе это фактор риска для симптомов, а не копия вкладки метрик.",
+                title: BagytL10n.tr("Восстановление"),
+                text: String(format: BagytL10n.tr("Сон: %@ ч. В анализе это фактор риска для симптомов, а не копия вкладки метрик."), String(format: "%.1f", sleepHours)),
                 color: sleepHours < 5.5 ? warning : success
             ))
         }
@@ -1352,8 +1439,8 @@ struct AnalysisView: View {
         if let stress = averageStress, stress >= 4 {
             return .init(
                 icon: "brain.head.profile",
-                title: "Высокий стресс как фон",
-                text: "Средний стресс за неделю \(String(format: "%.1f", stress))/5. Это не главный медицинский блок, но он может усиливать симптомы и сон.",
+                title: BagytL10n.tr("Высокий стресс как фон"),
+                text: String(format: BagytL10n.tr("Средний стресс за неделю %@/5. Это не главный медицинский блок, но он может усиливать симптомы и сон."), String(format: "%.1f", stress)),
                 color: warning
             )
         }
@@ -1361,33 +1448,33 @@ struct AnalysisView: View {
         if let mood = averageMood, mood <= 2.2 {
             return .init(
                 icon: "face.dashed.fill",
-                title: "Настроение снижено",
-                text: "Среднее настроение \(String(format: "%.1f", mood))/5. Bagyt учитывает это как фон, но не строит весь анализ вокруг настроения.",
+                title: BagytL10n.tr("Настроение снижено"),
+                text: String(format: BagytL10n.tr("Среднее настроение %@/5. Bagyt учитывает это как фон, но не строит весь анализ вокруг настроения."), String(format: "%.1f", mood)),
                 color: warning
             )
         }
 
         return .init(
             icon: "checkmark.circle.fill",
-            title: "Фон без явного сигнала",
-            text: moodLast7.isEmpty ? "Настроение можно отмечать, но это дополнительный контекст, а не центр медицинского анализа." : "Психоэмоциональные записи есть, критичного сигнала по ним сейчас нет.",
+            title: BagytL10n.tr("Фон без явного сигнала"),
+            text: moodLast7.isEmpty ? BagytL10n.tr("Настроение можно отмечать, но это дополнительный контекст, а не центр медицинского анализа.") : BagytL10n.tr("Психоэмоциональные записи есть, критичного сигнала по ним сейчас нет."),
             color: success
         )
     }
 
     private var moodShortcutText: String {
         if moodLast7.isEmpty {
-            return "Открыть дневник настроения и добавить запись. Эти данные будут учитываться в анамнезе как фон."
+            return BagytL10n.tr("Открыть дневник настроения и добавить запись. Эти данные будут учитываться в анамнезе как фон.")
         }
 
-        var parts = ["\(moodLast7.count) записей за неделю"]
+        var parts = [String(format: BagytL10n.tr("%d записей за неделю"), moodLast7.count)]
 
         if let averageMood {
-            parts.append("настроение \(String(format: "%.1f", averageMood))/5")
+            parts.append(String(format: BagytL10n.tr("настроение %@/5"), String(format: "%.1f", averageMood)))
         }
 
         if let averageStress {
-            parts.append("стресс \(String(format: "%.1f", averageStress))/5")
+            parts.append(String(format: BagytL10n.tr("стресс %@/5"), String(format: "%.1f", averageStress)))
         }
 
         return parts.joined(separator: " · ")
@@ -1396,28 +1483,28 @@ struct AnalysisView: View {
     private var visitChecklist: [AnalysisVisitChecklistItem] {
         [
             .init(
-                title: "Аллергии и противопоказания",
-                text: items(for: .allergy).isEmpty ? "Добавьте хотя бы известные аллергии или отметьте, что их нет." : "Заполнено \(items(for: .allergy).count) записей.",
+                title: BagytL10n.tr("Аллергии и противопоказания"),
+                text: items(for: .allergy).isEmpty ? BagytL10n.tr("Добавьте хотя бы известные аллергии или отметьте, что их нет.") : String(format: BagytL10n.tr("Заполнено %d записей."), items(for: .allergy).count),
                 isReady: !items(for: .allergy).isEmpty
             ),
             .init(
-                title: "Текущие лекарства",
-                text: items(for: .medication).isEmpty ? "Укажите названия, дозировки и как часто принимаете." : "Список лекарств попадет в сводку.",
+                title: BagytL10n.tr("Текущие лекарства"),
+                text: items(for: .medication).isEmpty ? BagytL10n.tr("Укажите названия, дозировки и как часто принимаете.") : BagytL10n.tr("Список лекарств попадет в сводку."),
                 isReady: !items(for: .medication).isEmpty
             ),
             .init(
-                title: "Симптомы с датами",
-                text: symptomsLast14.isEmpty ? "Если симптомов нет, ничего добавлять не нужно." : "\(symptomsLast14.count) записей уже есть.",
+                title: BagytL10n.tr("Симптомы с датами"),
+                text: symptomsLast14.isEmpty ? BagytL10n.tr("Если симптомов нет, ничего добавлять не нужно.") : String(format: BagytL10n.tr("%d записей уже есть."), symptomsLast14.count),
                 isReady: !symptomsLast14.isEmpty
             ),
             .init(
-                title: "Ключевые показатели",
-                text: health.isAuthorized ? "HealthKit подключен: пульс, сон и активность будут в отчете." : "Можно подключить HealthKit, чтобы врачу было проще увидеть динамику.",
+                title: BagytL10n.tr("Ключевые показатели"),
+                text: health.isAuthorized ? BagytL10n.tr("HealthKit подключен: пульс, сон и активность будут в отчете.") : BagytL10n.tr("Можно подключить HealthKit, чтобы врачу было проще увидеть динамику."),
                 isReady: health.isAuthorized
             ),
             .init(
-                title: "AI-анамнез",
-                text: aiFindings.isEmpty ? "После медицинского вопроса в чате Bagyt сохранит краткую заметку сюда." : "\(aiFindings.count) AI-заметок уже сохранено.",
+                title: BagytL10n.tr("AI-анамнез"),
+                text: aiFindings.isEmpty ? BagytL10n.tr("После медицинского вопроса в чате Bagyt сохранит краткую заметку сюда.") : String(format: BagytL10n.tr("%d AI-заметок уже сохранено."), aiFindings.count),
                 isReady: !aiFindings.isEmpty
             )
         ]
@@ -1463,7 +1550,10 @@ struct AnalysisView: View {
                 lines.append("- \(Self.shortDateFormatter.string(from: finding.createdAt)): \(finding.title)")
                 lines.append("  \(finding.summary)")
                 if !finding.hypotheses.isEmpty {
-                    lines.append("  Возможные причины, не диагноз: \(finding.hypotheses.prefix(3).joined(separator: "; "))")
+                    lines.append("  Возможные причины, не диагноз: \(finding.hypotheses.joined(separator: "; "))")
+                }
+                if !finding.redFlags.isEmpty {
+                    lines.append("  Красные флаги: \(finding.redFlags.joined(separator: "; "))")
                 }
             }
         }
@@ -1649,7 +1739,7 @@ struct AnalysisView: View {
             Image(systemName: icon)
                 .font(.system(size: 13, weight: .black))
                 .foregroundColor(accent)
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 17, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
             Spacer()
@@ -1665,10 +1755,10 @@ struct AnalysisView: View {
                 .background(accent.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
-                Text(text)
+                Text(BagytL10n.tr(text))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(3)
@@ -1698,14 +1788,14 @@ struct AnalysisView: View {
 
     private static let shortDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "d MMM"
         return formatter
     }()
 
     private static let fullDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = BagytL10n.currentLocale
         formatter.dateFormat = "d MMMM yyyy, HH:mm"
         return formatter
     }()
@@ -1783,7 +1873,7 @@ private struct AnalysisMedicalItemSheet: View {
                 }
             }
             .preferredColorScheme(isDarkMode ? .dark : .light)
-            .navigationTitle(mode.item == nil ? "Добавить" : "Изменить")
+            .navigationTitle(BagytL10n.tr(mode.item == nil ? "Добавить" : "Изменить"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -1924,7 +2014,7 @@ private struct AnalysisMedicalItemSheet: View {
             HStack(spacing: 10) {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 16, weight: .black))
-                Text(mode.item == nil ? "Сохранить запись" : "Сохранить изменения")
+                Text(BagytL10n.tr(mode.item == nil ? "Сохранить запись" : "Сохранить изменения"))
                     .font(.system(size: 16, weight: .black, design: .rounded))
             }
             .foregroundColor(.white)
@@ -1965,19 +2055,19 @@ private enum AnalysisSection: CaseIterable {
 
     var title: String {
         switch self {
-        case .medical: return "Медкарта"
-        case .anamnesis: return "Анамнез"
-        case .risks: return "Риски"
-        case .doctor: return "Врачу"
+        case .medical:   return BagytL10n.tr("Медкарта")
+        case .anamnesis: return BagytL10n.tr("Анамнез")
+        case .risks:     return BagytL10n.tr("Риски")
+        case .doctor:    return BagytL10n.tr("Врачу")
         }
     }
 
     var icon: String {
         switch self {
-        case .medical: return "cross.case.fill"
+        case .medical:   return "cross.case.fill"
         case .anamnesis: return "brain.head.profile"
-        case .risks: return "waveform.path.ecg.rectangle.fill"
-        case .doctor: return "stethoscope"
+        case .risks:     return "waveform.path.ecg.rectangle.fill"
+        case .doctor:    return "stethoscope"
         }
     }
 }
@@ -1990,91 +2080,91 @@ private enum AnalysisMedicalCategory: String, CaseIterable, Codable {
 
     var title: String {
         switch self {
-        case .allergy: return "Аллергия"
-        case .medication: return "Лекарство"
-        case .condition: return "Диагноз"
-        case .careNote: return "Важное"
+        case .allergy:    return BagytL10n.tr("Аллергия")
+        case .medication: return BagytL10n.tr("Лекарство")
+        case .condition:  return BagytL10n.tr("Диагноз")
+        case .careNote:   return BagytL10n.tr("Важное")
         }
     }
 
     var icon: String {
         switch self {
-        case .allergy: return "allergens.fill"
+        case .allergy:    return "allergens.fill"
         case .medication: return "pills.fill"
-        case .condition: return "cross.case.fill"
-        case .careNote: return "staroflife.fill"
+        case .condition:  return "cross.case.fill"
+        case .careNote:   return "staroflife.fill"
         }
     }
 
     var color: Color {
         switch self {
-        case .allergy: return Color(red: 0.95, green: 0.25, blue: 0.32)
+        case .allergy:    return Color(red: 0.95, green: 0.25, blue: 0.32)
         case .medication: return Color(red: 0.55, green: 0.35, blue: 1.0)
-        case .condition: return Color(red: 0.055, green: 0.647, blue: 0.914)
-        case .careNote: return Color(red: 0.10, green: 0.78, blue: 0.48)
+        case .condition:  return Color(red: 0.055, green: 0.647, blue: 0.914)
+        case .careNote:   return Color(red: 0.10, green: 0.78, blue: 0.48)
         }
     }
 
     var sortOrder: Int {
         switch self {
-        case .allergy: return 0
+        case .allergy:    return 0
         case .medication: return 1
-        case .condition: return 2
-        case .careNote: return 3
+        case .condition:  return 2
+        case .careNote:   return 3
         }
     }
 
     var shortHint: String {
         switch self {
-        case .allergy: return "реакции"
-        case .medication: return "дозировки"
-        case .condition: return "хроника"
-        case .careNote: return "контекст"
+        case .allergy:    return BagytL10n.tr("реакции")
+        case .medication: return BagytL10n.tr("дозировки")
+        case .condition:  return BagytL10n.tr("хроника")
+        case .careNote:   return BagytL10n.tr("контекст")
         }
     }
 
     var longHint: String {
         switch self {
-        case .allergy: return "Запишите вещество, продукт или препарат, на который была реакция."
-        case .medication: return "Укажите препарат, дозировку, частоту приема и зачем он назначен."
-        case .condition: return "Добавьте хроническое состояние, диагноз или важный медицинский фон."
-        case .careNote: return "Группа крови, операции, противопоказания, контакт близкого или другая важная заметка."
+        case .allergy:    return BagytL10n.tr("Запишите вещество, продукт или препарат, на который была реакция.")
+        case .medication: return BagytL10n.tr("Укажите препарат, дозировку, частоту приема и зачем он назначен.")
+        case .condition:  return BagytL10n.tr("Добавьте хроническое состояние, диагноз или важный медицинский фон.")
+        case .careNote:   return BagytL10n.tr("Группа крови, операции, противопоказания, контакт близкого или другая важная заметка.")
         }
     }
 
     var inputTitle: String {
         switch self {
-        case .allergy: return "На что аллергия"
-        case .medication: return "Название лекарства"
-        case .condition: return "Диагноз или состояние"
-        case .careNote: return "Название заметки"
+        case .allergy:    return BagytL10n.tr("На что аллергия")
+        case .medication: return BagytL10n.tr("Название лекарства")
+        case .condition:  return BagytL10n.tr("Диагноз или состояние")
+        case .careNote:   return BagytL10n.tr("Название заметки")
         }
     }
 
     var placeholder: String {
         switch self {
-        case .allergy: return "Например: пенициллин"
-        case .medication: return "Например: витамин D 2000 МЕ"
-        case .condition: return "Например: астма"
-        case .careNote: return "Например: группа крови O(I)+"
+        case .allergy:    return BagytL10n.tr("Например: пенициллин")
+        case .medication: return BagytL10n.tr("Например: витамин D 2000 МЕ")
+        case .condition:  return BagytL10n.tr("Например: астма")
+        case .careNote:   return BagytL10n.tr("Например: группа крови O(I)+")
         }
     }
 
     var detailPlaceholder: String {
         switch self {
-        case .allergy: return "Какая реакция, когда была, насколько сильная..."
-        case .medication: return "Дозировка, время приема, кто назначил, побочные реакции..."
-        case .condition: return "Когда поставили, что важно контролировать..."
-        case .careNote: return "Любая информация, которую врачу важно увидеть сразу..."
+        case .allergy:    return BagytL10n.tr("Какая реакция, когда была, насколько сильная...")
+        case .medication: return BagytL10n.tr("Дозировка, время приема, кто назначил, побочные реакции...")
+        case .condition:  return BagytL10n.tr("Когда поставили, что важно контролировать...")
+        case .careNote:   return BagytL10n.tr("Любая информация, которую врачу важно увидеть сразу...")
         }
     }
 
     var emptyText: String {
         switch self {
-        case .allergy: return "Добавить известную аллергию"
-        case .medication: return "Добавить текущий препарат"
-        case .condition: return "Добавить диагноз или состояние"
-        case .careNote: return "Добавить важную заметку"
+        case .allergy:    return BagytL10n.tr("Добавить известную аллергию")
+        case .medication: return BagytL10n.tr("Добавить текущий препарат")
+        case .condition:  return BagytL10n.tr("Добавить диагноз или состояние")
+        case .careNote:   return BagytL10n.tr("Добавить важную заметку")
         }
     }
 }
@@ -2095,17 +2185,17 @@ private enum AnalysisMedicalImportance: String, CaseIterable, Codable {
 
     var title: String {
         switch self {
-        case .low: return "Обычное"
-        case .medium: return "Важно"
-        case .high: return "Критично"
+        case .low:    return BagytL10n.tr("Обычное")
+        case .medium: return BagytL10n.tr("Важно")
+        case .high:   return BagytL10n.tr("Критично")
         }
     }
 
     var color: Color {
         switch self {
-        case .low: return Color(red: 0.10, green: 0.78, blue: 0.48)
+        case .low:    return Color(red: 0.10, green: 0.78, blue: 0.48)
         case .medium: return Color(red: 1.0, green: 0.62, blue: 0.14)
-        case .high: return Color(red: 0.95, green: 0.25, blue: 0.32)
+        case .high:   return Color(red: 0.95, green: 0.25, blue: 0.32)
         }
     }
 }
@@ -2124,36 +2214,36 @@ private enum AnalysisClinicalStatus {
 
     var title: String {
         switch self {
-        case .urgent: return "Есть красный флаг"
-        case .watch: return "Есть факторы для внимания"
-        case .stable: return "Критичных сигналов нет"
-        case .incomplete: return "Заполните медкарту"
+        case .urgent:     return BagytL10n.tr("Есть красный флаг")
+        case .watch:      return BagytL10n.tr("Есть факторы для внимания")
+        case .stable:     return BagytL10n.tr("Критичных сигналов нет")
+        case .incomplete: return BagytL10n.tr("Заполните медкарту")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .urgent: return "Bagyt видит сигнал, который лучше не игнорировать. Это не диагноз, но повод оценить состояние внимательнее."
-        case .watch: return "Есть повторяющиеся симптомы или факторы риска. Сводка поможет понять, что обсудить с врачом."
-        case .stable: return "Медицинская карта и журнал выглядят спокойно. Продолжайте фиксировать важные изменения."
-        case .incomplete: return "Добавьте аллергии, лекарства и диагнозы. Тогда анализ станет медицинским, а не просто набором метрик."
+        case .urgent:     return BagytL10n.tr("Bagyt видит сигнал, который лучше не игнорировать. Это не диагноз, но повод оценить состояние внимательнее.")
+        case .watch:      return BagytL10n.tr("Есть повторяющиеся симптомы или факторы риска. Сводка поможет понять, что обсудить с врачом.")
+        case .stable:     return BagytL10n.tr("Медицинская карта и журнал выглядят спокойно. Продолжайте фиксировать важные изменения.")
+        case .incomplete: return BagytL10n.tr("Добавьте аллергии, лекарства и диагнозы. Тогда анализ станет медицинским, а не просто набором метрик.")
         }
     }
 
     var icon: String {
         switch self {
-        case .urgent: return "exclamationmark.triangle.fill"
-        case .watch: return "eye.fill"
-        case .stable: return "checkmark.shield.fill"
+        case .urgent:     return "exclamationmark.triangle.fill"
+        case .watch:      return "eye.fill"
+        case .stable:     return "checkmark.shield.fill"
         case .incomplete: return "square.and.pencil"
         }
     }
 
     var color: Color {
         switch self {
-        case .urgent: return Color(red: 0.95, green: 0.25, blue: 0.32)
-        case .watch: return Color(red: 1.0, green: 0.62, blue: 0.14)
-        case .stable: return Color(red: 0.10, green: 0.78, blue: 0.48)
+        case .urgent:     return Color(red: 0.95, green: 0.25, blue: 0.32)
+        case .watch:      return Color(red: 1.0, green: 0.62, blue: 0.14)
+        case .stable:     return Color(red: 0.10, green: 0.78, blue: 0.48)
         case .incomplete: return Color(red: 0.055, green: 0.647, blue: 0.914)
         }
     }
@@ -2167,19 +2257,19 @@ private enum AnalysisAlertSeverity: Equatable {
 
     var title: String {
         switch self {
-        case .critical: return "важно"
-        case .attention: return "наблюдать"
-        case .info: return "заполнить"
-        case .stable: return "спокойно"
+        case .critical:  return BagytL10n.tr("важно")
+        case .attention: return BagytL10n.tr("наблюдать")
+        case .info:      return BagytL10n.tr("заполнить")
+        case .stable:    return BagytL10n.tr("спокойно")
         }
     }
 
     var color: Color {
         switch self {
-        case .critical: return Color(red: 0.95, green: 0.25, blue: 0.32)
+        case .critical:  return Color(red: 0.95, green: 0.25, blue: 0.32)
         case .attention: return Color(red: 1.0, green: 0.62, blue: 0.14)
-        case .info: return Color(red: 0.055, green: 0.647, blue: 0.914)
-        case .stable: return Color(red: 0.10, green: 0.78, blue: 0.48)
+        case .info:      return Color(red: 0.055, green: 0.647, blue: 0.914)
+        case .stable:    return Color(red: 0.10, green: 0.78, blue: 0.48)
         }
     }
 }
@@ -2191,13 +2281,7 @@ private struct AnalysisClinicalAlert: Identifiable {
     let title: String
     let text: String
 
-    init(
-        id: String? = nil,
-        severity: AnalysisAlertSeverity,
-        icon: String,
-        title: String,
-        text: String
-    ) {
+    init(id: String? = nil, severity: AnalysisAlertSeverity, icon: String, title: String, text: String) {
         self.id = id ?? "\(severity.title)-\(icon)-\(title)"
         self.severity = severity
         self.icon = icon
@@ -2213,13 +2297,7 @@ private struct AnalysisRiskFactor: Identifiable {
     let text: String
     let color: Color
 
-    init(
-        id: String? = nil,
-        icon: String,
-        title: String,
-        text: String,
-        color: Color
-    ) {
+    init(id: String? = nil, icon: String, title: String, text: String, color: Color) {
         self.id = id ?? "\(icon)-\(title)"
         self.icon = icon
         self.title = title
