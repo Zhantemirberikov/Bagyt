@@ -147,8 +147,8 @@ final class JournalViewModel: ObservableObject {
             .compactMap(\.severity)
             .max(), highSeverity >= 7 {
             return JournalInsight(
-                title: "Высокая выраженность",
-                body: "Есть симптом на \(highSeverity)/10. Добавьте триггеры, лекарства и что помогло — так ИИ точнее увидит картину.",
+                title: BagytL10n.tr("Высокая выраженность"),
+                body: String(format: BagytL10n.tr("Есть симптом на %d/10. Добавьте триггеры, лекарства и что помогло — так ИИ точнее увидит картину."), highSeverity),
                 icon: "waveform.path.ecg.rectangle.fill",
                 color: JournalCategory.symptom.color
             )
@@ -156,8 +156,8 @@ final class JournalViewModel: ObservableObject {
 
         if symptomsLast7Days >= 3 {
             return JournalInsight(
-                title: "Симптомы повторяются",
-                body: "\(symptomsLast7Days) симптома за 7 дней. Уже можно искать связь со сном, активностью и настроением.",
+                title: BagytL10n.tr("Симптомы повторяются"),
+                body: String(format: BagytL10n.tr("%d симптома за 7 дней. Уже можно искать связь со сном, активностью и настроением."), symptomsLast7Days),
                 icon: "sparkles",
                 color: Color(red: 0.055, green: 0.647, blue: 0.914)
             )
@@ -165,16 +165,16 @@ final class JournalViewModel: ObservableObject {
 
         if let averageMood, averageMood <= 2.8 {
             return JournalInsight(
-                title: "Настроение ниже обычного",
-                body: "Средняя оценка \(String(format: "%.1f", averageMood))/5. Отмечайте сон, стресс и энергию рядом с симптомами.",
+                title: BagytL10n.tr("Настроение ниже обычного"),
+                body: String(format: BagytL10n.tr("Средняя оценка %@/5. Отмечайте сон, стресс и энергию рядом с симптомами."), String(format: "%.1f", averageMood)),
                 icon: "brain.head.profile",
                 color: JournalCategory.mood.color
             )
         }
 
         return JournalInsight(
-            title: "Журнал готов к анализу",
-            body: "Симптомы, сон, настроение и визиты в одном месте помогают ИИ давать более точный контекст.",
+            title: BagytL10n.tr("Журнал готов к анализу"),
+            body: BagytL10n.tr("Симптомы, сон, настроение и визиты в одном месте помогают ИИ давать более точный контекст."),
             icon: "sparkle.magnifyingglass",
             color: Color(red: 0.024, green: 0.714, blue: 0.831)
         )
@@ -213,11 +213,7 @@ final class JournalViewModel: ObservableObject {
     private func load() {
         guard let data = UserDefaults.standard.data(forKey: activeStorageKey),
               let saved = try? JSONDecoder().decode([JournalEntry].self, from: data) else {
-#if DEBUG
-            entries = Self.demoEntries()
-#else
             entries = []
-#endif
             return
         }
 
@@ -241,22 +237,22 @@ final class JournalViewModel: ObservableObject {
         let cal = Calendar.current
         return [
             JournalEntry(
-                title: "Головная боль",
-                body: "Болит с утра, давящая, слева. Приняла ибупрофен.",
+                title: BagytL10n.tr("Головная боль"),
+                body: BagytL10n.tr("Болит с утра, давящая, слева. Приняла ибупрофен."),
                 category: .symptom,
                 date: Date(),
                 severity: 6
             ),
             JournalEntry(
-                title: "Хороший сон",
-                body: "Спал 8 часов, никаких пробуждений. Чувствую себя отлично.",
+                title: BagytL10n.tr("Хороший сон"),
+                body: BagytL10n.tr("Спал 8 часов, никаких пробуждений. Чувствую себя отлично."),
                 category: .sleep,
                 date: cal.date(byAdding: .hour, value: -14, to: Date())!,
                 mood: 5
             ),
             JournalEntry(
-                title: "Визит к терапевту",
-                body: "Назначен витамин D 2000 МЕ и магний B6 курсом 1 месяц.",
+                title: BagytL10n.tr("Визит к терапевту"),
+                body: BagytL10n.tr("Назначен витамин D 2000 МЕ и магний B6 курсом 1 месяц."),
                 category: .visit,
                 date: cal.date(byAdding: .day, value: -2, to: Date())!
             )
@@ -334,13 +330,13 @@ struct JournalView: View {
     private var headerSection: some View {
             HStack(alignment: .center, spacing: 14) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Журнал здоровья")
+                    Text(BagytL10n.tr("Журнал здоровья"))
                         .font(.system(size: 31, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
                 
             
         
-                Text("\(vm.entries.count) записей · \(vm.symptomsLast7Days) симптомов за неделю")
+                Text(String(format: BagytL10n.tr("%d записей · %d симптомов за неделю"), vm.entries.count, vm.symptomsLast7Days))
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundColor(secondaryText)
             }
@@ -425,7 +421,7 @@ struct JournalView: View {
                 Image(systemName: icon)
                     .font(.system(size: 11, weight: .black))
 
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 10, weight: .black, design: .rounded))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -448,11 +444,11 @@ struct JournalView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Пульс недели")
+                    Text(BagytL10n.tr("Пульс недели"))
                         .font(.system(size: 15, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
 
-                    Text("Активность записей по дням")
+                    Text(BagytL10n.tr("Активность записей по дням"))
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(secondaryText)
                 }
@@ -554,7 +550,7 @@ struct JournalView: View {
                 Image(systemName: icon)
                     .font(.system(size: 12, weight: .black))
 
-                Text(label)
+                Text(BagytL10n.tr(label))
                     .font(.system(size: 13, weight: .black, design: .rounded))
 
                 if count > 0 {
@@ -587,7 +583,7 @@ struct JournalView: View {
                 .font(.system(size: 14, weight: .black))
                 .foregroundColor(accent)
 
-            TextField("Поиск по записям...", text: $vm.searchText)
+            TextField(BagytL10n.tr("Поиск по записям..."), text: $vm.searchText)
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundColor(primaryText)
                 .colorScheme(isDarkMode ? .dark : .light)
@@ -669,11 +665,11 @@ struct JournalView: View {
                     .foregroundColor(accent)
             }
 
-            Text(vm.searchText.isEmpty ? "Нет записей" : "Ничего не найдено")
+            Text(BagytL10n.tr(vm.searchText.isEmpty ? "Нет записей" : "Ничего не найдено"))
                 .font(.system(size: 19, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
 
-            Text(vm.searchText.isEmpty ? "Нажмите +, чтобы добавить первую запись" : "Попробуйте другой запрос или фильтр")
+            Text(BagytL10n.tr(vm.searchText.isEmpty ? "Нажмите +, чтобы добавить первую запись" : "Попробуйте другой запрос или фильтр"))
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
@@ -787,8 +783,8 @@ struct JournalView: View {
     }
 
     private func sectionKey(for date: Date) -> String {
-        if Calendar.current.isDateInToday(date) { return "Сегодня" }
-        if Calendar.current.isDateInYesterday(date) { return "Вчера" }
+        if Calendar.current.isDateInToday(date) { return BagytL10n.tr("Сегодня") }
+        if Calendar.current.isDateInYesterday(date) { return BagytL10n.tr("Вчера") }
 
         let formatter = DateFormatter()
         formatter.locale = BagytL10n.currentLocale
@@ -932,7 +928,7 @@ struct JournalEntryCard: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 onDelete()
             } label: {
-                Label("Удалить запись", systemImage: "trash")
+                Label(BagytL10n.tr("Удалить запись"), systemImage: "trash")
             }
         }
     }
@@ -1024,11 +1020,11 @@ struct AddEntrySheet: View {
                     .padding(.top, 16)
                 }
             }
-            .navigationTitle("Новая запись")
+            .navigationTitle(BagytL10n.tr("Новая запись"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("Отмена") { dismiss() }
+                    Button(BagytL10n.tr("Отмена")) { dismiss() }
                         .foregroundColor(accent)
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                 }
@@ -1112,7 +1108,7 @@ struct AddEntrySheet: View {
         VStack(alignment: .leading, spacing: 8) {
             sectionLabel("Заголовок")
 
-            TextField("Например: Головная боль", text: $title)
+            TextField(BagytL10n.tr("Например: Головная боль"), text: $title)
                 .font(.system(size: 16, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
                 .focused($titleFocused)
@@ -1174,9 +1170,9 @@ struct AddEntrySheet: View {
                 .tint(category.color)
 
                 HStack {
-                    Text("Легко")
+                    Text(BagytL10n.tr("Легко"))
                     Spacer()
-                    Text("Сильно")
+                    Text(BagytL10n.tr("Сильно"))
                 }
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundColor(secondaryText)
@@ -1246,7 +1242,7 @@ struct AddEntrySheet: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 20, weight: .bold))
 
-                Text("Сохранить запись")
+                Text(BagytL10n.tr("Сохранить запись"))
                     .font(.system(size: 17, weight: .black, design: .rounded))
             }
             .foregroundColor(.white)
@@ -1271,7 +1267,7 @@ struct AddEntrySheet: View {
     }
 
     private func sectionLabel(_ text: String) -> some View {
-        Text(text)
+        Text(BagytL10n.tr(text))
             .font(.system(size: 12, weight: .black, design: .rounded))
             .foregroundColor(secondaryText)
             .textCase(.uppercase)
@@ -1280,12 +1276,12 @@ struct AddEntrySheet: View {
 
     private var placeholderForCategory: String {
         switch category {
-        case .symptom:  return "Где болит, когда началось, что усиливает, что помогло..."
-        case .sleep:    return "Сколько часов, были ли пробуждения, как чувствуете себя утром..."
-        case .visit:    return "Что сказал врач, назначения, дозировки, следующие шаги..."
-        case .activity: return "Тип активности, длительность, пульс, самочувствие после..."
-        case .mood:     return "Что повлияло на настроение, уровень стресса, энергия..."
-        case .note:     return "Любая важная заметка о здоровье..."
+        case .symptom:  return BagytL10n.tr("Где болит, когда началось, что усиливает, что помогло...")
+        case .sleep:    return BagytL10n.tr("Сколько часов, были ли пробуждения, как чувствуете себя утром...")
+        case .visit:    return BagytL10n.tr("Что сказал врач, назначения, дозировки, следующие шаги...")
+        case .activity: return BagytL10n.tr("Тип активности, длительность, пульс, самочувствие после...")
+        case .mood:     return BagytL10n.tr("Что повлияло на настроение, уровень стресса, энергия...")
+        case .note:     return BagytL10n.tr("Любая важная заметка о здоровье...")
         }
     }
 
@@ -1293,39 +1289,39 @@ struct AddEntrySheet: View {
         switch category {
         case .symptom:
             return [
-                ("Боль", "bolt.heart.fill", "Локализация: \nНачалось: \nСила: \(severity)/10\nЧто усиливает: \nЧто помогло: "),
-                ("Лекарство", "pills.fill", "Препарат: \nДозировка: \nВремя приема: \nЭффект: "),
-                ("Триггер", "exclamationmark.triangle.fill", "Возможный триггер: \nЕда/сон/стресс: \nРеакция организма: ")
+                (BagytL10n.tr("Боль"), "bolt.heart.fill", String(format: BagytL10n.tr("Локализация: \nНачалось: \nСила: %d/10\nЧто усиливает: \nЧто помогло: "), severity)),
+                (BagytL10n.tr("Лекарство"), "pills.fill", BagytL10n.tr("Препарат: \nДозировка: \nВремя приема: \nЭффект: ")),
+                (BagytL10n.tr("Триггер"), "exclamationmark.triangle.fill", BagytL10n.tr("Возможный триггер: \nЕда/сон/стресс: \nРеакция организма: "))
             ]
         case .sleep:
             return [
-                ("8 часов", "moon.zzz.fill", "Сон: 8 часов\nПробуждения: нет\nСамочувствие утром: "),
-                ("Плохой сон", "bed.double.fill", "Сон: \nПробуждения: \nПричина: \nЭнергия утром: "),
-                ("Режим", "clock.fill", "Лег спать: \nПроснулся: \nЭкран перед сном: ")
+                (BagytL10n.tr("8 часов"), "moon.zzz.fill", BagytL10n.tr("Сон: 8 часов\nПробуждения: нет\nСамочувствие утром: ")),
+                (BagytL10n.tr("Плохой сон"), "bed.double.fill", BagytL10n.tr("Сон: \nПробуждения: \nПричина: \nЭнергия утром: ")),
+                (BagytL10n.tr("Режим"), "clock.fill", BagytL10n.tr("Лег спать: \nПроснулся: \nЭкран перед сном: "))
             ]
         case .visit:
             return [
-                ("Назначение", "doc.text.fill", "Врач: \nНазначение: \nДозировка: \nКонтроль: "),
-                ("Анализы", "testtube.2", "Анализ: \nРезультат: \nКомментарий врача: "),
-                ("Вопросы", "questionmark.circle.fill", "Что спросить: \nЧто уточнить: \nЧто беспокоит: ")
+                (BagytL10n.tr("Назначение"), "doc.text.fill", BagytL10n.tr("Врач: \nНазначение: \nДозировка: \nКонтроль: ")),
+                (BagytL10n.tr("Анализы"), "testtube.2", BagytL10n.tr("Анализ: \nРезультат: \nКомментарий врача: ")),
+                (BagytL10n.tr("Вопросы"), "questionmark.circle.fill", BagytL10n.tr("Что спросить: \nЧто уточнить: \nЧто беспокоит: "))
             ]
         case .activity:
             return [
-                ("Тренировка", "figure.run", "Активность: \nДлительность: \nПульс: \nСамочувствие после: "),
-                ("Прогулка", "figure.walk", "Шаги/время: \nТемп: \nЭнергия после: "),
-                ("Восстановление", "heart.fill", "Нагрузка: \nУсталость: \nБоль/напряжение: ")
+                (BagytL10n.tr("Тренировка"), "figure.run", BagytL10n.tr("Активность: \nДлительность: \nПульс: \nСамочувствие после: ")),
+                (BagytL10n.tr("Прогулка"), "figure.walk", BagytL10n.tr("Шаги/время: \nТемп: \nЭнергия после: ")),
+                (BagytL10n.tr("Восстановление"), "heart.fill", BagytL10n.tr("Нагрузка: \nУсталость: \nБоль/напряжение: "))
             ]
         case .mood:
             return [
-                ("Стресс", "brain.head.profile", "Стресс: \nПричина: \nЭнергия: \nЧто помогло: "),
-                ("Хороший день", "sun.max.fill", "Что получилось: \nЭнергия: \nНастроение: "),
-                ("Усталость", "battery.25", "Усталость: \nСон: \nАппетит: \nПланы на отдых: ")
+                (BagytL10n.tr("Стресс"), "brain.head.profile", BagytL10n.tr("Стресс: \nПричина: \nЭнергия: \nЧто помогло: ")),
+                (BagytL10n.tr("Хороший день"), "sun.max.fill", BagytL10n.tr("Что получилось: \nЭнергия: \nНастроение: ")),
+                (BagytL10n.tr("Усталость"), "battery.25", BagytL10n.tr("Усталость: \nСон: \nАппетит: \nПланы на отдых: "))
             ]
         case .note:
             return [
-                ("Заметка", "note.text", "Важно: \nКонтекст: \nЧто сделать дальше: "),
-                ("Питание", "fork.knife", "Еда: \nВремя: \nРеакция: "),
-                ("Самочувствие", "heart.text.square.fill", "Общее состояние: \nЭнергия: \nНаблюдения: ")
+                (BagytL10n.tr("Заметка"), "note.text", BagytL10n.tr("Важно: \nКонтекст: \nЧто сделать дальше: ")),
+                (BagytL10n.tr("Питание"), "fork.knife", BagytL10n.tr("Еда: \nВремя: \nРеакция: ")),
+                (BagytL10n.tr("Самочувствие"), "heart.text.square.fill", BagytL10n.tr("Общее состояние: \nЭнергия: \nНаблюдения: "))
             ]
         }
     }
@@ -1428,11 +1424,11 @@ struct EntryDetailSheet: View {
                     .padding(.top, 18)
                 }
             }
-            .navigationTitle("Запись")
+            .navigationTitle(BagytL10n.tr("Запись"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Готово") { dismiss() }
+                    Button(BagytL10n.tr("Готово")) { dismiss() }
                         .foregroundColor(accent)
                         .font(.system(size: 16, weight: .black, design: .rounded))
                 }
@@ -1500,7 +1496,7 @@ struct EntryDetailSheet: View {
                                 .font(.system(size: 16, weight: .black, design: .rounded))
                                 .foregroundColor(primaryText)
 
-                            Text("Настроение \(mood)/5")
+                            Text(String(format: BagytL10n.tr("Настроение %d/5"), mood))
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(secondaryText)
                         }
@@ -1536,7 +1532,7 @@ struct EntryDetailSheet: View {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 16, weight: .bold))
 
-                Text("Поделиться записью")
+                Text(BagytL10n.tr("Поделиться записью"))
                     .font(.system(size: 16, weight: .black, design: .rounded))
 
                 Spacer()
@@ -1564,7 +1560,7 @@ struct EntryDetailSheet: View {
                 Image(systemName: "trash")
                     .font(.system(size: 16, weight: .bold))
 
-                Text("Удалить запись")
+                Text(BagytL10n.tr("Удалить запись"))
                     .font(.system(size: 16, weight: .black, design: .rounded))
             }
             .foregroundColor(Color(red: 0.95, green: 0.25, blue: 0.25))
@@ -1589,7 +1585,7 @@ struct EntryDetailSheet: View {
                     .font(.system(size: 14, weight: .black))
                     .foregroundColor(accent)
 
-                Text(label)
+                Text(BagytL10n.tr(label))
                     .font(.system(size: 12, weight: .black, design: .rounded))
                     .foregroundColor(secondaryText)
                     .textCase(.uppercase)
@@ -1614,7 +1610,7 @@ struct EntryDetailSheet: View {
     private func signalRow(title: String, value: String, color: Color, filled: Int, total: Int) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack {
-                Text(title)
+                Text(BagytL10n.tr(title))
                     .font(.system(size: 15, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
@@ -1638,38 +1634,38 @@ struct EntryDetailSheet: View {
     private var aiContextText: String {
         switch entry.category {
         case .symptom:
-            return "Для точного разбора симптома полезны: локализация, начало, сила, температура, лекарства, питание, сон и похожие эпизоды."
+            return BagytL10n.tr("Для точного разбора симптома полезны: локализация, начало, сила, температура, лекарства, питание, сон и похожие эпизоды.")
         case .sleep:
-            return "Сон помогает связать усталость, настроение, головную боль и активность. Чем чаще отмечается сон, тем точнее видны закономерности."
+            return BagytL10n.tr("Сон помогает связать усталость, настроение, головную боль и активность. Чем чаще отмечается сон, тем точнее видны закономерности.")
         case .visit:
-            return "Назначения врача, дозировки и результаты анализов лучше хранить рядом с симптомами, чтобы не терять медицинский контекст."
+            return BagytL10n.tr("Назначения врача, дозировки и результаты анализов лучше хранить рядом с симптомами, чтобы не терять медицинский контекст.")
         case .activity:
-            return "Активность может влиять на пульс, сон, боль и настроение. Записи помогают отличать полезную нагрузку от перегруза."
+            return BagytL10n.tr("Активность может влиять на пульс, сон, боль и настроение. Записи помогают отличать полезную нагрузку от перегруза.")
         case .mood:
-            return "Настроение связано со сном, стрессом, питанием и симптомами. Такие записи особенно полезны для когнитивной части приложения."
+            return BagytL10n.tr("Настроение связано со сном, стрессом, питанием и симптомами. Такие записи особенно полезны для когнитивной части приложения.")
         case .note:
-            return "Свободные заметки закрывают детали, которые не попали в категории: питание, стресс, лекарства, вопросы врачу или необычные реакции."
+            return BagytL10n.tr("Свободные заметки закрывают детали, которые не попали в категории: питание, стресс, лекарства, вопросы врачу или необычные реакции.")
         }
     }
 
     private var shareText: String {
         var parts = [
-            "Bagyt · Журнал здоровья",
+            BagytL10n.tr("Bagyt · Журнал здоровья"),
             entry.title,
             "\(BagytL10n.tr("Категория")): \(entry.category.title)",
-            "Дата: \(fullDateString(entry.date))"
+            String(format: BagytL10n.tr("Дата: %@"), fullDateString(entry.date))
         ]
 
         if let severity = entry.severity {
-            parts.append("Сила симптома: \(severity)/10")
+            parts.append(String(format: BagytL10n.tr("Сила симптома: %@"), "\(severity)/10"))
         }
 
         if let mood = entry.mood {
-            parts.append("Настроение: \(mood)/5")
+            parts.append(String(format: BagytL10n.tr("Настроение: %@"), "\(mood)/5"))
         }
 
         if !entry.body.isEmpty {
-            parts.append("Описание: \(entry.body)")
+            parts.append(String(format: BagytL10n.tr("Описание: %@"), entry.body))
         }
 
         return parts.joined(separator: "\n")
@@ -1687,7 +1683,7 @@ struct EntryDetailSheet: View {
     }
 
     private func moodLabel(_ value: Int) -> String {
-        ["Плохо", "Так себе", "Нормально", "Хорошо", "Отлично"][max(1, min(5, value)) - 1]
+        BagytL10n.tr(["Плохо", "Так себе", "Нормально", "Хорошо", "Отлично"][max(1, min(5, value)) - 1])
     }
 }
 

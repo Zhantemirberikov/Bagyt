@@ -45,15 +45,27 @@ class ChatStore: ObservableObject {
     // false = Реальные запросы на сервер через ChatService
     let isTestMode: Bool = false
     
-    private let key       = "bagyt_chat_sessions_v4"
-    private let activeKey = "bagyt_active_session_id"
+    private var key: String {
+        "bagyt_chat_sessions_v4_\(currentUserId)"
+    }
+
+    private var activeKey: String {
+        "bagyt_active_session_id_\(currentUserId)"
+    }
+
+    private var currentUserId: String {
+        UserDefaults.standard.string(forKey: "userToken") ?? "guest"
+    }
 
     init() { load() }
 
     func load() {
         guard let data    = UserDefaults.standard.data(forKey: key),
               var decoded = try? JSONDecoder().decode([ChatSession].self, from: data)
-        else { return }
+        else {
+            sessions = []
+            return
+        }
         // Чистим зависшие состояния
         for i in decoded.indices {
             for j in decoded[i].messages.indices {
@@ -67,6 +79,10 @@ class ChatStore: ObservableObject {
             }
         }
         sessions = decoded
+    }
+
+    func reloadForCurrentUser() {
+        load()
     }
 
     func save() {
@@ -343,6 +359,13 @@ struct ChatView: View {
         }
         .preferredColorScheme(isDarkMode ? .dark : .light)
         .onAppear {
+            store.reloadForCurrentUser()
+            currentSessionId = nil
+            resolveActiveSession()
+        }
+        .onChange(of: appState.userToken) { _ in
+            store.reloadForCurrentUser()
+            currentSessionId = nil
             resolveActiveSession()
         }
         // ✅ FIX: Реагируем на любое изменение списка сессий (deleteAll, delete).

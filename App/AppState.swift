@@ -63,7 +63,12 @@ final class AppState: ObservableObject {
         if let name = name {
             self.userName = name
             UserDefaults.standard.set(name, forKey: "userName")
+            if let token = self.userToken, !token.isEmpty {
+                UserDefaults.standard.set(name, forKey: "userName_\(token)")
+            }
         }
+
+        UserProfileStore.shared.load()
 
         withAnimation {
             self.isLoggedIn = true
@@ -82,4 +87,3 @@ final class AppState: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "userName")
     }
     }
-

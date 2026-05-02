@@ -66,7 +66,12 @@ struct LoginView: View {
             withAnimation(.easeOut(duration: 0.5)) { appear = true }
         }
         .onChange(of: vm.didLogin) { success in
-            if success { appState.logIn(token: vm.email, name: vm.loggedUserName) }
+            if success {
+                appState.logIn(
+                    token: vm.loggedUserToken ?? UserDefaults.standard.string(forKey: "userToken") ?? vm.email,
+                    name: vm.loggedUserName
+                )
+            }
         }
         .sheet(isPresented: $showPrivacy) {
             SafariView(url: URL(string: "https://google.com")!)

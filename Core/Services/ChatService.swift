@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let bagytAIFindingsDidChange = Notification.Name("bagytAIFindingsDidChange")
+}
+
 // MARK: - Message model
 
 struct ChatMessage: Identifiable, Codable, Equatable {
@@ -73,14 +77,21 @@ final class ChatService {
             return
         }
 
-        let enrichedText = buildEnrichedPrompt(userText: userText)
+        let cleanUserText = userText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let enrichedText = buildEnrichedPrompt(userText: cleanUserText)
 
-        ensureActiveChat(firstMessage: userText, token: token) { [weak self] result in
+        ensureActiveChat(firstMessage: cleanUserText, token: token) { [weak self] result in
             guard let self else { return }
 
             switch result {
             case .success(let chatId):
-                self.sendMessage(chatId: chatId, text: enrichedText, token: token, completion: completion)
+                self.sendMessage(
+                    chatId: chatId,
+                    userText: cleanUserText,
+                    aiPrompt: enrichedText,
+                    token: token,
+                    completion: completion
+                )
 
             case .failure:
                 completion(ChatMessage(
@@ -152,7 +163,8 @@ final class ChatService {
 
     private func sendMessage(
         chatId: Int,
-        text: String,
+        userText: String,
+        aiPrompt: String,
         token: String,
         completion: @escaping (ChatMessage) -> Void
     ) {
@@ -163,10 +175,7 @@ final class ChatService {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        let body: [String: Any] = [
-            "message": text,
-            "locale": currentLocale()
-        ]
+        let body = chatRequestBody(userText: userText, aiPrompt: aiPrompt)
 
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
@@ -205,12 +214,26 @@ final class ChatService {
                 return
             }
 
-            let reply = Self.extractReply(from: json) ?? self.missingReplyMessage()
+            let rawReply = Self.extractReply(from: json) ?? self.missingReplyMessage()
+            BagytMemoryStore.shared.captureAIResponse(userText: userText, assistantText: rawReply)
+            let reply = BagytMemoryStore.visibleAssistantText(from: rawReply)
 
             DispatchQueue.main.async {
                 completion(ChatMessage(text: reply, sender: .assistant))
             }
         }.resume()
+    }
+
+    private func chatRequestBody(userText: String, aiPrompt: String) -> [String: Any] {
+        [
+            "message": userText,
+            "display_message": userText,
+            "locale": currentLocale(),
+            "ai_prompt": aiPrompt,
+            "hidden_context": aiPrompt,
+            "system_prompt": aiPrompt,
+            "instructions": aiPrompt
+        ]
     }
 
     private static func extractId(from json: [String: Any]) -> Int? {
@@ -292,6 +315,18 @@ final class ChatService {
         Give practical next steps and explain when to seek medical care.
         If the complaint may include red flags, clearly recommend urgent medical help.
         For headache red flags include sudden worst headache, weakness/numbness, speech problems, confusion, fever with stiff neck, head injury, vision loss, pregnancy/postpartum, very high blood pressure, or headache with chest pain.
+
+        AI_ANAMNESIS_GENERATION_RULE:
+        If the user's visible message contains a medical complaint, symptom, medication, allergy, diagnosis, doctor visit, or clinically relevant health concern, create one structured anamnesis note.
+        Keep your normal visible answer friendly and useful.
+        At the very end of your answer append exactly one machine-readable block:
+        BAGYT_ANAMNESIS_JSON
+        {"should_save":true,"title":"short clinical title","summary":"brief clinical summary","hypotheses":["possible explanation, not diagnosis"],"red_flags":["urgent warning if relevant"],"next_steps":["practical next step"]}
+        END_BAGYT_ANAMNESIS_JSON
+        The JSON strings must be in the same language as your visible answer.
+        Do not include markdown inside JSON strings.
+        Do not invent facts that the user did not mention.
+        If the message is not clinically relevant, do not append the block.
 
         HEALTH_DATA:
         \(health)
@@ -434,11 +469,6 @@ final class ChatService {
         let defaults = UserDefaults.standard
 
         if let data = defaults.data(forKey: key),
-           let decoded = try? JSONDecoder().decode([StoredJournalEntry].self, from: data) {
-            return decoded
-        }
-
-        if let data = defaults.data(forKey: "bagyt_journal_entries"),
            let decoded = try? JSONDecoder().decode([StoredJournalEntry].self, from: data) {
             return decoded
         }
@@ -695,13 +725,50 @@ struct BagytAIFinding: Identifiable, Codable, Equatable {
     var createdAt: Date = Date()
 }
 
+private struct GeneratedAnamnesisNote: Decodable {
+    let shouldSave: Bool?
+    let title: String?
+    let summary: String?
+    let hypotheses: [String]?
+    private let redFlagsValue: [String]?
+    private let nextStepsValue: [String]?
+
+    var redFlags: [String]? { redFlagsValue }
+    var nextSteps: [String]? { nextStepsValue }
+
+    enum CodingKeys: String, CodingKey {
+        case shouldSave = "should_save"
+        case title
+        case summary
+        case hypotheses
+        case redFlagsValue = "red_flags"
+        case nextStepsValue = "next_steps"
+    }
+}
+
 final class BagytMemoryStore {
     static let shared = BagytMemoryStore()
 
     private let baseKey = "bagyt_ai_anamnesis_findings"
     private let maxItems = 24
+    private static let anamnesisStartMarker = "BAGYT_ANAMNESIS_JSON"
+    private static let anamnesisEndMarker = "END_BAGYT_ANAMNESIS_JSON"
 
     private init() {}
+
+    static func visibleAssistantText(from text: String) -> String {
+        guard let startRange = text.range(of: anamnesisStartMarker) else {
+            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        var visible = String(text[..<startRange.lowerBound])
+        let afterStart = text[startRange.upperBound...]
+        if let endRange = afterStart.range(of: anamnesisEndMarker) {
+            visible += String(afterStart[endRange.upperBound...])
+        }
+
+        return visible.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     func loadFindings(token: String? = UserDefaults.standard.string(forKey: "userToken")) -> [BagytAIFinding] {
         guard let data = UserDefaults.standard.data(forKey: scopedKey(base: baseKey, token: token)),
@@ -725,39 +792,95 @@ final class BagytMemoryStore {
     ) {
         let cleanUser = userText.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanAssistant = assistantText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let visibleAssistant = Self.visibleAssistantText(from: cleanAssistant)
 
-        guard shouldCapture(userText: cleanUser, assistantText: cleanAssistant) else { return }
+        let finding: BagytAIFinding
 
-        let finding = BagytAIFinding(
-            title: makeTitle(from: cleanUser),
-            summary: makeSummary(from: cleanAssistant),
-            userText: cleanUser,
-            assistantText: cleanAssistant,
-            hypotheses: extractLines(
-                from: cleanAssistant,
-                markers: [
-                    "может", "возможно", "вероят", "похоже", "связано", "причин", "дифференц",
-                    "may", "might", "could", "possible", "likely", "related"
-                ],
-                limit: 4
-            ),
-            redFlags: extractLines(
-                from: cleanAssistant,
-                markers: [
-                    "сроч", "немедленно", "скор", "неотлож", "опас", "красн", "обратитесь",
-                    "urgent", "emergency", "red flag", "seek medical"
-                ],
-                limit: 3
-            ),
-            nextSteps: extractLines(
-                from: cleanAssistant,
-                markers: [
-                    "рекоменд", "след", "измер", "запиш", "наблюд", "обрат", "проверь",
-                    "recommend", "measure", "monitor", "consult", "track"
-                ],
-                limit: 4
+        if let generated = Self.generatedAnamnesis(from: cleanAssistant),
+           generated.shouldSave != false {
+            let title = cleanGeneratedText(generated.title)
+            let summary = cleanGeneratedText(generated.summary)
+            let hypotheses = cleanGeneratedItems(generated.hypotheses)
+            let redFlags = cleanGeneratedItems(generated.redFlags)
+            let nextSteps = cleanGeneratedItems(generated.nextSteps)
+
+            guard !title.isEmpty || !summary.isEmpty || !hypotheses.isEmpty || !redFlags.isEmpty || !nextSteps.isEmpty else {
+                return
+            }
+
+            finding = BagytAIFinding(
+                title: title.isEmpty ? cleanUser : title,
+                summary: summary,
+                userText: cleanUser,
+                assistantText: visibleAssistant,
+                hypotheses: hypotheses,
+                redFlags: redFlags,
+                nextSteps: nextSteps
             )
-        )
+        } else {
+            guard shouldCapture(userText: cleanUser, assistantText: visibleAssistant) else { return }
+
+            finding = BagytAIFinding(
+                title: makeTitle(from: cleanUser),
+                summary: makeSummary(from: visibleAssistant),
+                userText: cleanUser,
+                assistantText: visibleAssistant,
+                hypotheses: extractSectionLines(
+                    from: visibleAssistant,
+                    sectionMarkers: [
+                        "возможные объяснения", "возможные причины", "причины", "гипотез",
+                        "possible explanations", "possible causes", "hypotheses",
+                        "мүмкін себеп", "себептер"
+                    ],
+                    stopMarkers: [
+                        "рекомендуемые действия", "что дальше", "красные флаги",
+                        "recommended actions", "next steps", "red flags",
+                        "ұсынылатын әрекет", "келесі қадам", "қызыл жалау"
+                    ],
+                    fallbackMarkers: [
+                        "может", "возможно", "вероят", "похоже", "связано", "причин", "дифференц",
+                        "may", "might", "could", "possible", "likely", "related"
+                    ],
+                    limit: 4
+                ),
+                redFlags: extractSectionLines(
+                    from: visibleAssistant,
+                    sectionMarkers: [
+                        "красные флаги", "срочно обратиться", "когда нужно срочно",
+                        "red flags", "seek urgent", "urgent care",
+                        "қызыл жалау", "шұғыл"
+                    ],
+                    stopMarkers: [
+                        "возможные объяснения", "возможные причины", "рекомендуемые действия", "что дальше",
+                        "possible explanations", "possible causes", "recommended actions", "next steps",
+                        "мүмкін себеп", "ұсынылатын әрекет", "келесі қадам"
+                    ],
+                    fallbackMarkers: [
+                        "сроч", "немедленно", "скор", "неотлож", "опас", "красн", "обратитесь",
+                        "urgent", "emergency", "red flag", "seek medical"
+                    ],
+                    limit: 3
+                ),
+                nextSteps: extractSectionLines(
+                    from: visibleAssistant,
+                    sectionMarkers: [
+                        "рекомендуемые действия", "что дальше", "следующие шаги", "рекомендации",
+                        "recommended actions", "next steps", "recommendations",
+                        "ұсынылатын әрекет", "келесі қадам", "ұсыс"
+                    ],
+                    stopMarkers: [
+                        "красные флаги", "возможные объяснения", "возможные причины",
+                        "red flags", "possible explanations", "possible causes",
+                        "қызыл жалау", "мүмкін себеп"
+                    ],
+                    fallbackMarkers: [
+                        "рекоменд", "след", "измер", "запиш", "наблюд", "обрат", "проверь",
+                        "recommend", "measure", "monitor", "consult", "track"
+                    ],
+                    limit: 4
+                )
+            )
+        }
 
         var items = loadFindings(token: token)
         let duplicate = items.contains {
@@ -777,7 +900,57 @@ final class BagytMemoryStore {
     private func persist(_ items: [BagytAIFinding], token: String?) {
         if let data = try? JSONEncoder().encode(items.sorted(by: { $0.createdAt > $1.createdAt })) {
             UserDefaults.standard.set(data, forKey: scopedKey(base: baseKey, token: token))
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .bagytAIFindingsDidChange, object: nil)
+            }
         }
+    }
+
+    private static func generatedAnamnesis(from text: String) -> GeneratedAnamnesisNote? {
+        guard let startRange = text.range(of: anamnesisStartMarker) else { return nil }
+
+        let afterStart = text[startRange.upperBound...]
+        let rawPayload: Substring
+        if let endRange = afterStart.range(of: anamnesisEndMarker) {
+            rawPayload = afterStart[..<endRange.lowerBound]
+        } else {
+            rawPayload = afterStart
+        }
+
+        let jsonText = normalizeJSONPayload(String(rawPayload))
+        guard let data = jsonText.data(using: .utf8) else { return nil }
+
+        return try? JSONDecoder().decode(GeneratedAnamnesisNote.self, from: data)
+    }
+
+    private static func normalizeJSONPayload(_ payload: String) -> String {
+        var text = payload.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if text.hasPrefix("```json") {
+            text.removeFirst("```json".count)
+        } else if text.hasPrefix("```") {
+            text.removeFirst("```".count)
+        }
+
+        if text.hasSuffix("```") {
+            text.removeLast("```".count)
+        }
+
+        return text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func cleanGeneratedText(_ text: String?) -> String {
+        (text ?? "")
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "__", with: "")
+            .replacingOccurrences(of: "`", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func cleanGeneratedItems(_ items: [String]?) -> [String] {
+        (items ?? [])
+            .map { cleanGeneratedText($0) }
+            .filter { !$0.isEmpty }
     }
 
     private func shouldCapture(userText: String, assistantText: String) -> Bool {
@@ -814,25 +987,86 @@ final class BagytMemoryStore {
         return String(first.prefix(260))
     }
 
-    private func extractLines(from text: String, markers: [String], limit: Int) -> [String] {
+    private func extractSectionLines(
+        from text: String,
+        sectionMarkers: [String],
+        stopMarkers: [String],
+        fallbackMarkers: [String],
+        limit: Int
+    ) -> [String] {
         let rawLines = text
             .components(separatedBy: CharacterSet.newlines)
             .map { cleanLine($0) }
             .filter { !$0.isEmpty }
 
+        let sectionItems = linesInSection(
+            rawLines,
+            sectionMarkers: sectionMarkers,
+            stopMarkers: stopMarkers,
+            limit: limit
+        )
+
+        if !sectionItems.isEmpty {
+            return sectionItems
+        }
+
         var result: [String] = []
 
         for line in rawLines {
             let lower = line.lowercased()
-            guard markers.contains(where: { lower.contains($0) }) else { continue }
-            let shortened = String(line.prefix(180))
-            if !result.contains(shortened) {
-                result.append(shortened)
+            guard fallbackMarkers.contains(where: { lower.contains($0) }) else { continue }
+            guard !isSectionHeader(line, markers: sectionMarkers + stopMarkers) else { continue }
+
+            if !result.contains(line) {
+                result.append(line)
             }
             if result.count >= limit { break }
         }
 
         return result
+    }
+
+    private func linesInSection(
+        _ lines: [String],
+        sectionMarkers: [String],
+        stopMarkers: [String],
+        limit: Int
+    ) -> [String] {
+        var isInsideSection = false
+        var result: [String] = []
+
+        for line in lines {
+            if isSectionHeader(line, markers: sectionMarkers) {
+                isInsideSection = true
+                continue
+            }
+
+            if isInsideSection && isSectionHeader(line, markers: stopMarkers) {
+                break
+            }
+
+            guard isInsideSection else { continue }
+            guard !isSectionHeader(line, markers: sectionMarkers + stopMarkers) else { continue }
+
+            if !result.contains(line) {
+                result.append(line)
+            }
+
+            if result.count >= limit { break }
+        }
+
+        return result
+    }
+
+    private func isSectionHeader(_ line: String, markers: [String]) -> Bool {
+        let lower = line.lowercased()
+        return markers.contains { marker in
+            let normalizedMarker = marker.lowercased()
+            return lower == normalizedMarker ||
+                lower.hasPrefix("\(normalizedMarker):") ||
+                lower.hasPrefix("\(normalizedMarker) —") ||
+                lower.hasPrefix("\(normalizedMarker) -")
+        }
     }
 
     private func cleanLine(_ line: String) -> String {

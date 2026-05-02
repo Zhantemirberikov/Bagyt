@@ -276,7 +276,7 @@ struct HomeView: View {
 
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("КОМПЛЕКСНЫЙ ИНДЕКС ЗДОРОВЬЯ")
+                        Text(BagytL10n.tr("КОМПЛЕКСНЫЙ ИНДЕКС ЗДОРОВЬЯ"))
                             .font(.system(size: 10, weight: .bold, design: .rounded))
                             .foregroundColor(.white.opacity(0.85))
                             .tracking(1.2)
@@ -287,7 +287,7 @@ struct HomeView: View {
                                 .foregroundColor(.white)
                                 .contentTransition(.numericText())
                                 .animation(.spring(response: 0.5), value: healthIndex)
-                            Text("/ 100")
+                            Text(BagytL10n.tr("/ 100"))
                                 .font(.system(size: 20, weight: .semibold, design: .rounded))
                                 .foregroundColor(.white.opacity(0.65))
                                 .padding(.bottom, 8)
@@ -341,7 +341,7 @@ struct HomeView: View {
             metricCard(
                 icon: "figure.walk",
                 value: health.steps > 0 ? formatSteps(health.steps) : "—",
-                unit: "Шагов",
+                unit: BagytL10n.tr("шагов"),
                 color: accent,
                 progress: health.stepsProgress(goal: stepsGoal),
                 onTap: { showStepsDetail = true }
@@ -350,7 +350,7 @@ struct HomeView: View {
             metricCard(
                 icon: "heart.fill",
                 value: health.heartRate > 0 ? "\(health.heartRate)" : "—",
-                unit: "Уд/мин",
+                unit: BagytL10n.tr("уд/мин"),
                 color: Color(red: 0.95, green: 0.25, blue: 0.35),
                 progress: health.heartProgress(),
                 onTap: { showPulseDetail = true }
@@ -359,7 +359,7 @@ struct HomeView: View {
             metricCard(
                             icon: "moon.stars.fill",
                             value: todaySleepHours > 0 ? String(format: "%.1f", todaySleepHours) : "—",
-                            unit: "Часов сна",
+                            unit: BagytL10n.tr("часов сна"),
                             color: Color(red: 0.45, green: 0.35, blue: 0.90),
                             progress: todaySleepHours > 0 ? min(todaySleepHours / sleepGoal, 1.0) : 0.0,
                             onTap: { showSleepDetail = true }
@@ -443,17 +443,17 @@ struct HomeView: View {
         let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
         if health.steps > 0 {
             let pct = Int(Double(health.steps) / Double(stepsGoal) * 100)
-            if pct >= 100 { return "Отличная активность! Вы выполнили дневную норму шагов, так держать." }
-            if pct >= 50  { return "Вы прошли больше половины пути. Небольшая прогулка поможет закрыть цель на сегодня." }
-            return "Активность пока ниже обычного. Постарайтесь пройти еще \(stepsGoal - health.steps) шагов до конца дня."
+            if pct >= 100 { return BagytL10n.tr("Отличная активность! Вы выполнили дневную норму шагов, так держать.") }
+            if pct >= 50  { return BagytL10n.tr("Вы прошли больше половины пути. Небольшая прогулка поможет закрыть цель на сегодня.") }
+            return String(format: BagytL10n.tr("Активность пока ниже обычного. Постарайтесь пройти еще %d шагов до конца дня."), stepsGoal - health.steps)
         }
         if health.heartRate > 0 {
             let hr = health.heartRate
-            if hr < 60 { return "Ваш пульс — \(hr) уд/мин. Зафиксировано хорошее состояние покоя и восстановления." }
-            if hr <= 80 { return "Ваш пульс — \(hr) уд/мин. Сердечный ритм находится в пределах здоровой нормы." }
-            return "Ваш пульс — \(hr) уд/мин. Показатели немного завышены, постарайтесь уделить время отдыху."
+            if hr < 60 { return String(format: BagytL10n.tr("Ваш пульс — %d уд/мин. Зафиксировано хорошее состояние покоя и восстановления."), hr) }
+            if hr <= 80 { return String(format: BagytL10n.tr("Ваш пульс — %d уд/мин. Сердечный ритм находится в пределах здоровой нормы."), hr) }
+            return String(format: BagytL10n.tr("Ваш пульс — %d уд/мин. Показатели немного завышены, постарайтесь уделить время отдыху."), hr)
         }
-        return "Включите синхронизацию с HealthKit для получения персональных рекомендаций о здоровье."
+        return BagytL10n.tr("Включите синхронизацию с HealthKit для получения персональных рекомендаций о здоровье.")
     }
 
     private var cognitiveAnalysisCard: some View {
@@ -470,7 +470,7 @@ struct HomeView: View {
                     .foregroundColor(.white)
             }
             VStack(alignment: .leading, spacing: 6) {
-                Text("СВОДКА СОСТОЯНИЯ")
+                Text(BagytL10n.tr("СВОДКА СОСТОЯНИЯ"))
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(accent)
                     .tracking(1.0)
@@ -513,10 +513,10 @@ struct HomeView: View {
                             .foregroundColor(accent)
                     }
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("AI-Диагностика")
+                        Text(BagytL10n.tr("AI-Диагностика"))
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(primaryText)
-                        Text("Спросите о симптомах")
+                        Text(BagytL10n.tr("Спросите о симптомах"))
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(secondaryText)
                     }
@@ -1188,14 +1188,14 @@ struct HealthIndexDetailSheet: View {
                                     Text("\(totalScore)")
                                         .font(.system(size: 48, weight: .black, design: .rounded))
                                         .foregroundColor(primaryText)
-                                    Text("из 100")
+                                    Text(BagytL10n.tr("из 100"))
                                         .font(.system(size: 14, weight: .bold, design: .rounded))
                                         .foregroundColor(secondaryText)
                                 }
                             }
                             .padding(.vertical, 16)
                             
-                            Text("Ваш индекс формируется на основе базовых параметров и данных вашей активности за сегодня.")
+                            Text(BagytL10n.tr("Ваш индекс формируется на основе базовых параметров и данных вашей активности за сегодня."))
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(secondaryText)
                                 .multilineTextAlignment(.center)
@@ -1207,22 +1207,22 @@ struct HealthIndexDetailSheet: View {
                             metricBreakdownRow(
                                 icon: "person.fill", color: accent,
                                 title: "Базовый уровень", points: breakdown.basePoints, max: 60,
-                                desc: "Стартовые баллы профиля"
+                                desc: BagytL10n.tr("Стартовые баллы профиля")
                             )
                             metricBreakdownRow(
                                 icon: "figure.walk", color: Color(red: 0.1, green: 0.78, blue: 0.48),
                                 title: "Активность", points: stepsPoints, max: 20,
-                                desc: "\(formatNumber(health.steps)) из \(formatNumber(breakdown.stepsGoal)) шагов"
+                                desc: String(format: BagytL10n.tr("%@ из %@ шагов"), formatNumber(health.steps), formatNumber(breakdown.stepsGoal))
                             )
                             metricBreakdownRow(
                                 icon: "heart.fill", color: Color(red: 0.95, green: 0.25, blue: 0.35),
                                 title: "Пульс", points: hrPoints, max: 10,
-                                desc: breakdown.hasHeartRateData ? "\(health.heartRate) уд/мин, учитывается по единой формуле" : "Нет актуальных данных"
+                                desc: breakdown.hasHeartRateData ? String(format: BagytL10n.tr("%d уд/мин, учитывается по единой формуле"), health.heartRate) : BagytL10n.tr("Нет актуальных данных")
                             )
                             metricBreakdownRow(
                                 icon: "moon.stars.fill", color: Color(red: 0.55, green: 0.35, blue: 1.0),
                                 title: "Сон", points: sleepPoints, max: 10,
-                                desc: breakdown.hasSleepData ? "\(String(format: "%.1f", breakdown.sleepHours)) из \(String(format: "%.1f", breakdown.sleepGoal)) ч" : "Нет актуальных данных"
+                                desc: breakdown.hasSleepData ? String(format: BagytL10n.tr("%@ из %@ ч"), String(format: "%.1f", breakdown.sleepHours), String(format: "%.1f", breakdown.sleepGoal)) : BagytL10n.tr("Нет актуальных данных")
                             )
                         }
                         
@@ -1232,10 +1232,10 @@ struct HealthIndexDetailSheet: View {
                                 .font(.system(size: 20, weight: .bold))
                                 .foregroundColor(accent)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Как улучшить индекс?")
+                                Text(BagytL10n.tr("Как улучшить индекс?"))
                                     .font(.system(size: 14, weight: .bold, design: .rounded))
                                     .foregroundColor(primaryText)
-                                Text("Чтобы достичь максимума, старайтесь ежедневно закрывать кольца активности и спать не менее 8 часов.")
+                                Text(BagytL10n.tr("Чтобы достичь максимума, старайтесь ежедневно закрывать кольца активности и спать не менее 8 часов."))
                                     .font(.system(size: 13, weight: .medium))
                                     .foregroundColor(secondaryText)
                                     .lineSpacing(3)
@@ -1254,11 +1254,11 @@ struct HealthIndexDetailSheet: View {
                     .padding(.top, 16)
                 }
             }
-            .navigationTitle("Детализация индекса")
+            .navigationTitle(BagytL10n.tr("Детализация индекса"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Готово") { dismiss() }
+                    Button(BagytL10n.tr("Готово")) { dismiss() }
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(accent)
                 }
@@ -1302,7 +1302,7 @@ struct HealthIndexDetailSheet: View {
                 .frame(height: 6)
                 .padding(.vertical, 2)
                 
-                Text(BagytL10n.tr(desc))
+                Text(desc)
                     .font(.system(size: 12, weight: .medium))
                     .foregroundColor(secondaryText)
             }

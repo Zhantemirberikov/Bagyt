@@ -20,6 +20,9 @@ struct AnalysisView: View {
     @State private var moodRecords: [MoodRecord] = []
     @State private var sheetMode: AnalysisMedicalSheetMode?
     @State private var showMoodSheet = false
+    @State private var showDoctorSummarySheet = false
+    @State private var activeAIFindingID: UUID?
+    @State private var selectedAIFinding: BagytAIFinding?
     @State private var appear = false
 
     private let accent = Color(red: 0.055, green: 0.647, blue: 0.914)
@@ -90,6 +93,14 @@ struct AnalysisView: View {
         .onChange(of: appState.userToken) { _, _ in
             reloadAll()
         }
+        .onChange(of: selectedSection) { _, newSection in
+            if newSection == .anamnesis {
+                loadAIFindings(preferNewest: true)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .bagytAIFindingsDidChange)) { _ in
+            loadAIFindings(preferNewest: true)
+        }
         .sheet(item: $sheetMode) { mode in
             AnalysisMedicalItemSheet(mode: mode, isDarkMode: isDarkMode) { item in
                 saveMedicalItem(item)
@@ -101,6 +112,12 @@ struct AnalysisView: View {
                 .environmentObject(lang)
                 .preferredColorScheme(isDarkMode ? .dark : .light)
         }
+        .sheet(item: $selectedAIFinding) { finding in
+            aiFindingDetailSheet(finding)
+        }
+        .sheet(isPresented: $showDoctorSummarySheet) {
+            DoctorSummarySheet(summary: doctorSummary, isDarkMode: isDarkMode)
+        }
     }
 
     // MARK: - Header
@@ -108,7 +125,7 @@ struct AnalysisView: View {
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 6) {
-                Text("Анализ")
+                Text(BagytL10n.tr("Анализ"))
                     .font(.system(size: 32, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
@@ -156,8 +173,6 @@ struct AnalysisView: View {
     }
 
     // MARK: - Picker
-    // ✅ FIX: Заменён LazyVGrid на HStack — каждая кнопка получает равную
-    // нажимаемую область. LazyVGrid с minimum:0 сжимал последнюю кнопку.
 
     private var sectionPicker: some View {
         HStack(spacing: 6) {
@@ -247,7 +262,7 @@ struct AnalysisView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Карта пациента")
+                        Text(BagytL10n.tr("Карта пациента"))
                             .font(.system(size: 12, weight: .black, design: .rounded))
                             .foregroundColor(.white.opacity(0.78))
                             .tracking(0.9)
@@ -311,7 +326,7 @@ struct AnalysisView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("Дневник настроения")
+                    Text(BagytL10n.tr("Дневник настроения"))
                         .font(.system(size: 17, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
 
@@ -602,14 +617,14 @@ struct AnalysisView: View {
                     }
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Анамнез Bagyt")
+                        Text(BagytL10n.tr("Анамнез Bagyt"))
                             .font(.system(size: 12, weight: .black, design: .rounded))
                             .foregroundColor(.white.opacity(0.78))
                             .tracking(0.9)
-                        Text("Память о здоровье")
+                        Text(BagytL10n.tr("Память о здоровье"))
                             .font(.system(size: 23, weight: .black, design: .rounded))
                             .foregroundColor(.white)
-                        Text("Здесь собираются факты из медкарты, журнала, настроения и AI-чата. Это не диагноз, а умная история обращений.")
+                        Text(BagytL10n.tr("Здесь собираются факты из медкарты, журнала, настроения и AI-чата. Это не диагноз, а умная история обращений."))
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(.white.opacity(0.80))
                             .lineSpacing(3)
@@ -630,14 +645,11 @@ struct AnalysisView: View {
         .padding(.horizontal, 20)
     }
 
-    // MARK: - ✅ ПРОКАЧАННЫЙ блок AI гипотез
-
     private var aiMemoryCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 sectionTitle("AI-гипотезы из чата", icon: "sparkle.magnifyingglass")
 
-                // Счётчик заметок
                 if !aiFindings.isEmpty {
                     Text("\(aiFindings.count)")
                         .font(.system(size: 11, weight: .black, design: .rounded))
@@ -647,12 +659,11 @@ struct AnalysisView: View {
                 }
             }
 
-            // Пояснение что это такое
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: "info.circle.fill")
                     .font(.system(size: 13, weight: .black))
                     .foregroundColor(violet)
-                Text("Bagyt сохраняет гипотезы когда вы обсуждаете симптомы в чате. Это не диагноз — это клинический контекст для врача.")
+                Text(BagytL10n.tr("Bagyt сохраняет гипотезы когда вы обсуждаете симптомы в чате. Это не диагноз — это клинический контекст для врача."))
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(2)
@@ -667,129 +678,544 @@ struct AnalysisView: View {
                     text: "Когда Bagyt в чате обсудит симптом и возможные причины, краткая заметка появится здесь и попадет в будущий контекст AI."
                 )
             } else {
-                // ✅ Показываем ВСЕ заметки без ограничения prefix(6)
-                ForEach(aiFindings) { finding in
-                    aiFindingRow(finding)
-                }
+                aiFindingsCarousel
             }
         }
         .padding(.horizontal, 20)
     }
 
-    // ✅ ПРОКАЧАННАЯ карточка гипотезы — показывает всё без обрезки
-    private func aiFindingRow(_ finding: BagytAIFinding) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+    private var aiFindingsCarousel: some View {
+        VStack(spacing: 12) {
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 14) {
+                    ForEach(aiFindings) { finding in
+                        aiFindingCarouselCard(finding)
+                            .containerRelativeFrame(.horizontal) { length, _ in
+                                min(380, max(310, length - 8))
+                            }
+                            .frame(height: 424)
+                            .id(finding.id)
+                    }
+                }
+                .scrollTargetLayout()
+                .padding(.horizontal, 4)
+                .padding(.vertical, 24)
+            }
+            .scrollTargetBehavior(.viewAligned)
+            .scrollPosition(id: $activeAIFindingID)
+            .scrollClipDisabled()
+            .frame(height: 476)
 
-            // Заголовок + дата + удаление
-            HStack(alignment: .top, spacing: 12) {
-                Image(systemName: finding.redFlags.isEmpty ? "brain.head.profile" : "exclamationmark.triangle.fill")
-                    .font(.system(size: 15, weight: .black))
-                    .foregroundColor(finding.redFlags.isEmpty ? violet : danger)
-                    .frame(width: 36, height: 36)
-                    .background((finding.redFlags.isEmpty ? violet : danger).opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
+            aiCarouselFooter
+        }
+    }
 
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(finding.title)
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundColor(primaryText)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(Self.shortDateFormatter.string(from: finding.createdAt))
-                        .font(.system(size: 10, weight: .black, design: .rounded))
-                        .foregroundColor(secondaryText)
+    private func aiFindingCarouselCard(_ finding: BagytAIFinding) -> some View {
+        let validRedFlags = filterJunkAITexts(finding.redFlags)
+        let validHypotheses = filterJunkAITexts(finding.hypotheses)
+        let validNextSteps = filterJunkAITexts(finding.nextSteps)
+
+        let cardColor = validRedFlags.isEmpty ? violet : danger
+        let index = (aiFindings.firstIndex(where: { $0.id == finding.id }) ?? 0) + 1
+        let shape = RoundedRectangle(cornerRadius: 28, style: .continuous)
+
+        return ZStack(alignment: .topLeading) {
+            shape
+                .fill(cardBg.opacity(isDarkMode ? 0.92 : 0.96))
+                .background(.ultraThinMaterial, in: shape)
+                .overlay {
+                    ZStack {
+                        Circle()
+                            .fill(cardColor.opacity(isDarkMode ? 0.15 : 0.08))
+                            .frame(width: 156, height: 156)
+                            .offset(x: -58, y: -70)
+                            .blur(radius: 3)
+
+                        Circle()
+                            .fill(accent.opacity(isDarkMode ? 0.11 : 0.07))
+                            .frame(width: 128, height: 128)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+                            .offset(x: 42, y: 46)
+                            .blur(radius: 5)
+                    }
+                    .clipShape(shape)
+                    .allowsHitTesting(false)
+                }
+
+            VStack(alignment: .leading, spacing: 13) {
+                HStack(alignment: .top, spacing: 11) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 17, style: .continuous)
+                            .fill(cardColor.opacity(isDarkMode ? 0.20 : 0.13))
+                            .frame(width: 48, height: 48)
+                        Image(systemName: validRedFlags.isEmpty ? "brain.head.profile" : "exclamationmark.triangle.fill")
+                            .font(.system(size: 20, weight: .black))
+                            .foregroundColor(cardColor)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 7) {
+                            Text(BagytL10n.tr("Клиническая заметка"))
+                                .font(.system(size: 10, weight: .black, design: .rounded))
+                                .foregroundColor(cardColor)
+                                .tracking(0.7)
+                            Text(String(format: BagytL10n.tr("%d из %d"), index, aiFindings.count))
+                                .font(.system(size: 10, weight: .black, design: .rounded))
+                                .foregroundColor(secondaryText)
+                        }
+
+                        Text(finding.title)
+                            .font(.system(size: 17, weight: .black, design: .rounded))
+                            .foregroundColor(primaryText)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.88)
+
+                        Text(Self.shortDateFormatter.string(from: finding.createdAt))
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundColor(secondaryText)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Button(role: .destructive) {
+                        deleteAIFinding(finding)
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 12, weight: .black))
+                            .foregroundColor(secondaryText)
+                            .frame(width: 32, height: 32)
+                            .background(Color.white.opacity(isDarkMode ? 0.045 : 0.52), in: Circle())
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                if !finding.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        tagLabel("РЕЗЮМЕ", color: accent)
+                        Text(cleanedAIText(finding.summary))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(primaryText.opacity(0.86))
+                            .lineSpacing(3)
+                            .lineLimit(3)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(accent.opacity(isDarkMode ? 0.09 : 0.055), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                }
+
+                VStack(spacing: 9) {
+                    if !validRedFlags.isEmpty {
+                        aiCarouselFactBlock(title: "Красные флаги", icon: "exclamationmark.triangle.fill", items: Array(validRedFlags.prefix(2)), color: danger)
+                    }
+
+                    if !validHypotheses.isEmpty {
+                        aiCarouselFactBlock(title: "Возможные причины", icon: "sparkle.magnifyingglass", items: Array(validHypotheses.prefix(2)), color: violet)
+                    }
+
+                    if validRedFlags.isEmpty && !validNextSteps.isEmpty {
+                        aiCarouselFactBlock(title: "Что дальше", icon: "checklist.checked", items: Array(validNextSteps.prefix(2)), color: success)
+                    }
+
+                    if validRedFlags.isEmpty && validHypotheses.isEmpty && validNextSteps.isEmpty {
+                        aiCarouselFactBlock(
+                            title: "Контекст сохранен",
+                            icon: "checkmark.shield.fill",
+                            items: [BagytL10n.tr("Bagyt сохранил эту беседу как часть анамнеза.")],
+                            color: success
+                        )
+                    }
                 }
 
                 Spacer(minLength: 0)
 
-                Button(role: .destructive) {
-                    deleteAIFinding(finding)
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundColor(secondaryText)
-                        .frame(width: 30, height: 30)
-                        .background(Color.white.opacity(isDarkMode ? 0.04 : 0.42), in: Circle())
+                HStack(spacing: 8) {
+                    aiCarouselStatPill(title: "Причины", value: validHypotheses.count, color: violet)
+                    aiCarouselStatPill(title: "Флаги", value: validRedFlags.count, color: danger)
+                    aiCarouselStatPill(title: "Шаги", value: validNextSteps.count, color: success)
                 }
-                .buttonStyle(.plain)
             }
-            .padding(.bottom, 12)
+            .padding(17)
+        }
+        .clipShape(shape)
+        .overlay(
+            shape.strokeBorder(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(isDarkMode ? 0.22 : 0.88),
+                        cardColor.opacity(0.24),
+                        accent.opacity(0.20)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                lineWidth: 1.1
+            )
+        )
+        .shadow(color: Color.black.opacity(isDarkMode ? 0.22 : 0.055), radius: 16, x: 0, y: 10)
+        .shadow(color: cardColor.opacity(isDarkMode ? 0.14 : 0.08), radius: 14, x: 0, y: 8)
+        .contentShape(shape)
+        .onTapGesture {
+            selectedAIFinding = finding
+        }
+    }
 
-            // Резюме (полностью, без ограничений)
-            if !finding.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    tagLabel("РЕЗЮМЕ", color: accent)
-                    Text(finding.summary)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(primaryText.opacity(0.85))
+    private func aiCarouselFactBlock(title: String, icon: String, items: [String], color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .black))
+                Text(BagytL10n.tr(title))
+                    .font(.system(size: 10, weight: .black, design: .rounded))
+                    .tracking(0.45)
+            }
+            .foregroundColor(color)
+
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                Text(cleanedAIText(item))
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(primaryText.opacity(0.82))
+                    .lineSpacing(2)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(11)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(color.opacity(isDarkMode ? 0.09 : 0.055), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+
+    private func aiCarouselStatPill(title: String, value: Int, color: Color) -> some View {
+        HStack(spacing: 5) {
+            Text("\(value)")
+                .font(.system(size: 12, weight: .black, design: .rounded))
+            Text(aiCarouselStatTitle(title, value: value))
+                .font(.system(size: 9, weight: .black, design: .rounded))
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .foregroundColor(color)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 8)
+        .background(color.opacity(isDarkMode ? 0.12 : 0.075), in: Capsule())
+    }
+
+    private func aiCarouselStatTitle(_ title: String, value: Int) -> String {
+        switch lang.currentLanguage {
+        case .ru:
+            switch title {
+            case "Причины": return russianPlural(value, one: "причина", few: "причины", many: "причин")
+            case "Флаги": return russianPlural(value, one: "флаг", few: "флага", many: "флагов")
+            case "Шаги": return russianPlural(value, one: "шаг", few: "шага", many: "шагов")
+            default: return BagytL10n.tr(title)
+            }
+        case .kk:
+            switch title {
+            case "Причины": return "себеп"
+            case "Флаги": return "белгі"
+            case "Шаги": return "қадам"
+            default: return BagytL10n.tr(title)
+            }
+        case .en:
+            switch title {
+            case "Причины": return value == 1 ? "cause" : "causes"
+            case "Флаги": return value == 1 ? "flag" : "flags"
+            case "Шаги": return value == 1 ? "step" : "steps"
+            default: return BagytL10n.tr(title)
+            }
+        }
+    }
+
+    private func russianPlural(_ value: Int, one: String, few: String, many: String) -> String {
+        let absValue = abs(value)
+        let lastTwo = absValue % 100
+        let last = absValue % 10
+
+        if (11...14).contains(lastTwo) {
+            return many
+        }
+
+        switch last {
+        case 1:
+            return one
+        case 2...4:
+            return few
+        default:
+            return many
+        }
+    }
+
+    private var aiCarouselFooter: some View {
+        HStack(spacing: 10) {
+            HStack(spacing: 6) {
+                ForEach(aiFindings.prefix(8)) { finding in
+                    Circle()
+                        .fill(finding.id == activeAIFindingID ? violet : secondaryText.opacity(0.22))
+                        .frame(width: finding.id == activeAIFindingID ? 8 : 6, height: finding.id == activeAIFindingID ? 8 : 6)
+                        .onTapGesture {
+                            withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) {
+                                activeAIFindingID = finding.id
+                            }
+                        }
+                }
+            }
+
+            Spacer()
+
+            Label(BagytL10n.tr("Листайте и открывайте карточки"), systemImage: "hand.tap.fill")
+                .font(.system(size: 11, weight: .black, design: .rounded))
+                .foregroundColor(secondaryText)
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
+        }
+        .padding(.horizontal, 2)
+    }
+
+    private func aiFindingDetailSheet(_ finding: BagytAIFinding) -> some View {
+        let validRedFlags = filterJunkAITexts(finding.redFlags)
+        let validHypotheses = filterJunkAITexts(finding.hypotheses)
+        let validNextSteps = filterJunkAITexts(finding.nextSteps)
+        
+        return NavigationStack {
+            ZStack {
+                baseBg.ignoresSafeArea()
+
+                AnimatedGradientBackground()
+                    .opacity(isDarkMode ? 0.18 : 0.72)
+                    .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(alignment: .top, spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                    .fill((validRedFlags.isEmpty ? violet : danger).opacity(isDarkMode ? 0.20 : 0.12))
+                                    .frame(width: 58, height: 58)
+                                Image(systemName: validRedFlags.isEmpty ? "brain.head.profile" : "exclamationmark.triangle.fill")
+                                    .font(.system(size: 23, weight: .black))
+                                    .foregroundColor(validRedFlags.isEmpty ? violet : danger)
+                            }
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(BagytL10n.tr("Полная клиническая заметка"))
+                                    .font(.system(size: 12, weight: .black, design: .rounded))
+                                    .foregroundColor(secondaryText)
+                                    .tracking(0.5)
+                                Text(finding.title)
+                                    .font(.system(size: 25, weight: .black, design: .rounded))
+                                    .foregroundColor(primaryText)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text(Self.fullDateFormatter.string(from: finding.createdAt))
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(secondaryText)
+                            }
+                        }
+                        .padding(16)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(cardBg.opacity(isDarkMode ? 0.86 : 0.78), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(stroke, lineWidth: 1)
+                        )
+
+                        aiDetailTextSection(
+                            title: "РЕЗЮМЕ",
+                            icon: "doc.text.magnifyingglass",
+                            text: finding.summary,
+                            color: accent
+                        )
+
+                        aiDetailListSection(
+                            title: "Красные флаги",
+                            icon: "exclamationmark.triangle.fill",
+                            items: validRedFlags,
+                            color: danger
+                        )
+
+                        aiDetailListSection(
+                            title: "Возможные причины",
+                            icon: "sparkle.magnifyingglass",
+                            items: validHypotheses,
+                            color: violet
+                        )
+
+                        aiDetailListSection(
+                            title: "Что дальше",
+                            icon: "checklist.checked",
+                            items: validNextSteps,
+                            color: success
+                        )
+
+                        aiDetailTextSection(
+                            title: "Вопрос пользователя",
+                            icon: "person.text.rectangle.fill",
+                            text: finding.userText,
+                            color: accent2
+                        )
+
+                        aiDetailTextSection(
+                            title: "Ответ Bagyt",
+                            icon: "sparkles",
+                            text: finding.assistantText,
+                            color: violet
+                        )
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 16)
+                    .padding(.bottom, 34)
+                }
+            }
+            .preferredColorScheme(isDarkMode ? .dark : .light)
+            .navigationTitle(BagytL10n.tr("Полная заметка"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(BagytL10n.tr("Готово")) {
+                        selectedAIFinding = nil
+                    }
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(accent)
+                }
+            }
+        }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
+    }
+
+    private func aiDetailTextSection(title: String, icon: String, text: String, color: Color) -> some View {
+        let cleaned = cleanedAIText(text)
+
+        return Group {
+            if !cleaned.isEmpty {
+                aiDetailSection(title: title, icon: icon, color: color) {
+                    Text(cleaned)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(primaryText.opacity(0.86))
                         .lineSpacing(4)
+                        .textSelection(.enabled)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(accent.opacity(isDarkMode ? 0.08 : 0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .padding(.bottom, 10)
             }
-
-            // Возможные причины (ВСЕ без prefix)
-            if !finding.hypotheses.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    tagLabel("ВОЗМОЖНЫЕ ПРИЧИНЫ · НЕ ДИАГНОЗ", color: violet)
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(Array(finding.hypotheses.enumerated()), id: \.offset) { idx, item in
-                            HStack(alignment: .top, spacing: 8) {
-                                Text("\(idx + 1)")
-                                    .font(.system(size: 10, weight: .black, design: .rounded))
-                                    .foregroundColor(.white)
-                                    .frame(width: 18, height: 18)
-                                    .background(violet, in: Circle())
-                                Text(item)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(primaryText.opacity(0.85))
-                                    .lineSpacing(3)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(violet.opacity(isDarkMode ? 0.08 : 0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .padding(.bottom, 10)
-            }
-
-            // Красные флаги (ВСЕ без prefix)
-            if !finding.redFlags.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    tagLabel("🚨 КРАСНЫЕ ФЛАГИ", color: danger)
-                    VStack(alignment: .leading, spacing: 6) {
-                        ForEach(finding.redFlags, id: \.self) { item in
-                            HStack(alignment: .top, spacing: 8) {
-                                Image(systemName: "exclamationmark.circle.fill")
-                                    .font(.system(size: 14, weight: .black))
-                                    .foregroundColor(danger)
-                                Text(item)
-                                    .font(.system(size: 13, weight: .semibold))
-                                    .foregroundColor(primaryText.opacity(0.85))
-                                    .lineSpacing(3)
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                    }
-                }
-                .padding(12)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(danger.opacity(isDarkMode ? 0.08 : 0.05), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .padding(.bottom, 10)
-            }
-
-
         }
-        .padding(15)
-        .background(analysisCard(cornerRadius: 20))
+    }
+
+    private func aiDetailListSection(title: String, icon: String, items: [String], color: Color) -> some View {
+        let cleanedItems = items.map(cleanedAIText).filter { !$0.isEmpty }
+
+        return Group {
+            if !cleanedItems.isEmpty {
+                aiDetailSection(title: title, icon: icon, color: color) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        ForEach(Array(cleanedItems.enumerated()), id: \.offset) { index, item in
+                            HStack(alignment: .top, spacing: 10) {
+                                Text("\(index + 1)")
+                                    .font(.system(size: 11, weight: .black, design: .rounded))
+                                    .foregroundColor(color)
+                                    .frame(width: 24, height: 24)
+                                    .background(color.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
+
+                                Text(item)
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundColor(primaryText.opacity(0.86))
+                                    .lineSpacing(4)
+                                    .textSelection(.enabled)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func aiDetailSection<Content: View>(
+        title: String,
+        icon: String,
+        color: Color,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .black))
+                Text(BagytL10n.tr(title))
+                    .font(.system(size: 11, weight: .black, design: .rounded))
+                    .tracking(0.55)
+            }
+            .foregroundColor(color)
+
+            content()
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(cardBg.opacity(isDarkMode ? 0.84 : 0.74), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(stroke, lineWidth: 1)
+        )
+    }
+
+    private func cleanedAIText(_ text: String) -> String {
+        text.components(separatedBy: .newlines)
+            .map { line in
+                var cleaned = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                let markdownPrefixes = ["#### ", "### ", "## ", "# ", "- ", "* ", "• "]
+
+                var didTrimPrefix = true
+                while didTrimPrefix {
+                    didTrimPrefix = false
+                    for prefix in markdownPrefixes where cleaned.hasPrefix(prefix) {
+                        cleaned.removeFirst(prefix.count)
+                        cleaned = cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+                        didTrimPrefix = true
+                    }
+                }
+
+                return cleaned
+                    .replacingOccurrences(of: "**", with: "")
+                    .replacingOccurrences(of: "__", with: "")
+                    .replacingOccurrences(of: "`", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n")
+    }
+    
+    // MARK: - JUNK TEXT FILTERING HELPER
+    
+    private func filterJunkAITexts(_ items: [String]) -> [String] {
+        return items.filter { !isJunkAIText($0) }
+    }
+    
+    private func isJunkAIText(_ text: String) -> Bool {
+        let cleaned = text.lowercased()
+            .replacingOccurrences(of: "**", with: "")
+            .replacingOccurrences(of: "*", with: "")
+            .replacingOccurrences(of: "#", with: "")
+            .replacingOccurrences(of: "1.", with: "")
+            .replacingOccurrences(of: "2.", with: "")
+            .replacingOccurrences(of: "3.", with: "")
+            .replacingOccurrences(of: "4.", with: "")
+            .replacingOccurrences(of: "-", with: "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: ":.,"))
+            .trimmingCharacters(in: .whitespaces)
+
+        let exactJunk = [
+            "возможные причины",
+            "рекомендуемые действия",
+            "красные флаги",
+            "что дальше",
+            "если у вас есть следующие симптомы, немедленно обратитесь к врачу",
+            "если у вас есть следующие симптомы немедленно обратитесь к врачу",
+            "если у вас есть следующие симптомы"
+        ]
+
+        return exactJunk.contains(cleaned) || cleaned.isEmpty
     }
 
     // Маленький тег-заголовок внутри карточки
     private func tagLabel(_ text: String, color: Color) -> some View {
-        Text(text)
+        Text(BagytL10n.tr(text))
             .font(.system(size: 9, weight: .black, design: .rounded))
             .foregroundColor(color)
             .tracking(0.6)
@@ -919,53 +1345,81 @@ struct AnalysisView: View {
             sectionTitle("Медицинские сигналы", icon: "waveform.path.ecg.rectangle.fill")
 
             ForEach(clinicalAlerts) { alert in
-                HStack(alignment: .top, spacing: 13) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 15, style: .continuous)
-                            .fill(alert.severity.color.opacity(isDarkMode ? 0.16 : 0.10))
-                            .frame(width: 45, height: 45)
-                        Image(systemName: alert.icon)
-                            .font(.system(size: 17, weight: .black))
-                            .foregroundColor(alert.severity.color)
+                if alert.id == "missing_medications" {
+                    Button {
+                        sheetMode = AnalysisMedicalSheetMode(category: .medication)
+                    } label: {
+                        alertRow(alert)
                     }
-
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack(spacing: 7) {
-                            Text(alert.title)
-                                .font(.system(size: 14, weight: .black, design: .rounded))
-                                .foregroundColor(primaryText)
-                            Text(alert.severity.title)
-                                .font(.system(size: 9, weight: .black, design: .rounded))
-                                .foregroundColor(alert.severity.color)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 4)
-                                .background(alert.severity.color.opacity(isDarkMode ? 0.16 : 0.10), in: Capsule())
-                        }
-
-                        Text(alert.text)
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(secondaryText)
-                            .lineSpacing(3)
-                            .fixedSize(horizontal: false, vertical: true)
+                    .buttonStyle(AnalysisPressStyle())
+                } else if alert.id == "missing_allergies" {
+                    Button {
+                        sheetMode = AnalysisMedicalSheetMode(category: .allergy)
+                    } label: {
+                        alertRow(alert)
                     }
-
-                    Spacer(minLength: 0)
+                    .buttonStyle(AnalysisPressStyle())
+                } else {
+                    alertRow(alert)
                 }
-                .padding(15)
-                .background(analysisCard(cornerRadius: 20))
             }
         }
         .padding(.horizontal, 20)
+    }
+
+    private func alertRow(_ alert: AnalysisClinicalAlert) -> some View {
+        HStack(alignment: .top, spacing: 13) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 15, style: .continuous)
+                    .fill(alert.severity.color.opacity(isDarkMode ? 0.16 : 0.10))
+                    .frame(width: 45, height: 45)
+                Image(systemName: alert.icon)
+                    .font(.system(size: 17, weight: .black))
+                    .foregroundColor(alert.severity.color)
+            }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 7) {
+                    Text(alert.title)
+                        .font(.system(size: 14, weight: .black, design: .rounded))
+                        .foregroundColor(primaryText)
+                    Text(alert.severity.title)
+                        .font(.system(size: 9, weight: .black, design: .rounded))
+                        .foregroundColor(alert.severity.color)
+                        .padding(.horizontal, 7)
+                        .padding(.vertical, 4)
+                        .background(alert.severity.color.opacity(isDarkMode ? 0.16 : 0.10), in: Capsule())
+                }
+
+                Text(alert.text)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(secondaryText)
+                    .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+            
+            // Показываем стрелочку, если элемент кликабельный
+            if alert.id == "missing_medications" || alert.id == "missing_allergies" {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(secondaryText.opacity(0.6))
+                    .padding(.top, 14)
+            }
+        }
+        .padding(15)
+        .background(analysisCard(cornerRadius: 20))
     }
 
     private var symptomFocusCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Симптомы")
+                    Text(BagytL10n.tr("Симптомы"))
                         .font(.system(size: 16, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
-                    Text("Последние 14 дней из журнала")
+                    Text(BagytL10n.tr("Последние 14 дней из журнала"))
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(secondaryText)
                 }
@@ -1008,7 +1462,7 @@ struct AnalysisView: View {
 
                 Spacer()
 
-                Text(severity > 0 ? "\(severity)/10" : "без оценки")
+                Text(severity > 0 ? "\(severity)/10" : BagytL10n.tr("без оценки"))
                     .font(.system(size: 11, weight: .black, design: .rounded))
                     .foregroundColor(color)
             }
@@ -1126,10 +1580,10 @@ struct AnalysisView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Сводка для врача")
+                    Text(BagytL10n.tr("Сводка для врача"))
                         .font(.system(size: 19, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
-                    Text("Аллергии, лекарства, диагнозы и последние симптомы")
+                    Text(BagytL10n.tr("Аллергии, лекарства, диагнозы и последние симптомы"))
                         .font(.system(size: 12, weight: .bold))
                         .foregroundColor(secondaryText)
                         .lineLimit(2)
@@ -1138,23 +1592,40 @@ struct AnalysisView: View {
                 Spacer()
             }
 
-            Text(doctorSummary)
-                .font(.system(size: 12, weight: .medium, design: .monospaced))
-                .foregroundColor(isDarkMode ? .white.opacity(0.78) : Color(red: 0.25, green: 0.35, blue: 0.44))
-                .lineSpacing(4)
+            Button {
+                showDoctorSummarySheet = true
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(doctorSummary)
+                        .font(.system(size: 12, weight: .medium, design: .monospaced))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.78) : Color(red: 0.25, green: 0.35, blue: 0.44))
+                        .lineSpacing(4)
+                        .lineLimit(8)
+                        .multilineTextAlignment(.leading)
+                    
+                    HStack {
+                        Spacer()
+                        Text(BagytL10n.tr("Развернуть сводку"))
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(accent)
+                        Spacer()
+                    }
+                    .padding(.top, 4)
+                }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
                         .fill(isDarkMode ? Color.black.opacity(0.22) : Color.white.opacity(0.58))
                 )
-                .lineLimit(17)
+            }
+            .buttonStyle(AnalysisPressStyle())
 
             ShareLink(item: doctorSummary) {
                 HStack(spacing: 10) {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 16, weight: .black))
-                    Text("Поделиться сводкой")
+                    Text(BagytL10n.tr("Поделиться сводкой"))
                         .font(.system(size: 16, weight: .black, design: .rounded))
                     Spacer()
                     Image(systemName: "chevron.right")
@@ -1340,6 +1811,7 @@ struct AnalysisView: View {
 
         if items(for: .allergy).isEmpty {
             alerts.append(.init(
+                id: "missing_allergies",
                 severity: .info,
                 icon: "allergens.fill",
                 title: BagytL10n.tr("Аллергии не заполнены"),
@@ -1349,6 +1821,7 @@ struct AnalysisView: View {
 
         if items(for: .medication).isEmpty {
             alerts.append(.init(
+                id: "missing_medications",
                 severity: .info,
                 icon: "pills.fill",
                 title: BagytL10n.tr("Лекарства не указаны"),
@@ -1512,10 +1985,10 @@ struct AnalysisView: View {
 
     private var doctorSummary: String {
         var lines: [String] = [
-            "Bagyt · медицинская сводка",
-            "Дата: \(Self.fullDateFormatter.string(from: Date()))",
+            BagytL10n.tr("Bagyt · медицинская сводка"),
+            String(format: BagytL10n.tr("Дата: %@"), Self.fullDateFormatter.string(from: Date())),
             "",
-            "Статус: \(clinicalStatus.title)",
+            String(format: BagytL10n.tr("Статус: %@"), clinicalStatus.title),
             clinicalStatus.subtitle,
             ""
         ]
@@ -1525,15 +1998,15 @@ struct AnalysisView: View {
         appendMedicalBlock(title: "Диагнозы / хронические состояния", category: .condition, to: &lines)
         appendMedicalBlock(title: "Важные заметки", category: .careNote, to: &lines)
 
-        lines.append("Показатели:")
-        lines.append("- Пульс: \(health.heartRate > 0 ? "\(health.heartRate) уд/мин" : "нет данных")")
-        lines.append("- Сон: \(sleepHours > 0 ? String(format: "%.1f ч", sleepHours) : "нет данных")")
-        lines.append("- Шаги сегодня: \(health.steps > 0 ? "\(health.steps)" : "нет данных")")
+        lines.append("\(BagytL10n.tr("Показатели")):")
+        lines.append(String(format: BagytL10n.tr("- Пульс: %@"), health.heartRate > 0 ? "\(health.heartRate) \(BagytL10n.tr("уд/мин"))" : BagytL10n.tr("нет данных")))
+        lines.append(String(format: BagytL10n.tr("- Сон: %@"), sleepHours > 0 ? String(format: "%.1f %@", sleepHours, BagytL10n.tr("ч")) : BagytL10n.tr("нет данных")))
+        lines.append(String(format: BagytL10n.tr("- Шаги сегодня: %@"), health.steps > 0 ? "\(health.steps)" : BagytL10n.tr("нет данных")))
         lines.append("")
 
-        lines.append("Симптомы за 14 дней:")
+        lines.append("\(BagytL10n.tr("Симптомы за 14 дней")):")
         if symptomsLast14.isEmpty {
-            lines.append("- Не отмечены")
+            lines.append("- \(BagytL10n.tr("Не отмечены"))")
         } else {
             symptomsLast14.prefix(7).forEach { entry in
                 let severity = entry.severity.map { ", \($0)/10" } ?? ""
@@ -1542,24 +2015,27 @@ struct AnalysisView: View {
         }
 
         lines.append("")
-        lines.append("AI-анамнез из чата:")
+        lines.append("\(BagytL10n.tr("AI-анамнез из чата")):")
         if aiFindings.isEmpty {
-            lines.append("- Нет сохраненных AI-заметок")
+            lines.append("- \(BagytL10n.tr("Нет сохраненных AI-заметок"))")
         } else {
             aiFindings.prefix(5).forEach { finding in
+                let validHypotheses = filterJunkAITexts(finding.hypotheses)
+                let validRedFlags = filterJunkAITexts(finding.redFlags)
+
                 lines.append("- \(Self.shortDateFormatter.string(from: finding.createdAt)): \(finding.title)")
                 lines.append("  \(finding.summary)")
-                if !finding.hypotheses.isEmpty {
-                    lines.append("  Возможные причины, не диагноз: \(finding.hypotheses.joined(separator: "; "))")
+                if !validHypotheses.isEmpty {
+                    lines.append("  \(BagytL10n.tr("Возможные причины, не диагноз")): \(validHypotheses.joined(separator: "; "))")
                 }
-                if !finding.redFlags.isEmpty {
-                    lines.append("  Красные флаги: \(finding.redFlags.joined(separator: "; "))")
+                if !validRedFlags.isEmpty {
+                    lines.append("  \(BagytL10n.tr("Красные флаги")): \(validRedFlags.joined(separator: "; "))")
                 }
             }
         }
 
         lines.append("")
-        lines.append("Важно: сводка не является диагнозом и не заменяет консультацию врача.")
+        lines.append(BagytL10n.tr("Важно: сводка не является диагнозом и не заменяет консультацию врача."))
         return lines.joined(separator: "\n")
     }
 
@@ -1584,9 +2060,25 @@ struct AnalysisView: View {
         }
     }
 
-    private func loadAIFindings() {
+    private func loadAIFindings(preferNewest: Bool = false) {
         let token = appState.userToken ?? UserDefaults.standard.string(forKey: "userToken")
-        aiFindings = BagytMemoryStore.shared.loadFindings(token: token)
+        let loaded = BagytMemoryStore.shared.loadFindings(token: token)
+        let previousSelection = activeAIFindingID
+
+        aiFindings = loaded
+
+        guard !loaded.isEmpty else {
+            activeAIFindingID = nil
+            return
+        }
+
+        if preferNewest {
+            activeAIFindingID = loaded.first?.id
+        } else if let previousSelection, loaded.contains(where: { $0.id == previousSelection }) {
+            activeAIFindingID = previousSelection
+        } else {
+            activeAIFindingID = loaded.first?.id
+        }
     }
 
     private func loadLocalData() {
@@ -1649,36 +2141,20 @@ struct AnalysisView: View {
     }
 
     private func loadJournalEntries(token: String?) -> [JournalEntry] {
-        let keys = [
-            scopedKey(base: "bagyt_journal_entries", token: token),
-            "bagyt_journal_entries"
-        ]
-
-        for key in keys {
-            if let data = UserDefaults.standard.data(forKey: key),
-               let decoded = try? JSONDecoder().decode([JournalEntry].self, from: data) {
-                return decoded
-            }
+        let key = scopedKey(base: "bagyt_journal_entries", token: token)
+        if let data = UserDefaults.standard.data(forKey: key),
+           let decoded = try? JSONDecoder().decode([JournalEntry].self, from: data) {
+            return decoded
         }
 
-        #if DEBUG
-        return JournalViewModel.demoEntries()
-        #else
         return []
-        #endif
     }
 
     private func loadMoodRecords(token: String?) -> [MoodRecord] {
-        let keys = [
-            scopedKey(base: "bagyt_mood_records", token: token),
-            "bagyt_mood_records"
-        ]
-
-        for key in keys {
-            if let data = UserDefaults.standard.data(forKey: key),
-               let decoded = try? JSONDecoder().decode([MoodRecord].self, from: data) {
-                return decoded.sorted { $0.date > $1.date }
-            }
+        let key = scopedKey(base: "bagyt_mood_records", token: token)
+        if let data = UserDefaults.standard.data(forKey: key),
+           let decoded = try? JSONDecoder().decode([MoodRecord].self, from: data) {
+            return decoded.sorted { $0.date > $1.date }
         }
 
         return []
@@ -1709,11 +2185,11 @@ struct AnalysisView: View {
     }
 
     private func appendMedicalBlock(title: String, category: AnalysisMedicalCategory, to lines: inout [String]) {
-        lines.append("\(title):")
+        lines.append("\(BagytL10n.tr(title)):")
 
         let entries = items(for: category)
         if entries.isEmpty {
-            lines.append("- Не указано")
+            lines.append("- \(BagytL10n.tr("Не указано"))")
         } else {
             entries.forEach { item in
                 let detail = item.detail.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -1801,6 +2277,62 @@ struct AnalysisView: View {
     }()
 }
 
+// MARK: - Doctor Summary Sheet
+private struct DoctorSummarySheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let summary: String
+    let isDarkMode: Bool
+    private let accent = Color(red: 0.055, green: 0.647, blue: 0.914)
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                (isDarkMode ? Color(red: 0.04, green: 0.06, blue: 0.10) : Color(red: 0.94, green: 0.97, blue: 1.0)).ignoresSafeArea()
+
+                AnimatedGradientBackground()
+                    .opacity(isDarkMode ? 0.18 : 0.72)
+                    .ignoresSafeArea()
+
+                ScrollView {
+                    Text(summary)
+                        .font(.system(size: 14, weight: .medium, design: .monospaced))
+                        .foregroundColor(isDarkMode ? .white.opacity(0.85) : Color(red: 0.15, green: 0.25, blue: 0.35))
+                        .lineSpacing(6)
+                        .padding(20)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .fill(isDarkMode ? Color.white.opacity(0.07) : Color.white.opacity(0.82))
+                                .stroke(isDarkMode ? Color.white.opacity(0.10) : Color.white.opacity(0.68), lineWidth: 1)
+                        )
+                        .padding(.horizontal, 20)
+                        .padding(.top, 16)
+                        .padding(.bottom, 40)
+                        .textSelection(.enabled)
+                }
+            }
+            .navigationTitle(BagytL10n.tr("Сводка для врача"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(BagytL10n.tr("Готово")) { dismiss() }
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(accent)
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    ShareLink(item: summary) {
+                        Image(systemName: "square.and.arrow.up")
+                            .foregroundColor(accent)
+                    }
+                }
+            }
+            .preferredColorScheme(isDarkMode ? .dark : .light)
+        }
+        .presentationDetents([.large])
+    }
+}
+
 // MARK: - Sheet
 
 private struct AnalysisMedicalItemSheet: View {
@@ -1877,7 +2409,7 @@ private struct AnalysisMedicalItemSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Готово") { dismiss() }
+                    Button(BagytL10n.tr("Готово")) { dismiss() }
                         .font(.system(size: 16, weight: .bold, design: .rounded))
                         .foregroundColor(accent)
                 }
@@ -1935,7 +2467,7 @@ private struct AnalysisMedicalItemSheet: View {
 
     private var detailInput: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Детали")
+            Text(BagytL10n.tr("Детали"))
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .foregroundColor(secondaryText)
 
@@ -1966,7 +2498,7 @@ private struct AnalysisMedicalItemSheet: View {
 
     private var importancePicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Важность")
+            Text(BagytL10n.tr("Важность"))
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .foregroundColor(secondaryText)
 

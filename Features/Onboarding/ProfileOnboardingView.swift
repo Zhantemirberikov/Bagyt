@@ -380,7 +380,7 @@ struct ProfileOnboardingView: View {
 
                 Button {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
-                    saveAndComplete()
+                    skipAndComplete()
                 } label: {
                     Text("Пропустить")
                         .font(.system(size: 14, weight: .bold, design: .rounded))
@@ -1068,50 +1068,26 @@ struct ProfileOnboardingView: View {
     // MARK: - Persistence
 
     private func loadExistingProfile() {
-        let defaults = UserDefaults.standard
+        let store = UserProfileStore.shared
+        store.load()
 
-        if defaults.integer(forKey: "userAge") > 0 {
-            age = defaults.integer(forKey: "userAge")
-        }
-        if defaults.double(forKey: "userWeight") > 0 {
-            weight = defaults.double(forKey: "userWeight")
-        }
-        if defaults.double(forKey: "userHeight") > 0 {
-            height = defaults.double(forKey: "userHeight")
-        }
-        if let savedGender = defaults.string(forKey: "userGender"),
-           let value = UserGender(rawValue: savedGender) {
-            gender = value
-        }
-        if let savedGoal = defaults.string(forKey: "userGoal"),
-           let value = UserGoal(rawValue: savedGoal) {
-            goal = value
-        }
-        if defaults.integer(forKey: "stepsGoal") > 0 {
-            stepsGoal = defaults.integer(forKey: "stepsGoal")
-        }
-        if defaults.double(forKey: "waterGoal") > 0 {
-            waterGoal = defaults.double(forKey: "waterGoal")
-        }
-        if defaults.double(forKey: "sleepGoal") > 0 {
-            sleepGoal = defaults.double(forKey: "sleepGoal")
-        }
-        if defaults.integer(forKey: "caloriesGoal") > 0 {
-            caloriesGoal = defaults.integer(forKey: "caloriesGoal")
-        }
+        if store.age > 0 { age = store.age }
+        if store.weight > 0 { weight = store.weight }
+        if store.height > 0 { height = store.height }
+        if let savedGender = UserGender(rawValue: store.gender) { gender = savedGender }
+        if let savedGoal = UserGoal(rawValue: store.goal) { goal = savedGoal }
+        stepsGoal = store.stepsGoal
+        waterGoal = store.waterGoal
+        sleepGoal = store.sleepGoal
+        caloriesGoal = store.caloriesGoal
+    }
+
+    private func skipAndComplete() {
+        UserProfileStore.shared.resetForCurrentUser()
+        onComplete()
     }
 
     private func saveAndComplete() {
-        saveProfileValue(age, forKey: "userAge")
-        saveProfileValue(gender.rawValue, forKey: "userGender")
-        saveProfileValue(weight, forKey: "userWeight")
-        saveProfileValue(height, forKey: "userHeight")
-        saveProfileValue(goal.rawValue, forKey: "userGoal")
-        saveProfileValue(stepsGoal, forKey: "stepsGoal")
-        saveProfileValue(waterGoal, forKey: "waterGoal")
-        saveProfileValue(sleepGoal, forKey: "sleepGoal")
-        saveProfileValue(caloriesGoal, forKey: "caloriesGoal")
-
         let store = UserProfileStore.shared
         store.age = age
         store.gender = gender.rawValue
@@ -1122,15 +1098,15 @@ struct ProfileOnboardingView: View {
         store.waterGoal = waterGoal
         store.sleepGoal = sleepGoal
         store.caloriesGoal = caloriesGoal
-
+        store.save()
+        AuthService.shared.updateProfile(
+            name: userName,
+            age: age,
+            sex: gender.rawValue,
+            height: height,
+            weight: weight
+        )
         onComplete()
-    }
-
-    private func saveProfileValue(_ value: Any, forKey key: String) {
-        UserDefaults.standard.set(value, forKey: key)
-
-        let userId = appState.userToken ?? "guest"
-        UserDefaults.standard.set(value, forKey: "\(key)_\(userId)")
     }
 
     // MARK: - Helpers

@@ -158,7 +158,7 @@ struct SettingsView: View {
                 initialAge: profile.age,
                 initialWeight: profile.weight,
                 initialHeight: profile.height,
-                initialGender: profile.gender.isEmpty ? "other" : profile.gender
+                initialGender: profile.gender
             ) { result in
                 saveAccount(result)
             }
@@ -186,6 +186,7 @@ struct SettingsView: View {
         .onChange(of: appState.userToken) { _ in
             loadAvatar()
             restoreUserName()
+            profile.load()
         }
         .onChange(of: avatarItem) { item in
             Task {
@@ -825,6 +826,13 @@ struct SettingsView: View {
         profile.gender = result.gender
         profile.save()
         profile.load()
+        AuthService.shared.updateProfile(
+            name: trimmed,
+            age: result.age,
+            sex: result.gender,
+            height: result.height,
+            weight: result.weight
+        )
         UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 

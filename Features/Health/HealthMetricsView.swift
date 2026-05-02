@@ -227,7 +227,7 @@ struct HealthMetricsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Комплексный индекс здоровья")
+                        Text(BagytL10n.tr("Комплексный индекс здоровья"))
                             .font(.system(size: 12, weight: .bold, design: .rounded))
                             .foregroundColor(.white.opacity(0.85))
                             .textCase(.uppercase).tracking(1.0)
@@ -263,7 +263,7 @@ struct HealthMetricsView: View {
                         .foregroundColor(.white)
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.8), value: healthIndex)
-                    Text("/100").font(.system(size: 22, weight: .bold, design: .rounded)).foregroundColor(.white.opacity(0.7)).padding(.bottom, 6)
+                    Text(BagytL10n.tr("/100")).font(.system(size: 22, weight: .bold, design: .rounded)).foregroundColor(.white.opacity(0.7)).padding(.bottom, 6)
                 }
 
                 HStack(spacing: 6) {
@@ -276,7 +276,7 @@ struct HealthMetricsView: View {
                 Spacer(minLength: 12)
 
                 HStack(spacing: 0) {
-                    miniStat(icon: "heart.fill",   value: heartRate > 0 ? "\(Int(heartRate))" : "—", unit: "уд/м",  color: Color(red: 1, green: 0.35, blue: 0.35))
+                    miniStat(icon: "heart.fill",   value: heartRate > 0 ? "\(Int(heartRate))" : "—", unit: "уд/мин",  color: Color(red: 1, green: 0.35, blue: 0.35))
                     Divider().frame(height: 28).background(Color.white.opacity(0.25)).padding(.horizontal, 14)
                     miniStat(icon: "figure.walk",  value: steps > 0 ? stepsFormatted : "—", unit: "шаг",   color: .white)
                     Divider().frame(height: 28).background(Color.white.opacity(0.25)).padding(.horizontal, 14)
@@ -339,7 +339,7 @@ struct HealthMetricsView: View {
                                 .font(.system(size: 18)).scaleEffect(pulseBeat ? 1.15 : 0.9)
                         }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("Пульс").font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(primaryText)
+                            Text(BagytL10n.tr("Пульс")).font(.system(size: 14, weight: .bold, design: .rounded)).foregroundColor(primaryText)
                             Text(heartPeriodSubtitle)
                                 .font(.system(size: 12, weight: .medium)).foregroundColor(secondaryText)
                         }
@@ -350,7 +350,7 @@ struct HealthMetricsView: View {
                             .font(.system(size: 38, weight: .black, design: .rounded))
                             .foregroundColor(Color(red: 0.95, green: 0.25, blue: 0.25))
                             .contentTransition(.numericText())
-                        Text("уд/м").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(secondaryText).padding(.bottom, 4)
+                        Text(BagytL10n.tr("уд/мин")).font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(secondaryText).padding(.bottom, 4)
                     }
                 }
 
@@ -358,7 +358,7 @@ struct HealthMetricsView: View {
 
                 HStack(spacing: 6) {
                     Circle().fill(Color(red: 0.1, green: 0.85, blue: 0.55)).frame(width: 8, height: 8)
-                    Text("Зона покоя · норма 60–100 уд/мин").font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundColor(secondaryText)
+                    Text(BagytL10n.tr("Зона покоя · норма 60–100 уд/мин")).font(.system(size: 13, weight: .semibold, design: .rounded)).foregroundColor(secondaryText)
                 }
                 .padding(.top, 4)
             }
@@ -372,20 +372,20 @@ struct HealthMetricsView: View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)], spacing: 14) {
             metricCard(
                 icon: "figure.walk", label: "Шаги", value: stepsFormatted, unit: "шагов",
-                progress: min(steps / stepsGoal, 1), target: "Цель: \(Int(stepsGoal).formattedWithSpaces)",
+                progress: min(steps / stepsGoal, 1), target: String(format: BagytL10n.tr("Цель: %@ шагов"), Int(stepsGoal).formattedWithSpaces),
                 gradientColors: [accent, accent2], iconBg: accent.opacity(0.12), iconColor: accent,
                 onTap: { showStepsDetail = true }
             )
             metricCard(
                 icon: "flame.fill", label: "Калории", value: "\(Int(calories).formattedWithSpaces)", unit: "ккал",
-                progress: min(calories / caloriesGoal, 1), target: "Цель: \(Int(caloriesGoal).formattedWithSpaces)",
+                progress: min(calories / caloriesGoal, 1), target: String(format: BagytL10n.tr("Цель: %@ ккал"), Int(caloriesGoal).formattedWithSpaces),
                 gradientColors: [Color(red: 1.0, green: 0.45, blue: 0.1), Color(red: 0.98, green: 0.28, blue: 0.28)],
                 iconBg: Color(red: 1.0, green: 0.45, blue: 0.1).opacity(0.12), iconColor: Color(red: 1.0, green: 0.45, blue: 0.1),
                 onTap: nil
             )
             metricCard(
                 icon: "moon.stars.fill", label: "Сон", value: String(format: "%.1f", sleepHours), unit: "часа",
-                progress: min(sleepHours / sleepGoal, 1), target: "Цель: \(String(format: "%.1f", sleepGoal)) ч",
+                progress: min(sleepHours / sleepGoal, 1), target: String(format: BagytL10n.tr("Цель: %@ ч"), String(format: "%.1f", sleepGoal)),
                 gradientColors: [Color(red: 0.55, green: 0.35, blue: 1.0), Color(red: 0.35, green: 0.55, blue: 1.0)],
                 iconBg: Color(red: 0.55, green: 0.35, blue: 1.0).opacity(0.12), iconColor: Color(red: 0.55, green: 0.35, blue: 1.0),
                 onTap: { showSleepDetail = true }
@@ -396,7 +396,7 @@ struct HealthMetricsView: View {
                 value: String(format: "%.1f", displayWater / 1000),
                 unit: "литра",
                 progress: min((displayWater / 1000) / waterGoal, 1),
-                target: "Цель: \(String(format: "%.1f", waterGoal)) л",
+                target: String(format: BagytL10n.tr("Цель: %@ л"), String(format: "%.1f", waterGoal)),
                 gradientColors: [Color(red: 0.024, green: 0.714, blue: 0.831), Color(red: 0.12, green: 0.56, blue: 0.95)],
                 iconBg: accent2.opacity(0.12), iconColor: accent2,
                 onTap: {
@@ -412,7 +412,7 @@ struct HealthMetricsView: View {
     private var ringSection: some View {
         glassCard {
             VStack(alignment: .leading, spacing: 18) {
-                Text(selectedPeriod == 0 ? "Активность сегодня" : "Средняя активность")
+                Text(BagytL10n.tr(selectedPeriod == 0 ? "Активность сегодня" : "Средняя активность"))
                     .font(.system(size: 16, weight: .bold, design: .rounded)).foregroundColor(primaryText)
 
                 HStack(spacing: 0) {
@@ -425,8 +425,8 @@ struct HealthMetricsView: View {
                     Spacer()
 
                     VStack(alignment: .leading, spacing: 16) {
-                        ringLegend(color: accent2, label: "Вода", value: "\(String(format: "%.1f", displayWater / 1000)) / \(String(format: "%.1f", waterGoal)) л")
-                        ringLegend(color: Color(red: 0.55, green: 0.35, blue: 1.0), label: "Сон", value: "\(String(format:"%.1f", sleepHours)) / \(String(format:"%.1f", sleepGoal)) ч")
+                        ringLegend(color: accent2, label: "Вода", value: String(format: BagytL10n.tr("%@ / %@ л"), String(format: "%.1f", displayWater / 1000), String(format: "%.1f", waterGoal)))
+                        ringLegend(color: Color(red: 0.55, green: 0.35, blue: 1.0), label: "Сон", value: String(format: BagytL10n.tr("%@ / %@ ч"), String(format:"%.1f", sleepHours), String(format:"%.1f", sleepGoal)))
                         ringLegend(color: Color(red: 1.0, green: 0.45, blue: 0.1), label: "Шаги", value: "\(stepsFormatted) / \(Int(stepsGoal / 1000))K")
                     }
                 }
@@ -448,7 +448,7 @@ struct HealthMetricsView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("AI ИНСАЙТ").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(accent).tracking(1.2)
+                    Text(BagytL10n.tr("AI ИНСАЙТ")).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(accent).tracking(1.2)
                     Text(insight.isEmpty ? BagytL10n.tr("Ваш пульс в пределах нормы, а активность приближается к цели. Так держать!") : BagytL10n.tr(insight))
                         .font(.system(size: 14, weight: .medium)).foregroundColor(primaryText).lineSpacing(3).fixedSize(horizontal: false, vertical: true)
                 }
@@ -513,7 +513,7 @@ struct HealthMetricsView: View {
                         .foregroundColor(red).font(.system(size: 18, weight: .semibold))
                 }
                 Spacer()
-                Text("АД")
+                Text(BagytL10n.tr("АД"))
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundColor(red)
                     .padding(.horizontal, 8).padding(.vertical, 4)
@@ -527,16 +527,16 @@ struct HealthMetricsView: View {
                         .foregroundColor(primaryText)
                         .contentTransition(.numericText())
                     if systolic > 0 {
-                        Text("мм рт.ст.").font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(secondaryText)
+                        Text(BagytL10n.tr("мм рт.ст.")).font(.system(size: 11, weight: .bold, design: .rounded)).foregroundColor(secondaryText)
                     }
                 }
-                Text("Артериальное давление")
+                Text(BagytL10n.tr("Артериальное давление"))
                     .font(.system(size: 13, weight: .bold, design: .rounded)).foregroundColor(secondaryText)
             }
 
             Spacer(minLength: 0)
 
-            Text("норма 120/80 мм рт.ст.")
+            Text(BagytL10n.tr("норма 120/80 мм рт.ст."))
                 .font(.system(size: 11, weight: .semibold, design: .rounded)).foregroundColor(secondaryText)
         }
         .padding(18).frame(maxWidth: .infinity, minHeight: 180)

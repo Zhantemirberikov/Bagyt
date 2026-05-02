@@ -14,6 +14,7 @@ final class AuthViewModel: ObservableObject {
 
     @Published var didLogin = false
     @Published var loggedUserName: String?
+    @Published var loggedUserToken: String?
 
     // MARK: - Validation
     var isValid: Bool {
@@ -34,6 +35,7 @@ final class AuthViewModel: ObservableObject {
         // 🔥 ТЕСТОВЫЙ ПОЛЬЗОВАТЕЛЬ
         if email == "test1@test.com" && password == "123456" {
             print("⚡ Test user login")
+            self.loggedUserToken = "offline-\(email)"
             self.loggedUserName = "Test User"
             self.didLogin = true
             return
@@ -54,7 +56,8 @@ final class AuthViewModel: ObservableObject {
                 case .success(let token):
                     print("✅ Logged in with token: \(token)")
                     let derivedName = self.email.components(separatedBy: "@").first ?? "User"
-                    self.loggedUserName = derivedName.capitalized
+                    self.loggedUserToken = token
+                    self.loggedUserName = UserDefaults.standard.string(forKey: "userName") ?? derivedName.capitalized
                     self.didLogin = true
 
                 case .failure(let error):
@@ -95,7 +98,8 @@ final class AuthViewModel: ObservableObject {
                 switch result {
                 case .success(let token):
                     print("✅ Registered with token: \(token)")
-                    self.loggedUserName = self.name
+                    self.loggedUserToken = token
+                    self.loggedUserName = UserDefaults.standard.string(forKey: "userName") ?? self.name
                     self.didLogin = true
 
                 case .failure(let error):

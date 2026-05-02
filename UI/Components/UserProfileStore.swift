@@ -25,36 +25,93 @@ final class UserProfileStore: ObservableObject {
     private init() { load() }
 
     func load() {
-        let ud       = UserDefaults.standard
-        age          = ud.integer(forKey: "userAge")
-        weight       = ud.double (forKey: "userWeight")
-        height       = ud.double (forKey: "userHeight")
-        gender       = ud.string (forKey: "userGender")  ?? ""
-        goal         = ud.string (forKey: "userGoal")    ?? ""
-        stepsGoal    = ud.integer(forKey: "stepsGoal")    .nonZeroInt    ?? 8000
-        waterGoal    = ud.double (forKey: "waterGoal")    .nonZeroDouble ?? 2.0
-        sleepGoal    = ud.double (forKey: "sleepGoal")    .nonZeroDouble ?? 8.0
-        caloriesGoal = ud.integer(forKey: "caloriesGoal") .nonZeroInt    ?? 2000
+        let ud = UserDefaults.standard
+        resetValues()
+
+        if hasScopedProfile(in: ud) {
+            age          = ud.integer(forKey: scopedKey("userAge"))
+            weight       = ud.double (forKey: scopedKey("userWeight"))
+            height       = ud.double (forKey: scopedKey("userHeight"))
+            gender       = ud.string (forKey: scopedKey("userGender")) ?? ""
+            goal         = ud.string (forKey: scopedKey("userGoal"))   ?? ""
+            stepsGoal    = ud.integer(forKey: scopedKey("stepsGoal"))    .nonZeroInt    ?? 8000
+            waterGoal    = ud.double (forKey: scopedKey("waterGoal"))    .nonZeroDouble ?? 2.0
+            sleepGoal    = ud.double (forKey: scopedKey("sleepGoal"))    .nonZeroDouble ?? 8.0
+            caloriesGoal = ud.integer(forKey: scopedKey("caloriesGoal")) .nonZeroInt    ?? 2000
+        }
+
+        syncLegacyKeys()
     }
 
     func save() {
-        let ud = UserDefaults.standard
-        ud.set(age,          forKey: "userAge")
-        ud.set(weight,       forKey: "userWeight")
-        ud.set(height,       forKey: "userHeight")
-        ud.set(gender,       forKey: "userGender")
-        ud.set(goal,         forKey: "userGoal")
-        ud.set(stepsGoal,    forKey: "stepsGoal")
-        ud.set(waterGoal,    forKey: "waterGoal")
-        ud.set(sleepGoal,    forKey: "sleepGoal")
-        ud.set(caloriesGoal, forKey: "caloriesGoal")
+        saveScopedValues()
+        syncLegacyKeys()
+    }
+
+    func resetForCurrentUser() {
+        resetValues()
+        saveScopedValues()
+        syncLegacyKeys()
+    }
+
+    private var currentUserId: String {
+        UserDefaults.standard.string(forKey: "userToken") ?? "guest"
+    }
+
+    private func scopedKey(_ key: String) -> String {
+        "\(key)_\(currentUserId)"
+    }
+
+    private func hasScopedProfile(in ud: UserDefaults) -> Bool {
+        let keys = [
+            "userAge", "userWeight", "userHeight", "userGender", "userGoal",
+            "stepsGoal", "waterGoal", "sleepGoal", "caloriesGoal"
+        ]
+        return keys.contains { ud.object(forKey: scopedKey($0)) != nil }
+    }
+
+    private func resetValues() {
+        age          = 0
+        weight       = 0
+        height       = 0
+        gender       = ""
+        goal         = ""
+        stepsGoal    = 8000
+        waterGoal    = 2.0
+        sleepGoal    = 8.0
+        caloriesGoal = 2000
+    }
+
+    private func saveScopedValues() {
+        saveValues { value, key in
+            UserDefaults.standard.set(value, forKey: scopedKey(key))
+        }
+    }
+
+    private func syncLegacyKeys() {
+        saveValues { value, key in
+            UserDefaults.standard.set(value, forKey: key)
+        }
+    }
+
+    private func saveValues(_ save: (Any, String) -> Void) {
+        save(age,          "userAge")
+        save(weight,       "userWeight")
+        save(height,       "userHeight")
+        save(gender,       "userGender")
+        save(goal,         "userGoal")
+        save(stepsGoal,    "stepsGoal")
+        save(waterGoal,    "waterGoal")
+        save(sleepGoal,    "sleepGoal")
+        save(caloriesGoal, "caloriesGoal")
     }
 
     var genderLabel: String {
         switch gender {
         case "male":   return BagytL10n.tr("Мужской")
         case "female": return BagytL10n.tr("Женский")
-        default:       return BagytL10n.tr("Другой")
+        case "other":  return BagytL10n.tr("Другой")
+        default:       return BagytL10n.tr("Не указано")
         }
     }
 
