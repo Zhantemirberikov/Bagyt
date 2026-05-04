@@ -316,6 +316,11 @@ final class ChatService {
         If the complaint may include red flags, clearly recommend urgent medical help.
         For headache red flags include sudden worst headache, weakness/numbness, speech problems, confusion, fever with stiff neck, head injury, vision loss, pregnancy/postpartum, very high blood pressure, or headache with chest pain.
 
+        DISPLAY_FORMAT_RULE:
+        Write the visible answer as clean plain text for a mobile chat bubble.
+        Do not use Markdown, bold markers, asterisks, hashtags, code fences, tables, or raw technical formatting.
+        Keep sections short and readable with normal punctuation.
+
         AI_ANAMNESIS_GENERATION_RULE:
         If the user's visible message contains a medical complaint, symptom, medication, allergy, diagnosis, doctor visit, or clinically relevant health concern, create one structured anamnesis note.
         Keep your normal visible answer friendly and useful.
@@ -758,7 +763,7 @@ final class BagytMemoryStore {
 
     static func visibleAssistantText(from text: String) -> String {
         guard let startRange = text.range(of: anamnesisStartMarker) else {
-            return text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return cleanVisibleMarkdown(text)
         }
 
         var visible = String(text[..<startRange.lowerBound])
@@ -767,7 +772,41 @@ final class BagytMemoryStore {
             visible += String(afterStart[endRange.upperBound...])
         }
 
-        return visible.trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleanVisibleMarkdown(visible)
+    }
+
+    private static func cleanVisibleMarkdown(_ text: String) -> String {
+        var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        let replacements: [(String, String)] = [
+            ("```(?:json|JSON|swift|Swift)?", ""),
+            ("```", ""),
+            ("`([^`]+)`", "$1"),
+            ("\\*\\*([^\\n*]+)\\*\\*", "$1"),
+            ("__([^\\n_]+)__", "$1"),
+            ("(?m)^\\s{0,3}#{1,6}\\s*", ""),
+            ("(?m)^\\s*[-*]\\s+\\*\\*([^\\n*]+)\\*\\*\\s*:", "- $1:"),
+            ("(?m)^\\s*(\\d+\\.\\s*)\\*\\*([^\\n*]+)\\*\\*\\s*:", "$1$2:"),
+            ("(?m)^\\s*[-*]\\s+", "- "),
+            ("\\*\\*", ""),
+            ("__", ""),
+            ("\\*", ""),
+            ("\\n{3,}", "\n\n")
+        ]
+
+        for (pattern, replacement) in replacements {
+            result = result.replacingOccurrences(
+                of: pattern,
+                with: replacement,
+                options: .regularExpression
+            )
+        }
+
+        return result
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func loadFindings(token: String? = UserDefaults.standard.string(forKey: "userToken")) -> [BagytAIFinding] {
@@ -783,6 +822,10 @@ final class BagytMemoryStore {
         var items = loadFindings(token: token)
         items.removeAll { $0.id == id }
         persist(items, token: token)
+    }
+
+    func deleteAllFindings(token: String? = UserDefaults.standard.string(forKey: "userToken")) {
+        persist([], token: token)
     }
 
     func captureAIResponse(

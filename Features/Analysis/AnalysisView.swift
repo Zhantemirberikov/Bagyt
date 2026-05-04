@@ -23,6 +23,7 @@ struct AnalysisView: View {
     @State private var showDoctorSummarySheet = false
     @State private var activeAIFindingID: UUID?
     @State private var selectedAIFinding: BagytAIFinding?
+    @State private var showDeleteAllAIFindings = false
     @State private var appear = false
 
     private let accent = Color(red: 0.055, green: 0.647, blue: 0.914)
@@ -117,6 +118,16 @@ struct AnalysisView: View {
         }
         .sheet(isPresented: $showDoctorSummarySheet) {
             DoctorSummarySheet(summary: doctorSummary, isDarkMode: isDarkMode)
+        }
+        .confirmationDialog(
+            BagytL10n.tr("Удалить все AI-заметки?"),
+            isPresented: $showDeleteAllAIFindings,
+            titleVisibility: .visible
+        ) {
+            Button(BagytL10n.tr("Удалить все"), role: .destructive) {
+                deleteAllAIFindings()
+            }
+            Button(BagytL10n.tr("Отмена"), role: .cancel) {}
         }
     }
 
@@ -787,6 +798,19 @@ struct AnalysisView: View {
                             .background(Color.white.opacity(isDarkMode ? 0.045 : 0.52), in: Circle())
                     }
                     .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            deleteAIFinding(finding)
+                        } label: {
+                            Label(BagytL10n.tr("Удалить"), systemImage: "trash")
+                        }
+
+                        Button(role: .destructive) {
+                            showDeleteAllAIFindings = true
+                        } label: {
+                            Label(BagytL10n.tr("Удалить все"), systemImage: "trash.slash")
+                        }
+                    }
                 }
 
                 if !finding.summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -2124,6 +2148,14 @@ struct AnalysisView: View {
     private func deleteAIFinding(_ finding: BagytAIFinding) {
         let token = appState.userToken ?? UserDefaults.standard.string(forKey: "userToken")
         BagytMemoryStore.shared.deleteFinding(id: finding.id, token: token)
+        loadAIFindings()
+    }
+
+    private func deleteAllAIFindings() {
+        let token = appState.userToken ?? UserDefaults.standard.string(forKey: "userToken")
+        selectedAIFinding = nil
+        activeAIFindingID = nil
+        BagytMemoryStore.shared.deleteAllFindings(token: token)
         loadAIFindings()
     }
 

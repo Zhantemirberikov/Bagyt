@@ -2,10 +2,12 @@
 "Start" = "Start";
 "Next" = "Next";
 "Готово" = "Done";
+"Скрыть клавиатуру" = "Hide keyboard";
 "Отмена" = "Cancel";
 "Сохранить" = "Save";
 "Удалить" = "Delete";
 "Удалить все" = "Delete all";
+"Удалить все AI-заметки?" = "Delete all AI notes?";
 "Поделиться" = "Share";
 "Профиль" = "Profile";
 "Главная" = "Home";
@@ -199,6 +201,14 @@
 "Думаю над ответом" = "Thinking through the answer";
 "Анализирую информацию" = "Analyzing information";
 "Формулирую ответ" = "Writing the answer";
+"Собираю контекст здоровья" = "Gathering health context";
+"Смотрю симптомы" = "Reviewing symptoms";
+"Проверяю важные сигналы" = "Checking key signals";
+"Сверяю с медкартой" = "Comparing with your medical card";
+"Оцениваю риски" = "Assessing risks";
+"Подбираю безопасные шаги" = "Choosing safe next steps";
+"Пишу понятный ответ" = "Writing a clear answer";
+"Проверяю красные флаги" = "Checking red flags";
 "Почти готово" = "Almost ready";
 "AI помощник · онлайн" = "AI assistant · online";
 "Как улучшить качество сна?" = "How can I improve sleep quality?";

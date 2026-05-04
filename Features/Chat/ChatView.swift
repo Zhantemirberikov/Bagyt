@@ -5,6 +5,7 @@
 
 import SwiftUI
 import Combine
+import UIKit
 
 // MARK: - Models
 
@@ -66,7 +67,9 @@ class ChatStore: ObservableObject {
             sessions = []
             return
         }
-        // Чистим зависшие состояния
+        var didNormalize = false
+
+        // Чистим зависшие состояния и старую markdown-разметку в ответах AI
         for i in decoded.indices {
             for j in decoded[i].messages.indices {
                 if decoded[i].messages[j].isThinking || decoded[i].messages[j].isStreaming {
@@ -76,9 +79,18 @@ class ChatStore: ObservableObject {
                         decoded[i].messages[j].text = BagytL10n.tr("Генерация была прервана.")
                     }
                 }
+
+                if !decoded[i].messages[j].isUser {
+                    let cleaned = BagytMemoryStore.visibleAssistantText(from: decoded[i].messages[j].text)
+                    if cleaned != decoded[i].messages[j].text {
+                        decoded[i].messages[j].text = cleaned
+                        didNormalize = true
+                    }
+                }
             }
         }
         sessions = decoded
+        if didNormalize { save() }
     }
 
     func reloadForCurrentUser() {
@@ -231,7 +243,8 @@ class ChatStore: ObservableObject {
         sessions[sIdx].messages[mIdx].isStreaming  = true
 
         let chars = Array(fullText)
-        var pos   = 0
+        let chunkSize = chars.count > 700 ? 5 : 3
+        var pos = 0
 
         func appendNext() {
             guard let si = self.sessions.firstIndex(where: { $0.id == sessionId }),
@@ -240,9 +253,10 @@ class ChatStore: ObservableObject {
             else { return }
 
             if pos < chars.count {
-                self.sessions[si].messages[mi].text.append(chars[pos])
-                pos += 1
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.025) { appendNext() }
+                let next = min(pos + chunkSize, chars.count)
+                self.sessions[si].messages[mi].text += String(chars[pos..<next])
+                pos = next
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.035) { appendNext() }
             } else {
                 self.sessions[si].messages[mi].isStreaming = false
                 self.sessions[si].updatedAt = Date()
@@ -588,15 +602,21 @@ struct ThinkingIndicator: View {
     private let accent2 = Color(red: 0.024, green: 0.714, blue: 0.831)
     private var phases: [String] {
         [
-            BagytL10n.tr("Думаю над ответом"),
-            BagytL10n.tr("Анализирую информацию"),
-            BagytL10n.tr("Формулирую ответ"),
+            BagytL10n.tr("Собираю контекст здоровья"),
+            BagytL10n.tr("Смотрю симптомы"),
+            BagytL10n.tr("Проверяю важные сигналы"),
+            BagytL10n.tr("Сверяю с медкартой"),
+            BagytL10n.tr("Оцениваю риски"),
+            BagytL10n.tr("Подбираю безопасные шаги"),
+            BagytL10n.tr("Пишу понятный ответ"),
+            BagytL10n.tr("Проверяю красные флаги"),
             BagytL10n.tr("Почти готово")
         ]
     }
 
     @State private var phase = 0
     @State private var dot   = 0
+    @State private var isAnimating = false
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 8) {
@@ -627,7 +647,7 @@ struct ThinkingIndicator: View {
                     Capsule().fill(accent.opacity(0.12)).frame(width: 120, height: 3)
                     Capsule()
                         .fill(LinearGradient(colors: [accent, accent2], startPoint: .leading, endPoint: .trailing))
-                        .frame(width: CGFloat(phase + 1) * 30, height: 3)
+                        .frame(width: min(120, 120 * CGFloat(phase + 1) / CGFloat(max(phases.count, 1))), height: 3)
                         .animation(.easeInOut(duration: 0.5), value: phase)
                 }
                 HStack(spacing: 5) {
@@ -649,13 +669,24 @@ struct ThinkingIndicator: View {
             Spacer(minLength: 60)
         }
         .onAppear { startAnim() }
+        .onDisappear { isAnimating = false }
     }
 
     private func startAnim() {
+        guard !isAnimating else { return }
+        isAnimating = true
+        phase = 0
+        dot = 0
+
         func tick(_ n: Int) {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                guard isAnimating else { return }
                 withAnimation(.spring(response: 0.25)) { dot = n % 3 }
-                if n % 5 == 0 { withAnimation { phase = min(phase + 1, phases.count - 1) } }
+                if n > 0 && n % 4 == 0 {
+                    withAnimation(.easeInOut(duration: 0.35)) {
+                        phase = min(phase + 1, phases.count - 1)
+                    }
+                }
                 tick(n + 1)
             }
         }
@@ -686,6 +717,7 @@ struct ChatSessionView: View {
     @State private var editingMsg    : BagytChatMessage? = nil
     @State private var editText      = ""
     @State private var orbPulse      = false
+    @State private var lastAutoScrolledMessageCount = 0
     @FocusState private var focused  : Bool
 
     private let accent  = Color(red: 0.055, green: 0.647, blue: 0.914)
@@ -806,11 +838,23 @@ struct ChatSessionView: View {
                 }
                 .padding(.horizontal, 16).padding(.vertical, 12)
             }
-            .onChange(of: session.messages) { msgs in
-                if let last = msgs.last {
-                    withAnimation(.easeOut(duration: 0.15)) {
-                        proxy.scrollTo(last.id, anchor: .bottom)
-                    }
+            .scrollDismissesKeyboard(.interactively)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                hideKeyboard()
+            }
+            .onAppear {
+                scrollToLastMessage(proxy, animated: false)
+                lastAutoScrolledMessageCount = session.messages.count
+            }
+            .onChange(of: session.messages.count) { count in
+                guard count != lastAutoScrolledMessageCount else { return }
+                lastAutoScrolledMessageCount = count
+                scrollToLastMessage(proxy, animated: true)
+            }
+            .onChange(of: focused) { isFocused in
+                if isFocused {
+                    scrollToLastMessage(proxy, animated: true, delay: 0.2)
                 }
             }
         }
@@ -964,7 +1008,20 @@ struct ChatSessionView: View {
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16))
                         .lineLimit(1...5).focused($focused)
+                        .submitLabel(.send)
+                        .onSubmit { sendMessage() }
                         .colorScheme(isDarkMode ? .dark : .light)
+                    if focused {
+                        Button {
+                            hideKeyboard()
+                        } label: {
+                            Image(systemName: "keyboard.chevron.compact.down")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundColor(isDarkMode ? .white.opacity(0.55) : Color(red:0.45,green:0.62,blue:0.72))
+                        }
+                        .accessibilityLabel(BagytL10n.tr("Скрыть клавиатуру"))
+                        .transition(.scale.combined(with: .opacity))
+                    }
                     if !inputText.isEmpty {
                         Button {
                             withAnimation(.spring(response: 0.3)) { inputText = "" }
@@ -1065,8 +1122,34 @@ struct ChatSessionView: View {
         let text = inputText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         inputText = ""
+        hideKeyboard()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         store.sendMessage(text, in: sessionId)
+    }
+
+    private func hideKeyboard() {
+        focused = false
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+
+    private func scrollToLastMessage(
+        _ proxy: ScrollViewProxy,
+        animated: Bool,
+        messages: [BagytChatMessage]? = nil,
+        delay: TimeInterval = 0
+    ) {
+        let items = messages ?? session.messages
+        guard let last = items.last else { return }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            if animated {
+                withAnimation(.easeOut(duration: 0.15)) {
+                    proxy.scrollTo(last.id, anchor: .bottom)
+                }
+            } else {
+                proxy.scrollTo(last.id, anchor: .bottom)
+            }
+        }
     }
 
     private func fmtTime(_ date: Date) -> String {
