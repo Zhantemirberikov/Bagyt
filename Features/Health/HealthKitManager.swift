@@ -62,28 +62,28 @@ final class HealthKitManager: ObservableObject {
 
         var title: String {
             switch self {
-            case .deep: return "Глубокий сон"
-            case .rem: return "REM сон"
-            case .core: return "Лёгкий сон"
-            case .unspecified: return "Сон"
+            case .deep: return BagytL10n.tr("Глубокий сон")
+            case .rem: return BagytL10n.tr("REM сон")
+            case .core: return BagytL10n.tr("Лёгкий сон")
+            case .unspecified: return BagytL10n.tr("Сон")
             }
         }
 
         var shortLabel: String {
             switch self {
-            case .deep: return "Глубокий"
+            case .deep: return BagytL10n.tr("Глубокий")
             case .rem: return "REM"
-            case .core: return "Лёгкий"
-            case .unspecified: return "Сон"
+            case .core: return BagytL10n.tr("Лёгкий")
+            case .unspecified: return BagytL10n.tr("Сон")
             }
         }
 
         var description: String {
             switch self {
-            case .deep: return "Восстановление организма"
-            case .rem: return "Сновидения, память"
-            case .core: return "Основная часть сна"
-            case .unspecified: return "Стадия сна без точной фазы"
+            case .deep: return BagytL10n.tr("Восстановление организма")
+            case .rem: return BagytL10n.tr("Сновидения, память")
+            case .core: return BagytL10n.tr("Основная часть сна")
+            case .unspecified: return BagytL10n.tr("Стадия сна без точной фазы")
             }
         }
 
@@ -439,8 +439,9 @@ struct HealthIndexBreakdown {
 
 enum HealthIndexCalculator {
     static func make(from health: HealthKitManager) -> HealthIndexBreakdown {
-        let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal")
-        let sleepGoal = UserDefaults.standard.double(forKey: "sleepGoal")
+        let profile = UserProfileStore.shared
+        let stepsGoal = profile.stepsGoal
+        let sleepGoal = profile.sleepGoal
 
         return make(
             steps: health.steps,

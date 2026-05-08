@@ -17,7 +17,7 @@ struct OnboardingContainerView: View {
     @State private var btnPulse           = false
     @State private var bgAnimate          = false
     @StateObject private var motion       = MotionManager()
-    @State private var profileOnboardingCompleted = false
+    @State private var completedProfileOnboardingToken: String?
 
     // Цвета фона для каждого слайда
     private let slideColors: [(Color, Color)] = [
@@ -83,19 +83,24 @@ struct OnboardingContainerView: View {
         let key = "hasCompletedProfileOnboarding_\(appState.userToken ?? "guest")"
         return UserDefaults.standard.bool(forKey: key)
     }
+
+    private var hasJustCompletedProfile: Bool {
+        completedProfileOnboardingToken == (appState.userToken ?? "guest")
+    }
+
     var body: some View {
         ZStack {
             // Анимированный фон — меняет цвет со слайдом
             animatedBackground
 
             if appState.isLoggedIn {
-                if !hasCompletedProfile && !profileOnboardingCompleted {
+                if !hasCompletedProfile && !hasJustCompletedProfile {
                     ProfileOnboardingView(userName: appState.userName ?? "Друг") {
                         let key = "hasCompletedProfileOnboarding_\(appState.userToken ?? "guest")"
                         UserDefaults.standard.set(true, forKey: key)
 
                         withAnimation(.easeInOut(duration: 0.35)) {
-                            profileOnboardingCompleted = true
+                            completedProfileOnboardingToken = appState.userToken ?? "guest"
                         }
                     }
                     .environmentObject(appState)
@@ -113,6 +118,14 @@ struct OnboardingContainerView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: appState.isLoggedIn)
+        .onChange(of: appState.userToken) { _ in
+            completedProfileOnboardingToken = nil
+        }
+        .onChange(of: appState.isLoggedIn) { isLoggedIn in
+            if !isLoggedIn {
+                completedProfileOnboardingToken = nil
+            }
+        }
     }
 
     // MARK: - Animated Background

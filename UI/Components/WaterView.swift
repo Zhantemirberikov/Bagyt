@@ -9,18 +9,10 @@ import SwiftUI
 
 struct WaterView: View {
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var profileStore = UserProfileStore.shared
     
     @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
-    // 👇 ИСПРАВЛЕНИЕ ЗДЕСЬ:
-    // Мы берем цель в ЛИТРАХ из настроек (например 2.5) и умножаем на 1000,
-    // чтобы бутылка заполнялась правильно (в миллилитрах)
-    @State private var goal: Double = {
-        let savedGoal = UserDefaults.standard.double(forKey: "waterGoal")
-        let finalGoal = savedGoal > 0 ? savedGoal : 2.4
-        return finalGoal * 1000
-    }()
-    
     // Прямая связь с экраном метрик для мгновенного обновления
     @Binding var consumed: Double
     
@@ -36,6 +28,10 @@ struct WaterView: View {
 
     private let amounts  = [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 600, 700, 800, 900, 1000]
     private let maxLimit = 5000.0
+
+    private var goal: Double {
+        max(profileStore.waterGoal, 0.1) * 1000
+    }
 
     private var progress: Double { min(max(consumed / goal, 0), 1.0) }
     private var percent:  Double { progress * 100 }
@@ -99,11 +95,11 @@ struct WaterView: View {
 
     private var titleBlock: some View {
         VStack(spacing: 3) {
-            Text("ВОДА")
+            Text(BagytL10n.tr("ВОДА"))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundColor(accent.opacity(isDarkMode ? 0.8 : 0.65))
                 .tracking(1.8)
-            Text("Трекер потребления")
+            Text(BagytL10n.tr("Трекер потребления"))
                 .font(.system(size: 20, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
         }
@@ -153,15 +149,15 @@ struct WaterView: View {
                                                         startPoint: .topLeading, endPoint: .bottomTrailing))
                         .contentTransition(.numericText())
                         .animation(.spring(response: 0.4), value: consumed)
-                    Text("Выполнено")
+                    Text(BagytL10n.tr("Выполнено"))
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundColor(secondaryText)
                 }
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(String(format: "%.1fл", goal / 1000).replacingOccurrences(of: ".", with: ","))
+                    Text("\(String(format: "%.1f", goal / 1000).replacingOccurrences(of: ".", with: ","))\(BagytL10n.tr("л"))")
                         .font(.system(size: 30, weight: .black, design: .rounded))
                         .foregroundColor(primaryText.opacity(0.9))
-                    Text("Цель")
+                    Text(BagytL10n.tr("Цель"))
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
                         .foregroundColor(secondaryText)
                 }
@@ -191,11 +187,11 @@ struct WaterView: View {
 
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Spacer()
-                    Text("мл")
+                    Text(BagytL10n.tr("мл"))
                         .font(.system(size: 26, weight: .black, design: .rounded))
                         .foregroundStyle(LinearGradient(colors: [accent, accent2],
                                                         startPoint: .leading, endPoint: .trailing))
-                    Text("выпито сегодня")
+                    Text(BagytL10n.tr("выпито сегодня"))
                         .font(.system(size: 13, weight: .semibold, design: .rounded))
                         .foregroundColor(secondaryText)
                         .padding(.bottom, 1)
@@ -296,7 +292,7 @@ struct WaterView: View {
                 .foregroundStyle(LinearGradient(colors: [accent, accent2],
                                                 startPoint: .leading, endPoint: .trailing))
                 .contentTransition(.numericText())
-            Text("мл")
+            Text(BagytL10n.tr("мл"))
                 .font(.system(size: 18, weight: .semibold, design: .rounded))
                 .foregroundColor(accent.opacity(0.70))
                 .padding(.bottom, 3)
@@ -316,7 +312,7 @@ struct WaterView: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: "drop.fill").font(.system(size: 16, weight: .semibold))
-                Text("Добавить").font(.system(size: 17, weight: .bold, design: .rounded))
+                Text(BagytL10n.tr("Добавить")).font(.system(size: 17, weight: .bold, design: .rounded))
             }
             .foregroundColor(.white)
             .frame(maxWidth: .infinity)

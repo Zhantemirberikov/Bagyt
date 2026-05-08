@@ -64,7 +64,7 @@ final class UserProfileStore: ObservableObject {
 
     private func hasScopedProfile(in ud: UserDefaults) -> Bool {
         let keys = [
-            "userAge", "userWeight", "userHeight", "userGender", "userGoal",
+            "userAge", "userWeight", "userHeight", "userBMI", "userGender", "userGoal",
             "stepsGoal", "waterGoal", "sleepGoal", "caloriesGoal"
         ]
         return keys.contains { ud.object(forKey: scopedKey($0)) != nil }
@@ -98,6 +98,7 @@ final class UserProfileStore: ObservableObject {
         save(age,          "userAge")
         save(weight,       "userWeight")
         save(height,       "userHeight")
+        save(bmi,          "userBMI")
         save(gender,       "userGender")
         save(goal,         "userGoal")
         save(stepsGoal,    "stepsGoal")

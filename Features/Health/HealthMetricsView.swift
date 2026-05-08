@@ -17,6 +17,7 @@ struct HealthMetricsView: View {
 
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var lang: LanguageManager
+    @ObservedObject private var profileStore = UserProfileStore.shared
     
     @AppStorage("isDarkModeEnabled") private var isDarkMode = false
 
@@ -88,10 +89,18 @@ struct HealthMetricsView: View {
     private var pickerBg: Color { isDarkMode ? Color.white.opacity(0.08) : Color.white.opacity(0.85) }
 
     // MARK: - Dynamic Goals from Settings
-    private var stepsGoal: Double { let g = UserDefaults.standard.double(forKey: "stepsGoal"); return g > 0 ? g : 8000 }
-    private var caloriesGoal: Double { let g = UserDefaults.standard.double(forKey: "caloriesGoal"); return g > 0 ? g : 2200 }
-    private var sleepGoal: Double { let g = UserDefaults.standard.double(forKey: "sleepGoal"); return g > 0 ? g : 8.0 }
-    private var waterGoal: Double { let g = UserDefaults.standard.double(forKey: "waterGoal"); return g > 0 ? g : 2.5 }
+    private var stepsGoal: Double { Double(profileStore.stepsGoal > 0 ? profileStore.stepsGoal : 8000) }
+    private var caloriesGoal: Double { Double(profileStore.caloriesGoal > 0 ? profileStore.caloriesGoal : 2000) }
+    private var sleepGoal: Double { profileStore.sleepGoal > 0 ? profileStore.sleepGoal : 8.0 }
+    private var waterGoal: Double { profileStore.waterGoal > 0 ? profileStore.waterGoal : 2.0 }
+
+    private var currentUserId: String {
+        appState.userToken ?? UserDefaults.standard.string(forKey: "userToken") ?? "guest"
+    }
+
+    private func scopedWaterKey(_ base: String) -> String {
+        "\(base)_\(currentUserId)"
+    }
 
     private var healthIndexBreakdown: HealthIndexBreakdown {
         HealthIndexCalculator.make(
@@ -185,6 +194,16 @@ struct HealthMetricsView: View {
                 recalculateWaterStats()
                 loadRealHealthData()
             }
+        }
+        .onChange(of: appState.userToken) { _ in
+            profileStore.load()
+            tempWater = 0
+            todayWater = 0
+            displayWater = 0
+            recalculateWaterStats()
+        }
+        .onChange(of: profileStore.waterGoal) { _ in
+            recalculateWaterStats()
         }
         .sheet(isPresented: $showWater, onDismiss: {
             todayWater = tempWater
@@ -965,21 +984,21 @@ struct HealthMetricsView: View {
 
     private func saveTodayWater(_ amount: Double) {
         let todayStr = getDayString(for: Date())
-        var history = UserDefaults.standard.dictionary(forKey: "bagyt_water_history") as? [String: Double] ?? [:]
+        var history = UserDefaults.standard.dictionary(forKey: scopedWaterKey("bagyt_water_history")) as? [String: Double] ?? [:]
         history[todayStr] = amount
-        UserDefaults.standard.set(history, forKey: "bagyt_water_history")
-        UserDefaults.standard.set(todayStr, forKey: "bagyt_water_date")
-        UserDefaults.standard.set(amount, forKey: "bagyt_water_consumed")
+        UserDefaults.standard.set(history, forKey: scopedWaterKey("bagyt_water_history"))
+        UserDefaults.standard.set(todayStr, forKey: scopedWaterKey("bagyt_water_date"))
+        UserDefaults.standard.set(amount, forKey: scopedWaterKey("bagyt_water_consumed"))
     }
     
     private func recalculateWaterStats() {
-        var history = UserDefaults.standard.dictionary(forKey: "bagyt_water_history") as? [String: Double] ?? [:]
+        var history = UserDefaults.standard.dictionary(forKey: scopedWaterKey("bagyt_water_history")) as? [String: Double] ?? [:]
         if history.isEmpty {
-            let oldDate = UserDefaults.standard.string(forKey: "bagyt_water_date") ?? ""
-            let oldAmount = UserDefaults.standard.double(forKey: "bagyt_water_consumed")
+            let oldDate = UserDefaults.standard.string(forKey: scopedWaterKey("bagyt_water_date")) ?? ""
+            let oldAmount = UserDefaults.standard.double(forKey: scopedWaterKey("bagyt_water_consumed"))
             if !oldDate.isEmpty {
                 history[oldDate] = oldAmount
-                UserDefaults.standard.set(history, forKey: "bagyt_water_history")
+                UserDefaults.standard.set(history, forKey: scopedWaterKey("bagyt_water_history"))
             }
         }
         let todayStr = getDayString(for: Date())

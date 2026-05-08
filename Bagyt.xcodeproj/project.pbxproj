@@ -53,7 +53,25 @@
 		13CE3EB02F938FF90091C508 /* AnimatedGradientBackground.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13CE3EAF2F938FF90091C508 /* AnimatedGradientBackground.swift */; };
 		13DE826E2EB76F9300AF2047 /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13DE826D2EB76F9300AF2047 /* AppState.swift */; };
 		13DE828E2EC307E400AF2047 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 13DE828D2EC307E400AF2047 /* Lottie */; };
+		13B7000B2FAE000100000001 /* TestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B700032FAE000100000001 /* TestSupport.swift */; };
+		13B7000C2FAE000100000001 /* UserProfileStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B700042FAE000100000001 /* UserProfileStoreTests.swift */; };
+		13B7000D2FAE000100000001 /* BagytMemoryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B700052FAE000100000001 /* BagytMemoryStoreTests.swift */; };
+		13B7000E2FAE000100000001 /* HealthIndexCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B700062FAE000100000001 /* HealthIndexCalculatorTests.swift */; };
+		13B7000F2FAE000100000001 /* AppSessionDefaultsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B700072FAE000100000001 /* AppSessionDefaultsTests.swift */; };
+		13B700102FAE000100000001 /* ChatLocalStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B700082FAE000100000001 /* ChatLocalStorageTests.swift */; };
+		13B700112FAE000100000001 /* LanguageManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B700092FAE000100000001 /* LanguageManagerTests.swift */; };
+		13B700122FAE000100000001 /* APIConfigTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B7000A2FAE000100000001 /* APIConfigTests.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		13B7001B2FAE000100000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 13DC10392EB5FF6C00352509 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 13DC10402EB5FF6D00352509;
+			remoteInfo = Bagyt;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		139471042F9548A800DE4019 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -103,6 +121,15 @@
 		13CE3EB42FA33C010091C508 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		13DC10412EB5FF6D00352509 /* Bagyt.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Bagyt.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13DE826D2EB76F9300AF2047 /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		13B700012FAE000100000001 /* BagytTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BagytTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B700032FAE000100000001 /* TestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestSupport.swift; sourceTree = "<group>"; };
+		13B700042FAE000100000001 /* UserProfileStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfileStoreTests.swift; sourceTree = "<group>"; };
+		13B700052FAE000100000001 /* BagytMemoryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BagytMemoryStoreTests.swift; sourceTree = "<group>"; };
+		13B700062FAE000100000001 /* HealthIndexCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthIndexCalculatorTests.swift; sourceTree = "<group>"; };
+		13B700072FAE000100000001 /* AppSessionDefaultsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSessionDefaultsTests.swift; sourceTree = "<group>"; };
+		13B700082FAE000100000001 /* ChatLocalStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLocalStorageTests.swift; sourceTree = "<group>"; };
+		13B700092FAE000100000001 /* LanguageManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManagerTests.swift; sourceTree = "<group>"; };
+		13B7000A2FAE000100000001 /* APIConfigTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIConfigTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -121,6 +148,13 @@
 				13A15AF02F93B3CF007A58B1 /* GoogleSignInSwift in Frameworks */,
 				13DE828E2EC307E400AF2047 /* Lottie in Frameworks */,
 				13A15AEE2F93B3CF007A58B1 /* GoogleSignIn in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		13B700132FAE000100000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -337,6 +371,7 @@
 			isa = PBXGroup;
 			children = (
 				139471362F9CE71B00DE4019 /* Models */,
+				13B700022FAE000100000001 /* BagytTests */,
 				13CE3E9E2F937B7F0091C508 /* Resources */,
 				13CE3E9D2F937B780091C508 /* UI */,
 				13CE3E9C2F937B6F0091C508 /* Features */,
@@ -347,10 +382,26 @@
 			);
 			sourceTree = "<group>";
 		};
+		13B700022FAE000100000001 /* BagytTests */ = {
+			isa = PBXGroup;
+			children = (
+				13B700032FAE000100000001 /* TestSupport.swift */,
+				13B700042FAE000100000001 /* UserProfileStoreTests.swift */,
+				13B700052FAE000100000001 /* BagytMemoryStoreTests.swift */,
+				13B700062FAE000100000001 /* HealthIndexCalculatorTests.swift */,
+				13B700072FAE000100000001 /* AppSessionDefaultsTests.swift */,
+				13B700082FAE000100000001 /* ChatLocalStorageTests.swift */,
+				13B700092FAE000100000001 /* LanguageManagerTests.swift */,
+				13B7000A2FAE000100000001 /* APIConfigTests.swift */,
+			);
+			path = BagytTests;
+			sourceTree = "<group>";
+		};
 		13DC10422EB5FF6D00352509 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				13DC10412EB5FF6D00352509 /* Bagyt.app */,
+				13B700012FAE000100000001 /* BagytTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -383,6 +434,24 @@
 			productReference = 13DC10412EB5FF6D00352509 /* Bagyt.app */;
 			productType = "com.apple.product-type.application";
 		};
+		13B700162FAE000100000001 /* BagytTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 13B700172FAE000100000001 /* Build configuration list for PBXNativeTarget "BagytTests" */;
+			buildPhases = (
+				13B700142FAE000100000001 /* Sources */,
+				13B700132FAE000100000001 /* Frameworks */,
+				13B700152FAE000100000001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				13B7001A2FAE000100000001 /* PBXTargetDependency */,
+			);
+			name = BagytTests;
+			productName = BagytTests;
+			productReference = 13B700012FAE000100000001 /* BagytTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -395,6 +464,10 @@
 				TargetAttributes = {
 					13DC10402EB5FF6D00352509 = {
 						CreatedOnToolsVersion = 26.0.1;
+					};
+					13B700162FAE000100000001 = {
+						CreatedOnToolsVersion = 26.0.1;
+						TestTargetID = 13DC10402EB5FF6D00352509;
 					};
 				};
 			};
@@ -419,6 +492,7 @@
 			projectRoot = "";
 			targets = (
 				13DC10402EB5FF6D00352509 /* Bagyt */,
+				13B700162FAE000100000001 /* BagytTests */,
 			);
 		};
 /* End PBXProject section */
@@ -431,6 +505,13 @@
 				13CE3E832F9377840091C508 /* aiaia.json in Resources */,
 				13CE3E842F9377840091C508 /* Assets.xcassets in Resources */,
 				13CE3EB12FA33C010091C508 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		13B700152FAE000100000001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -497,7 +578,30 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		13B700142FAE000100000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				13B7000B2FAE000100000001 /* TestSupport.swift in Sources */,
+				13B7000C2FAE000100000001 /* UserProfileStoreTests.swift in Sources */,
+				13B7000D2FAE000100000001 /* BagytMemoryStoreTests.swift in Sources */,
+				13B7000E2FAE000100000001 /* HealthIndexCalculatorTests.swift in Sources */,
+				13B7000F2FAE000100000001 /* AppSessionDefaultsTests.swift in Sources */,
+				13B700102FAE000100000001 /* ChatLocalStorageTests.swift in Sources */,
+				13B700112FAE000100000001 /* LanguageManagerTests.swift in Sources */,
+				13B700122FAE000100000001 /* APIConfigTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		13B7001A2FAE000100000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 13DC10402EB5FF6D00352509 /* Bagyt */;
+			targetProxy = 13B7001B2FAE000100000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13DC104A2EB5FF6E00352509 /* Debug */ = {
@@ -695,6 +799,62 @@
 			};
 			name = Release;
 		};
+		13B700182FAE000100000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AKSYX8UKBR;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.temir.BagytTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Bagyt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Bagyt";
+			};
+			name = Debug;
+		};
+		13B700192FAE000100000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = AKSYX8UKBR;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.temir.BagytTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Bagyt.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Bagyt";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -712,6 +872,15 @@
 			buildConfigurations = (
 				13DC104D2EB5FF6E00352509 /* Debug */,
 				13DC104E2EB5FF6E00352509 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		13B700172FAE000100000001 /* Build configuration list for PBXNativeTarget "BagytTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				13B700182FAE000100000001 /* Debug */,
+				13B700192FAE000100000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

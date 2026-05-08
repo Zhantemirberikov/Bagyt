@@ -10,6 +10,7 @@ struct HomeView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var lang: LanguageManager
     @StateObject private var health = HealthKitManager.shared
+    @ObservedObject private var profileStore = UserProfileStore.shared
 
     // Подключаем настройку темной темы
     @AppStorage("isDarkModeEnabled") private var isDarkMode = false
@@ -335,8 +336,8 @@ struct HomeView: View {
 
     private var metricsRow: some View {
         HStack(spacing: 12) {
-            let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
-            let sleepGoal = UserDefaults.standard.double(forKey: "sleepGoal").nonZero ?? 8.0
+            let stepsGoal = profileStore.stepsGoal > 0 ? profileStore.stepsGoal : 8000
+            let sleepGoal = profileStore.sleepGoal > 0 ? profileStore.sleepGoal : 8.0
 
             metricCard(
                 icon: "figure.walk",
@@ -440,7 +441,7 @@ struct HomeView: View {
     // MARK: - Cognitive AI Card (Premium Insight)
 
     private var insightText: String {
-        let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal").nonZero ?? 8000
+        let stepsGoal = profileStore.stepsGoal > 0 ? profileStore.stepsGoal : 8000
         if health.steps > 0 {
             let pct = Int(Double(health.steps) / Double(stepsGoal) * 100)
             if pct >= 100 { return BagytL10n.tr("Отличная активность! Вы выполнили дневную норму шагов, так держать.") }

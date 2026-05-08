@@ -488,7 +488,7 @@ struct MoodView: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Готово") {
+                Button(BagytL10n.tr("Готово")) {
                     noteFocused = false
                 }
                 .font(.system(size: 15, weight: .bold))
@@ -507,16 +507,16 @@ struct MoodView: View {
         .onChange(of: lang.currentLanguage) { _, _ in
             vm.refreshLanguage()
         }
-        .alert("Очистить историю?", isPresented: $showResetAlert) {
-            Button("Отмена", role: .cancel) { }
-            Button("Удалить все", role: .destructive) {
+        .alert(BagytL10n.tr("Очистить историю?"), isPresented: $showResetAlert) {
+            Button(BagytL10n.tr("Отмена"), role: .cancel) { }
+            Button(BagytL10n.tr("Удалить все"), role: .destructive) {
                 withAnimation(.easeOut(duration: 0.18)) {
                     vm.deleteAll()
                     expandedRecordId = nil
                 }
             }
         } message: {
-            Text("Все записи настроения этого пользователя будут удалены.")
+            Text(BagytL10n.tr("Все записи настроения этого пользователя будут удалены."))
         }
     }
 
@@ -543,12 +543,12 @@ struct MoodView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text("НАСТРОЕНИЕ")
+                Text(BagytL10n.tr("НАСТРОЕНИЕ"))
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(palette.primary.opacity(isDarkMode ? 0.95 : 0.80))
                     .tracking(1.5)
 
-                Text("Чек-ин состояния")
+                Text(BagytL10n.tr("Чек-ин состояния"))
                     .font(.system(size: 18, weight: .black))
                     .foregroundColor(primaryText)
             }
@@ -604,7 +604,7 @@ struct MoodView: View {
 
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("СОСТОЯНИЕ СЕГОДНЯ")
+                    Text(BagytL10n.tr("СОСТОЯНИЕ СЕГОДНЯ"))
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.white.opacity(0.78))
                         .tracking(1.0)
@@ -931,7 +931,7 @@ struct MoodView: View {
 
     private var tagPicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Факторы дня")
+            Text(BagytL10n.tr("Факторы дня"))
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .foregroundColor(mutedText)
                 .textCase(.uppercase)
@@ -975,7 +975,7 @@ struct MoodView: View {
 
     private var noteField: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Заметка для ИИ")
+            Text(BagytL10n.tr("Заметка для ИИ"))
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .foregroundColor(mutedText)
                 .textCase(.uppercase)
@@ -983,7 +983,7 @@ struct MoodView: View {
 
             ZStack(alignment: .topLeading) {
                 if vm.todayNote.isEmpty {
-                    Text("Например: головная боль, тревога, тренировка, мало сна...")
+                    Text(BagytL10n.tr("Например: головная боль, тревога, тренировка, мало сна..."))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(mutedText.opacity(0.78))
                         .padding(.top, 13)
@@ -1042,7 +1042,7 @@ struct MoodView: View {
 
     private var weekCard: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("НЕДЕЛЬНАЯ СВОДКА")
+            Text(BagytL10n.tr("НЕДЕЛЬНАЯ СВОДКА"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -1130,7 +1130,7 @@ struct MoodView: View {
                         .background(dominant.color.opacity(isDarkMode ? 0.18 : 0.12), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("Главный фактор недели")
+                        Text(BagytL10n.tr("Главный фактор недели"))
                             .font(.system(size: 13, weight: .black, design: .rounded))
                             .foregroundColor(primaryText)
 
@@ -1189,7 +1189,7 @@ struct MoodView: View {
             let rows = factorRows()
 
             if rows.isEmpty {
-                Text("Отмечайте факторы дня. Здесь появятся связи между настроением, стрессом, сном, энергией и событиями.")
+                Text(BagytL10n.tr("Отмечайте факторы дня. Здесь появятся связи между настроением, стрессом, сном, энергией и событиями."))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(4)
@@ -1276,11 +1276,11 @@ struct MoodView: View {
                 .frame(width: 68, height: 68)
                 .background(palette.primary.opacity(isDarkMode ? 0.16 : 0.11), in: Circle())
 
-            Text("История пока пустая")
+            Text(BagytL10n.tr("История пока пустая"))
                 .font(.system(size: 17, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
 
-            Text("Первый чек-ин уже поможет анализу Bagyt лучше понимать ваше состояние.")
+            Text(BagytL10n.tr("Первый чек-ин уже поможет анализу Bagyt лучше понимать ваше состояние."))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
@@ -1355,7 +1355,7 @@ struct MoodView: View {
                         Image(systemName: "trash.fill")
                             .font(.system(size: 13, weight: .bold))
 
-                        Text("Удалить запись")
+                        Text(BagytL10n.tr("Удалить запись"))
                             .font(.system(size: 13, weight: .black, design: .rounded))
                     }
                     .foregroundColor(Color(red: 1.00, green: 0.34, blue: 0.34))
@@ -1425,7 +1425,7 @@ struct MoodView: View {
                 .font(.system(size: 16, weight: .black))
                 .foregroundColor(Color(red: 0.10, green: 0.78, blue: 0.48))
 
-            Text("Состояние сохранено")
+            Text(BagytL10n.tr("Состояние сохранено"))
                 .font(.system(size: 14, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
         }
@@ -1748,15 +1748,15 @@ private struct LegacyMoodView: View {
         .onChange(of: appState.userToken) { token in
             vm.configureUser(token: token)
         }
-        .alert("Очистить историю?", isPresented: $showResetAlert) {
-            Button("Отмена", role: .cancel) { }
-            Button("Удалить все", role: .destructive) {
+        .alert(BagytL10n.tr("Очистить историю?"), isPresented: $showResetAlert) {
+            Button(BagytL10n.tr("Отмена"), role: .cancel) { }
+            Button(BagytL10n.tr("Удалить все"), role: .destructive) {
                 withAnimation(.easeOut(duration: 0.22)) {
                     vm.deleteAll()
                 }
             }
         } message: {
-            Text("Все записи настроения этого пользователя будут удалены. Это действие нельзя отменить.")
+            Text(BagytL10n.tr("Все записи настроения этого пользователя будут удалены. Это действие нельзя отменить."))
         }
     }
 
@@ -1766,11 +1766,11 @@ private struct LegacyMoodView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 7) {
-                    Text("Настроение")
+                    Text(BagytL10n.tr("Настроение"))
                         .font(.system(size: 32, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
 
-                    Text("Когнитивный трекер состояния")
+                    Text(BagytL10n.tr("Когнитивный трекер состояния"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(secondaryText)
                 }
@@ -1836,7 +1836,7 @@ private struct LegacyMoodView: View {
                     .font(.system(size: 16, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text(subtitle)
+                Text(BagytL10n.tr(subtitle))
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundColor(mutedText)
             }
@@ -1905,7 +1905,7 @@ private struct LegacyMoodView: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("СЕГОДНЯ")
+                    Text(BagytL10n.tr("СЕГОДНЯ"))
                         .font(.system(size: 11, weight: .black, design: .rounded))
                         .foregroundColor(mutedText)
                         .tracking(1.0)
@@ -1923,7 +1923,7 @@ private struct LegacyMoodView: View {
                             .fill(Color(red: 0.10, green: 0.78, blue: 0.48))
                             .frame(width: 7, height: 7)
 
-                        Text("Сохранено")
+                        Text(BagytL10n.tr("Сохранено"))
                             .font(.system(size: 12, weight: .black, design: .rounded))
                             .foregroundColor(Color(red: 0.10, green: 0.78, blue: 0.48))
                     }
@@ -2063,7 +2063,7 @@ private struct LegacyMoodView: View {
 
     private var tagPicker: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Факторы дня")
+            Text(BagytL10n.tr("Факторы дня"))
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .foregroundColor(mutedText)
                 .textCase(.uppercase)
@@ -2084,7 +2084,7 @@ private struct LegacyMoodView: View {
                                 Image(systemName: tag.icon)
                                     .font(.system(size: 11, weight: .black))
 
-                                Text(tag.title)
+                                Text(BagytL10n.tr(tag.title))
                                     .font(.system(size: 12, weight: .black, design: .rounded))
                             }
                             .foregroundColor(selected ? .white : tag.color)
@@ -2105,7 +2105,7 @@ private struct LegacyMoodView: View {
 
     private var noteField: some View {
         VStack(alignment: .leading, spacing: 9) {
-            Text("Заметка")
+            Text(BagytL10n.tr("Заметка"))
                 .font(.system(size: 12, weight: .black, design: .rounded))
                 .foregroundColor(mutedText)
                 .textCase(.uppercase)
@@ -2113,7 +2113,7 @@ private struct LegacyMoodView: View {
 
             ZStack(alignment: .topLeading) {
                 if vm.todayNote.isEmpty {
-                    Text("Что повлияло на ваше состояние сегодня?")
+                    Text(BagytL10n.tr("Что повлияло на ваше состояние сегодня?"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(isDarkMode ? .white.opacity(0.28) : Color(red: 0.64, green: 0.74, blue: 0.80))
                         .padding(.top, 13)
@@ -2146,7 +2146,7 @@ private struct LegacyMoodView: View {
                 Image(systemName: vm.todayMood == nil ? "face.smiling" : "checkmark.circle.fill")
                     .font(.system(size: 18, weight: .black))
 
-                Text(vm.todayMood == nil ? "Выберите настроение" : "Сохранить чек-ин")
+                Text(BagytL10n.tr(vm.todayMood == nil ? "Выберите настроение" : "Сохранить чек-ин"))
                     .font(.system(size: 16, weight: .black, design: .rounded))
             }
             .foregroundColor(.white)
@@ -2229,7 +2229,7 @@ private struct LegacyMoodView: View {
                 .fill(color)
                 .frame(width: 7, height: 7)
 
-            Text(text)
+            Text(BagytL10n.tr(text))
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundColor(mutedText)
         }
@@ -2255,11 +2255,11 @@ private struct LegacyMoodView: View {
                         .background(insight.color.opacity(isDarkMode ? 0.16 : 0.11), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(insight.title)
+                        Text(BagytL10n.tr(insight.title))
                             .font(.system(size: 14, weight: .black, design: .rounded))
                             .foregroundColor(primaryText)
 
-                        Text(insight.text)
+                        Text(BagytL10n.tr(insight.text))
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundColor(secondaryText)
                             .lineSpacing(3)
@@ -2290,7 +2290,7 @@ private struct LegacyMoodView: View {
             let factors = factorRows()
 
             if factors.isEmpty {
-                Text("Отмечайте факторы дня, и здесь появятся связи между настроением, стрессом, сном и событиями.")
+                Text(BagytL10n.tr("Отмечайте факторы дня, и здесь появятся связи между настроением, стрессом, сном и событиями."))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(4)
@@ -2316,11 +2316,11 @@ private struct LegacyMoodView: View {
                 .background(row.option.color.opacity(isDarkMode ? 0.16 : 0.11), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(row.option.title)
+                Text(BagytL10n.tr(row.option.title))
                     .font(.system(size: 14, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text("\(row.count) раз · среднее настроение \(String(format: "%.1f", row.averageMood))/5")
+                Text("\(row.count) \(BagytL10n.tr("раз")) · \(BagytL10n.tr("среднее настроение")) \(String(format: "%.1f", row.averageMood))/5")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(secondaryText)
             }
@@ -2346,7 +2346,7 @@ private struct LegacyMoodView: View {
                 Button {
                     showResetAlert = true
                 } label: {
-                    Text("Очистить")
+                    Text(BagytL10n.tr("Очистить"))
                         .font(.system(size: 12, weight: .black, design: .rounded))
                         .foregroundColor(Color(red: 1.00, green: 0.35, blue: 0.35))
                         .padding(.horizontal, 11)
@@ -2367,11 +2367,11 @@ private struct LegacyMoodView: View {
                 .frame(width: 76, height: 76)
                 .background(accent.opacity(isDarkMode ? 0.16 : 0.10), in: Circle())
 
-            Text("История пока пустая")
+            Text(BagytL10n.tr("История пока пустая"))
                 .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
 
-            Text("Первый чек-ин уже поможет Bagyt лучше понимать ваше состояние.")
+            Text(BagytL10n.tr("Первый чек-ин уже поможет Bagyt лучше понимать ваше состояние."))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
@@ -2450,7 +2450,7 @@ private struct LegacyMoodView: View {
                         Image(systemName: "trash.fill")
                             .font(.system(size: 13, weight: .bold))
 
-                        Text("Удалить запись")
+                        Text(BagytL10n.tr("Удалить запись"))
                             .font(.system(size: 13, weight: .black, design: .rounded))
                     }
                     .foregroundColor(Color(red: 1.00, green: 0.35, blue: 0.35))
@@ -2488,7 +2488,7 @@ private struct LegacyMoodView: View {
                         Image(systemName: tag.icon)
                             .font(.system(size: 9, weight: .black))
 
-                        Text(tag.title)
+                        Text(BagytL10n.tr(tag.title))
                             .font(.system(size: 10, weight: .black, design: .rounded))
                     }
                     .foregroundColor(tag.color)
@@ -2516,7 +2516,7 @@ private struct LegacyMoodView: View {
                 .font(.system(size: 16, weight: .black))
                 .foregroundColor(Color(red: 0.10, green: 0.78, blue: 0.48))
 
-            Text("Чек-ин сохранен")
+            Text(BagytL10n.tr("Чек-ин сохранен"))
                 .font(.system(size: 14, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
         }
@@ -2559,12 +2559,12 @@ private struct LegacyMoodView: View {
 
     private func sectionHeaderText(eyebrow: String, title: String) -> some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(eyebrow)
+            Text(BagytL10n.tr(eyebrow))
                 .font(.system(size: 11, weight: .black, design: .rounded))
                 .foregroundColor(mutedText)
                 .tracking(1.0)
 
-            Text(title)
+            Text(BagytL10n.tr(title))
                 .font(.system(size: 17, weight: .black, design: .rounded))
                 .foregroundColor(primaryText)
         }
@@ -2589,7 +2589,7 @@ private struct LegacyMoodView: View {
 
     private func chartDays() -> [ChartDay] {
         let cal = Calendar.current
-        let labels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+        let labels = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map { BagytL10n.tr($0) }
         let recentRecords = vm.last14Records // Оптимизация: ищем только по недавним записям
 
         return (0..<7).compactMap { offset in
@@ -2660,11 +2660,11 @@ private struct LegacyMoodView: View {
     }
 
     private func moodLabel(_ value: Int) -> String {
-        ["Плохо", "Так себе", "Нормально", "Хорошо", "Отлично"][max(0, min(value - 1, 4))]
+        BagytL10n.tr(["Плохо", "Так себе", "Нормально", "Хорошо", "Отлично"][max(0, min(value - 1, 4))])
     }
 
     private func moodShortLabel(_ value: Int) -> String {
-        ["Плохо", "Так себе", "Норм", "Хорошо", "Класс"][max(0, min(value - 1, 4))]
+        BagytL10n.tr(["Плохо", "Так себе", "Норм", "Хорошо", "Класс"][max(0, min(value - 1, 4))])
     }
 
     private func moodColor(_ value: Int) -> Color {
@@ -2678,15 +2678,15 @@ private struct LegacyMoodView: View {
     }
 
     private func energyLabel(_ value: Int) -> String {
-        ["Очень низкая", "Низкая", "Средняя", "Высокая", "Максимум"][max(0, min(value - 1, 4))]
+        BagytL10n.tr(["Очень низкая", "Низкая", "Средняя", "Высокая", "Максимум"][max(0, min(value - 1, 4))])
     }
 
     private func stressLabel(_ value: Int) -> String {
-        ["Спокойно", "Легкий", "Средний", "Высокий", "Очень высокий"][max(0, min(value - 1, 4))]
+        BagytL10n.tr(["Спокойно", "Легкий", "Средний", "Высокий", "Очень высокий"][max(0, min(value - 1, 4))])
     }
 
     private func sleepLabel(_ value: Int) -> String {
-        ["Очень плохо", "Плохо", "Нормально", "Хорошо", "Отлично"][max(0, min(value - 1, 4))]
+        BagytL10n.tr(["Очень плохо", "Плохо", "Нормально", "Хорошо", "Отлично"][max(0, min(value - 1, 4))])
     }
 
     private func deltaText(_ value: Int) -> String {
@@ -2699,8 +2699,8 @@ private struct LegacyMoodView: View {
     }
 
     private func shortDateString(_ date: Date) -> String {
-        if Calendar.current.isDateInToday(date) { return "Сегодня" }
-        if Calendar.current.isDateInYesterday(date) { return "Вчера" }
+        if Calendar.current.isDateInToday(date) { return BagytL10n.tr("Сегодня") }
+        if Calendar.current.isDateInYesterday(date) { return BagytL10n.tr("Вчера") }
         return Self.shortDateFormatter.string(from: date)
     }
 

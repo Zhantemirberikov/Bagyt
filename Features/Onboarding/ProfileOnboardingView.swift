@@ -331,7 +331,7 @@ struct ProfileOnboardingView: View {
                         .foregroundColor(primaryText)
                         .multilineTextAlignment(.center)
 
-                    Text("Соберём базовый медицинский профиль, чтобы Bagyt точнее считал цели, индекс здоровья и рекомендации.")
+                    Text(BagytL10n.tr("Соберём базовый медицинский профиль, чтобы Bagyt точнее считал цели, индекс здоровья и рекомендации."))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(secondaryText)
                         .multilineTextAlignment(.center)
@@ -382,7 +382,7 @@ struct ProfileOnboardingView: View {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                     skipAndComplete()
                 } label: {
-                    Text("Пропустить")
+                    Text(BagytL10n.tr("Пропустить"))
                         .font(.system(size: 14, weight: .bold, design: .rounded))
                         .foregroundColor(secondaryText)
                         .padding(.vertical, 8)
@@ -655,7 +655,7 @@ struct ProfileOnboardingView: View {
                 .background(color.opacity(0.12), in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
-                Text("Индекс массы тела")
+                Text(BagytL10n.tr("Индекс массы тела"))
                     .font(.system(size: 13, weight: .bold, design: .rounded))
                     .foregroundColor(secondaryText)
 
@@ -884,11 +884,11 @@ struct ProfileOnboardingView: View {
                 }
 
                 VStack(spacing: 11) {
-                    Text("Профиль готов")
+                    Text(BagytL10n.tr("Профиль готов"))
                         .font(.system(size: 30, weight: .black, design: .rounded))
                         .foregroundColor(primaryText)
 
-                    Text("Bagyt персонализирован под ваши данные. Теперь можно перейти в приложение.")
+                    Text(BagytL10n.tr("Bagyt персонализирован под ваши данные. Теперь можно перейти в приложение."))
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(secondaryText)
                         .multilineTextAlignment(.center)
@@ -1099,6 +1099,8 @@ struct ProfileOnboardingView: View {
         store.sleepGoal = sleepGoal
         store.caloriesGoal = caloriesGoal
         store.save()
+        store.load()
+
         AuthService.shared.updateProfile(
             name: userName,
             age: age,

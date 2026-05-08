@@ -81,7 +81,7 @@ struct PulseDetailView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text("ПУЛЬС")
+                Text(BagytL10n.tr("ПУЛЬС"))
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(accent.opacity(isDarkMode ? 0.9 : 0.75))
                     .tracking(1.5)
@@ -125,7 +125,7 @@ struct PulseDetailView: View {
 
             HStack(alignment: .center) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("СРЕДНЯЯ ЧСС")
+                    Text(BagytL10n.tr("СРЕДНЯЯ ЧСС"))
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.white.opacity(0.76))
                         .tracking(1.0)
@@ -135,7 +135,7 @@ struct PulseDetailView: View {
                             .font(.system(size: 56, weight: .black))
                             .foregroundColor(.white)
 
-                        Text("уд/мин")
+                        Text(BagytL10n.tr("уд/мин"))
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white.opacity(0.78))
                             .padding(.bottom, 7)
@@ -178,7 +178,7 @@ struct PulseDetailView: View {
 
     private var weekCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("НЕДЕЛЬНАЯ СВОДКА")
+            Text(BagytL10n.tr("НЕДЕЛЬНАЯ СВОДКА"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -251,7 +251,7 @@ struct PulseDetailView: View {
 
     private var ecgCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ГРАФИК СЕРДЕЧНОГО РИТМА")
+            Text(BagytL10n.tr("ГРАФИК СЕРДЕЧНОГО РИТМА"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -287,11 +287,11 @@ struct PulseDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Амплитуда ритма")
+                            Text(BagytL10n.tr("Амплитуда ритма"))
                                 .font(.system(size: 18, weight: .black))
                                 .foregroundColor(.white)
 
-                            Text("Коснитесь графика для просмотра ЧСС в выбранный момент времени")
+                            Text(BagytL10n.tr("Коснитесь графика для просмотра ЧСС в выбранный момент времени"))
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(Color.white.opacity(0.66))
                         }
@@ -304,7 +304,7 @@ struct PulseDetailView: View {
                                     .fill(accent3)
                                     .frame(width: 8, height: 8)
 
-                                Text("АНАЛИЗ ЧСС")
+                                Text(BagytL10n.tr("АНАЛИЗ ЧСС"))
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(Color.white.opacity(0.82))
                             }
@@ -343,7 +343,7 @@ struct PulseDetailView: View {
 
     private var statsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ")
+            Text(BagytL10n.tr("КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -380,7 +380,7 @@ struct PulseDetailView: View {
                 Text(title)
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(primaryText)
-                Text("Данные телеметрии HealthKit")
+                Text(BagytL10n.tr("Данные телеметрии HealthKit"))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(secondaryText)
             }
@@ -399,11 +399,11 @@ struct PulseDetailView: View {
                 .font(.system(size: 46, weight: .light))
                 .foregroundColor(accent.opacity(isDarkMode ? 0.6 : 0.35))
 
-            Text("Нет данных телеметрии ЧСС")
+            Text(BagytL10n.tr("Нет данных телеметрии ЧСС"))
                 .font(.system(size: 18, weight: .black))
                 .foregroundColor(primaryText)
 
-            Text("Убедитесь, что Apple Watch или совместимое устройство синхронизирует измерения пульса с HealthKit.")
+            Text(BagytL10n.tr("Убедитесь, что Apple Watch или совместимое устройство синхронизирует измерения пульса с HealthKit."))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
@@ -539,7 +539,7 @@ private struct PulseInteractiveECGChart: View {
                             )
                     }
                 } else {
-                    Text("Недостаточно замеров для формирования графика")
+                    Text(BagytL10n.tr("Недостаточно замеров для формирования графика"))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.58))
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -560,7 +560,7 @@ private struct PulseInteractiveECGChart: View {
 
     private func selectionBubble(for sample: PulseDaySample, chartSize: CGSize) -> some View {
         VStack(spacing: 4) {
-            Text("\(Int(sample.bpm.rounded())) уд/мин")
+            Text("\(Int(sample.bpm.rounded())) \(BagytL10n.tr("уд/мин"))")
                 .font(.system(size: 11, weight: .black))
                 .foregroundColor(isDarkMode ? .white : Color(red: 0.16, green: 0.08, blue: 0.12))
 

@@ -119,21 +119,21 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(isDarkModeEnabled ? .dark : .light)
-        .confirmationDialog("Фото профиля", isPresented: $showAvatarOptions, titleVisibility: .visible) {
-            Button("Выбрать из галереи") {
+        .confirmationDialog(BagytL10n.tr("Фото профиля"), isPresented: $showAvatarOptions, titleVisibility: .visible) {
+            Button(BagytL10n.tr("Выбрать из галереи")) {
                 showPhotoPicker = true
             }
 
             if avatarImage != nil {
-                Button("Удалить фото", role: .destructive) {
+                Button(BagytL10n.tr("Удалить фото"), role: .destructive) {
                     avatarImage = nil
                     UserDefaults.standard.removeObject(forKey: avatarKey())
                 }
             }
 
-            Button("Отмена", role: .cancel) {}
+            Button(BagytL10n.tr("Отмена"), role: .cancel) {}
         }
-        .confirmationDialog("Выберите язык", isPresented: $showLanguagePicker, titleVisibility: .visible) {
+        .confirmationDialog(BagytL10n.tr("Выберите язык"), isPresented: $showLanguagePicker, titleVisibility: .visible) {
             ForEach(AppLanguage.allCases, id: \.self) { code in
                 Button("\(code.flag)  \(code.title)") {
                     withAnimation(.easeInOut(duration: 0.2)) {
@@ -141,15 +141,15 @@ struct SettingsView: View {
                     }
                 }
             }
-            Button("Отмена", role: .cancel) {}
+            Button(BagytL10n.tr("Отмена"), role: .cancel) {}
         }
-        .alert("Выйти из аккаунта?", isPresented: $showLogoutAlert) {
-            Button("Выйти", role: .destructive) {
+        .alert(BagytL10n.tr("Выйти из аккаунта?"), isPresented: $showLogoutAlert) {
+            Button(BagytL10n.tr("Выйти"), role: .destructive) {
                 appState.logOut()
             }
-            Button("Отмена", role: .cancel) {}
+            Button(BagytL10n.tr("Отмена"), role: .cancel) {}
         } message: {
-            Text("Вы уверены, что хотите выйти?")
+            Text(BagytL10n.tr("Вы уверены, что хотите выйти?"))
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $avatarItem, matching: .images)
         .sheet(isPresented: $showAccountEditor) {
@@ -248,11 +248,11 @@ struct SettingsView: View {
     private var header: some View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Профиль")
+                Text(BagytL10n.tr("Профиль"))
                     .font(.system(size: 30, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text("Настройки здоровья и аккаунта")
+                Text(BagytL10n.tr("Настройки здоровья и аккаунта"))
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(secondaryText)
             }
@@ -502,7 +502,7 @@ struct SettingsView: View {
                     icon: "target",
                     iconColor: accent2,
                     title: "Мои цели",
-                    subtitle: "\(profile.stepsGoal.formattedWithSpaces) шагов · \(String(format: "%.1f", profile.waterGoal)) л · \(String(format: "%.1f", profile.sleepGoal)) ч",
+                    subtitle: "\(profile.stepsGoal.formattedWithSpaces) \(BagytL10n.tr("шагов")) · \(String(format: "%.1f", profile.waterGoal)) \(BagytL10n.tr("л")) · \(String(format: "%.1f", profile.sleepGoal)) \(BagytL10n.tr("ч"))",
                     action: { showGoalsEditor = true }
                 )
             }
@@ -634,7 +634,7 @@ struct SettingsView: View {
                     .foregroundColor(.white.opacity(0.18))
                     .lineSpacing(-2)
 
-                Text("Сделано с любовью в Казахстане")
+                Text(BagytL10n.tr("Сделано с любовью в Казахстане"))
                     .font(.system(size: 14, weight: .bold, design: .rounded))
                     .foregroundColor(.white.opacity(0.76))
             }
@@ -668,7 +668,7 @@ struct SettingsView: View {
                 Image(systemName: "rectangle.portrait.and.arrow.right")
                     .font(.system(size: 16, weight: .black))
 
-                Text("Выйти из аккаунта")
+                Text(BagytL10n.tr("Выйти из аккаунта"))
                     .font(.system(size: 16, weight: .black, design: .rounded))
             }
             .foregroundColor(Color(red: 0.95, green: 0.30, blue: 0.30))
@@ -864,7 +864,7 @@ struct SettingsView: View {
             Color.black.opacity(0.94).ignoresSafeArea()
 
             VStack(spacing: 24) {
-                Text("Настройка фото")
+                Text(BagytL10n.tr("Настройка фото"))
                     .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundColor(.white)
 
@@ -921,7 +921,7 @@ struct SettingsView: View {
                     )
                 }
 
-                Text("Перемещайте и масштабируйте фото")
+                Text(BagytL10n.tr("Перемещайте и масштабируйте фото"))
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.white.opacity(0.65))
 
@@ -931,7 +931,7 @@ struct SettingsView: View {
                         pendingImage = nil
                         resetCropState()
                     } label: {
-                        Text("Отмена")
+                        Text(BagytL10n.tr("Отмена"))
                             .font(.system(size: 16, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -949,7 +949,7 @@ struct SettingsView: View {
                         pendingImage = nil
                         resetCropState()
                     } label: {
-                        Text("Сохранить")
+                        Text(BagytL10n.tr("Сохранить"))
                             .font(.system(size: 16, weight: .black, design: .rounded))
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -1137,7 +1137,7 @@ private struct AccountEditorView: View {
                         )
 
                         editorField(title: "Имя") {
-                            TextField("Введите имя", text: $name)
+                            TextField(BagytL10n.tr("Введите имя"), text: $name)
                                 .font(.system(size: 17, weight: .bold, design: .rounded))
                                 .foregroundColor(primaryText)
                                 .textInputAutocapitalization(.words)
@@ -1145,8 +1145,8 @@ private struct AccountEditorView: View {
                         }
 
                         sliderBlock(title: "Возраст", value: Int(age.rounded()).formattedAge, binding: $age, range: 12...90, step: 1, tint: accent)
-                        sliderBlock(title: "Вес", value: "\(Int(weight.rounded())) кг", binding: $weight, range: 30...180, step: 1, tint: Color(red: 0.10, green: 0.78, blue: 0.48))
-                        sliderBlock(title: "Рост", value: "\(Int(height.rounded())) см", binding: $height, range: 120...220, step: 1, tint: Color(red: 0.55, green: 0.35, blue: 1.0))
+                        sliderBlock(title: "Вес", value: "\(Int(weight.rounded())) \(BagytL10n.tr("кг"))", binding: $weight, range: 30...180, step: 1, tint: Color(red: 0.10, green: 0.78, blue: 0.48))
+                        sliderBlock(title: "Рост", value: "\(Int(height.rounded())) \(BagytL10n.tr("см"))", binding: $height, range: 120...220, step: 1, tint: Color(red: 0.55, green: 0.35, blue: 1.0))
 
                         genderBlock
 
@@ -1155,7 +1155,7 @@ private struct AccountEditorView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("Мой аккаунт")
+            .navigationTitle(BagytL10n.tr("Мой аккаунт"))
             .navigationBarTitleDisplayMode(.inline)
             .preferredColorScheme(isDarkModeEnabled ? .dark : .light)
         }
@@ -1279,7 +1279,7 @@ private struct AccountEditorView: View {
             )
             dismiss()
         } label: {
-            Text("Сохранить")
+            Text(BagytL10n.tr("Сохранить"))
                 .font(.system(size: 16, weight: .black, design: .rounded))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
@@ -1400,7 +1400,7 @@ private struct GoalsEditorView: View {
 
                         sliderBlock(
                             title: "Шаги",
-                            value: "\(Int(stepsGoal.rounded()).formattedWithSpaces) шагов",
+                            value: "\(Int(stepsGoal.rounded()).formattedWithSpaces) \(BagytL10n.tr("шагов"))",
                             binding: $stepsGoal,
                             range: 2000...20000,
                             step: 500,
@@ -1410,7 +1410,7 @@ private struct GoalsEditorView: View {
 
                         sliderBlock(
                             title: "Вода",
-                            value: String(format: "%.1f л", waterGoal),
+                            value: "\(String(format: "%.1f", waterGoal)) \(BagytL10n.tr("л"))",
                             binding: $waterGoal,
                             range: 1.0...5.0,
                             step: 0.1,
@@ -1420,7 +1420,7 @@ private struct GoalsEditorView: View {
 
                         sliderBlock(
                             title: "Сон",
-                            value: String(format: "%.1f ч", sleepGoal),
+                            value: "\(String(format: "%.1f", sleepGoal)) \(BagytL10n.tr("ч"))",
                             binding: $sleepGoal,
                             range: 5.0...10.0,
                             step: 0.1,
@@ -1430,7 +1430,7 @@ private struct GoalsEditorView: View {
 
                         sliderBlock(
                             title: "Калории",
-                            value: "\(Int(caloriesGoal.rounded()).formattedWithSpaces) ккал",
+                            value: "\(Int(caloriesGoal.rounded()).formattedWithSpaces) \(BagytL10n.tr("ккал"))",
                             binding: $caloriesGoal,
                             range: 1200...4000,
                             step: 50,
@@ -1443,7 +1443,7 @@ private struct GoalsEditorView: View {
                     .padding(20)
                 }
             }
-            .navigationTitle("Мои цели")
+            .navigationTitle(BagytL10n.tr("Мои цели"))
             .navigationBarTitleDisplayMode(.inline)
             .preferredColorScheme(isDarkModeEnabled ? .dark : .light)
         }
@@ -1474,11 +1474,11 @@ private struct GoalsEditorView: View {
                 .background(accent2.opacity(isDarkModeEnabled ? 0.16 : 0.11), in: Circle())
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("Мои цели")
+                Text(BagytL10n.tr("Мои цели"))
                     .font(.system(size: 24, weight: .black, design: .rounded))
                     .foregroundColor(primaryText)
 
-                Text("Настройте ежедневные ориентиры для активности, сна, воды и питания.")
+                Text(BagytL10n.tr("Настройте ежедневные ориентиры для активности, сна, воды и питания."))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundColor(secondaryText)
                     .lineSpacing(3)
@@ -1545,7 +1545,7 @@ private struct GoalsEditorView: View {
             )
             dismiss()
         } label: {
-            Text("Сохранить")
+            Text(BagytL10n.tr("Сохранить"))
                 .font(.system(size: 16, weight: .black, design: .rounded))
                 .foregroundColor(.white)
                 .frame(maxWidth: .infinity)

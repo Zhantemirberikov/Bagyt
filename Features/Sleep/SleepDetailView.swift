@@ -112,7 +112,7 @@ struct SleepDetailView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text("СОН")
+                Text(BagytL10n.tr("СОН"))
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(accent.opacity(isDarkMode ? 0.9 : 0.7))
                     .tracking(1.5)
@@ -162,7 +162,7 @@ struct SleepDetailView: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("ОБЩЕЕ ВРЕМЯ")
+                    Text(BagytL10n.tr("ОБЩЕЕ ВРЕМЯ"))
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.white.opacity(0.75))
                         .tracking(1.0)
@@ -176,7 +176,7 @@ struct SleepDetailView: View {
                             .font(.system(size: 56, weight: .black))
                             .foregroundColor(.white)
 
-                        Text("ч")
+                        Text(BagytL10n.tr("ч"))
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(.white.opacity(0.7))
                             .padding(.bottom, 6)
@@ -185,7 +185,7 @@ struct SleepDetailView: View {
                             .font(.system(size: 36, weight: .black))
                             .foregroundColor(.white)
 
-                        Text("мин")
+                        Text(BagytL10n.tr("мин"))
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white.opacity(0.7))
                             .padding(.bottom, 4)
@@ -202,7 +202,7 @@ struct SleepDetailView: View {
                                 .foregroundColor(.white.opacity(0.85))
                         }
                     } else {
-                        Text("Нет сна за выбранный день")
+                        Text(BagytL10n.tr("Нет сна за выбранный день"))
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(.white.opacity(0.8))
                     }
@@ -226,7 +226,7 @@ struct SleepDetailView: View {
 
     private var weekSelectorCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("НЕДЕЛЯ")
+            Text(BagytL10n.tr("НЕДЕЛЯ"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -285,7 +285,7 @@ struct SleepDetailView: View {
 
     private var chartCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ФАЗЫ СНА")
+            Text(BagytL10n.tr("ФАЗЫ СНА"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -388,7 +388,7 @@ struct SleepDetailView: View {
 
     private var phasesCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("ДЕТАЛИ")
+            Text(BagytL10n.tr("ДЕТАЛИ"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -471,11 +471,11 @@ struct SleepDetailView: View {
                 .font(.system(size: 48, weight: .light))
                 .foregroundColor(Color(red: 0.55, green: 0.35, blue: 1.0).opacity(isDarkMode ? 0.8 : 0.4))
 
-            Text("Нет данных о сне")
+            Text(BagytL10n.tr("Нет данных о сне"))
                 .font(.system(size: 18, weight: .black))
                 .foregroundColor(primaryText)
 
-            Text("Проверьте доступ к HealthKit и отслеживание сна на Apple Watch или iPhone. Выберите другой день недели, если сон был записан не сегодня.")
+            Text(BagytL10n.tr("Проверьте доступ к HealthKit и отслеживание сна на Apple Watch или iPhone. Выберите другой день недели, если сон был записан не сегодня."))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)

@@ -442,7 +442,7 @@ struct ChatHistoryView: View {
                         }
                     }
                     Spacer()
-                    Text("История чатов")
+                    Text(BagytL10n.tr("История чатов"))
                         .font(.system(size: 18, weight: .black))
                         .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16))
                     Spacer()
@@ -471,7 +471,7 @@ struct ChatHistoryView: View {
                         Image(systemName: "bubble.left.and.bubble.right")
                             .font(.system(size: 40, weight: .light))
                             .foregroundColor(accent.opacity(0.35))
-                        Text("Нет сохранённых чатов")
+                        Text(BagytL10n.tr("Нет сохранённых чатов"))
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65))
                     }
@@ -494,19 +494,19 @@ struct ChatHistoryView: View {
             }
         }
         .preferredColorScheme(isDarkMode ? .dark : .light)
-        .confirmationDialog("Удалить все чаты?", isPresented: $showDeleteAll, titleVisibility: .visible) {
-            Button("Удалить все", role: .destructive) { withAnimation { store.deleteAll() }; dismiss() }
-            Button("Отмена", role: .cancel) {}
+        .confirmationDialog(BagytL10n.tr("Удалить все чаты?"), isPresented: $showDeleteAll, titleVisibility: .visible) {
+            Button(BagytL10n.tr("Удалить все"), role: .destructive) { withAnimation { store.deleteAll() }; dismiss() }
+            Button(BagytL10n.tr("Отмена"), role: .cancel) {}
         }
-        .alert("Переименовать чат", isPresented: $showRename) {
-            TextField("Название", text: $renameText)
+        .alert(BagytL10n.tr("Переименовать чат"), isPresented: $showRename) {
+            TextField(BagytL10n.tr("Название"), text: $renameText)
                 .colorScheme(isDarkMode ? .dark : .light)
-            Button("Сохранить") {
+            Button(BagytL10n.tr("Сохранить")) {
                 if let id = renamingID, !renameText.trimmingCharacters(in: .whitespaces).isEmpty {
                     store.rename(id, to: renameText)
                 }
             }
-            Button("Отмена", role: .cancel) {}
+            Button(BagytL10n.tr("Отмена"), role: .cancel) {}
         }
     }
 
@@ -548,7 +548,7 @@ struct ChatHistoryView: View {
                     Text(session.preview)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65)).lineLimit(1)
-                    Text("\(session.messages.count) сообщ.")
+                    Text("\(session.messages.count) \(BagytL10n.tr("сообщ."))")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.6,green:0.72,blue:0.78))
                 }
@@ -569,16 +569,16 @@ struct ChatHistoryView: View {
         .contextMenu {
             Button {
                 renamingID = session.id; renameText = session.title; showRename = true
-            } label: { Label("Переименовать", systemImage: "pencil") }
+            } label: { Label(BagytL10n.tr("Переименовать"), systemImage: "pencil") }
             Divider()
             Button(role: .destructive) {
                 withAnimation { store.delete(session) }
-            } label: { Label("Удалить", systemImage: "trash") }
+            } label: { Label(BagytL10n.tr("Удалить"), systemImage: "trash") }
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
             Button(role: .destructive) {
                 withAnimation { store.delete(session) }
-            } label: { Label("Удалить", systemImage: "trash") }
+            } label: { Label(BagytL10n.tr("Удалить"), systemImage: "trash") }
             .tint(Color(red:0.95,green:0.25,blue:0.25))
         }
     }
@@ -885,15 +885,15 @@ struct ChatSessionView: View {
                 LottieView(animationName: "aiaia").frame(width: 90, height: 90).clipShape(Circle())
             }
             VStack(spacing: 8) {
-                Text("Привет! Я Bagyt 👋").font(.system(size: 22, weight: .black))
+                Text(BagytL10n.tr("Привет! Я Bagyt 👋")).font(.system(size: 22, weight: .black))
                     .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16))
-                Text("Ваш персональный AI-помощник по здоровью.\nСпросите меня о симптомах или получите рекомендации.")
+                Text(BagytL10n.tr("Ваш персональный AI-помощник по здоровью.\nСпросите меня о симптомах или получите рекомендации."))
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(isDarkMode ? .white.opacity(0.6) : Color(red:0.4,green:0.55,blue:0.65))
                     .multilineTextAlignment(.center).lineSpacing(4)
             }
             VStack(spacing: 8) {
-                Text("Попробуйте спросить:").font(.system(size: 12, weight: .bold))
+                Text(BagytL10n.tr("Попробуйте спросить:")).font(.system(size: 12, weight: .bold))
                     .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75)).tracking(0.5)
                 ForEach([
                     BagytL10n.tr("Как улучшить качество сна?"),
@@ -963,7 +963,7 @@ struct ChatSessionView: View {
                 .contextMenu {
                     if msg.isUser {
                         Button { editingMsg = msg; editText = msg.text }
-                        label: { Label("Редактировать", systemImage: "pencil") }
+                        label: { Label(BagytL10n.tr("Редактировать"), systemImage: "pencil") }
                     }
                     Button(role: .destructive) {
                         if let si = store.sessions.firstIndex(where: { $0.id == sessionId }) {
@@ -971,13 +971,13 @@ struct ChatSessionView: View {
                             s.messages.removeAll { $0.id == msg.id }
                             store.update(s)
                         }
-                    } label: { Label("Удалить", systemImage: "trash") }
+                    } label: { Label(BagytL10n.tr("Удалить"), systemImage: "trash") }
                 }
 
                 HStack(spacing: 4) {
                     Text(fmtTime(msg.timestamp)).font(.system(size: 10, weight: .medium))
                         .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75))
-                    if msg.isEdited { Text("· изм.").font(.system(size: 10, weight: .medium))
+                    if msg.isEdited { Text(BagytL10n.tr("· изм.")).font(.system(size: 10, weight: .medium))
                         .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75)) }
                 }
             }
@@ -1004,7 +1004,7 @@ struct ChatSessionView: View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
                 HStack(spacing: 10) {
-                    TextField("Напишите Bagyt...", text: $inputText, axis: .vertical)
+                    TextField(BagytL10n.tr("Напишите Bagyt..."), text: $inputText, axis: .vertical)
                         .font(.system(size: 15, weight: .medium))
                         .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16))
                         .lineLimit(1...5).focused($focused)
@@ -1062,7 +1062,7 @@ struct ChatSessionView: View {
                     .animation(.spring(response: 0.3), value: inputText.isEmpty)
                 }
             }
-            Text("ИИ может ошибаться. Не заменяет консультацию врача.")
+            Text(BagytL10n.tr("ИИ может ошибаться. Не заменяет консультацию врача."))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundColor(isDarkMode ? .white.opacity(0.5) : Color(red:0.55,green:0.67,blue:0.75))
                 .multilineTextAlignment(.center)
@@ -1086,7 +1086,7 @@ struct ChatSessionView: View {
                 ).ignoresSafeArea()
                 
                 VStack(spacing: 20) {
-                    Text("Редактировать").font(.system(size: 18, weight: .black))
+                    Text(BagytL10n.tr("Редактировать")).font(.system(size: 18, weight: .black))
                         .foregroundColor(isDarkMode ? .white : Color(red:0.06,green:0.09,blue:0.16)).padding(.top, 20)
                     TextEditor(text: $editText).font(.system(size: 15))
                         .padding(14)
@@ -1099,7 +1099,7 @@ struct ChatSessionView: View {
                         editingMsg = nil
                         UINotificationFeedbackGenerator().notificationOccurred(.success)
                     } label: {
-                        Text("Сохранить").font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                        Text(BagytL10n.tr("Сохранить")).font(.system(size: 16, weight: .bold)).foregroundColor(.white)
                             .frame(maxWidth: .infinity).padding(.vertical, 16)
                             .background(LinearGradient(colors: [accent, accent2], startPoint: .leading, endPoint: .trailing))
                             .clipShape(Capsule()).shadow(color: accent.opacity(isDarkMode ? 0.15 : 0.35), radius: 12, x: 0, y: 5)
@@ -1110,7 +1110,7 @@ struct ChatSessionView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { editingMsg = nil }.foregroundColor(accent)
+                    Button(BagytL10n.tr("Отмена")) { editingMsg = nil }.foregroundColor(accent)
                 }
             }
         }

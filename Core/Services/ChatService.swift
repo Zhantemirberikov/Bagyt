@@ -353,11 +353,12 @@ final class ChatService {
 
     private func buildHealthContext() -> String {
         let health = HealthKitManager.shared
+        let profile = UserProfileStore.shared
 
-        let stepsGoal = UserDefaults.standard.integer(forKey: "stepsGoal")
-        let sleepGoal = UserDefaults.standard.double(forKey: "sleepGoal")
-        let waterGoal = UserDefaults.standard.double(forKey: "waterGoal")
-        let caloriesGoal = UserDefaults.standard.integer(forKey: "caloriesGoal")
+        let stepsGoal = profile.stepsGoal
+        let sleepGoal = profile.sleepGoal
+        let waterGoal = profile.waterGoal
+        let caloriesGoal = profile.caloriesGoal
 
         return """
         Current HealthKit snapshot:

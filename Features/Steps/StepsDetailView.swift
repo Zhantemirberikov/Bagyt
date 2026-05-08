@@ -88,7 +88,7 @@ struct StepsDetailView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text("ШАГИ")
+                Text(BagytL10n.tr("ШАГИ"))
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(accent.opacity(isDarkMode ? 0.9 : 0.75))
                     .tracking(1.5)
@@ -131,7 +131,7 @@ struct StepsDetailView: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("СУММАРНО ШАГОВ")
+                    Text(BagytL10n.tr("СУММАРНО ШАГОВ"))
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.white.opacity(0.78))
                         .tracking(1.0)
@@ -141,7 +141,7 @@ struct StepsDetailView: View {
                             .font(.system(size: 54, weight: .black))
                             .foregroundColor(.white)
 
-                        Text("шагов")
+                        Text(BagytL10n.tr("шагов"))
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundColor(.white.opacity(0.78))
                             .padding(.bottom, 6)
@@ -149,7 +149,7 @@ struct StepsDetailView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 10) {
-                            Text("Цель \(viewModel.goalText)")
+                            Text("\(BagytL10n.tr("Цель")) \(viewModel.goalText)")
                                 .font(.system(size: 12, weight: .bold))
                                 .foregroundColor(.white.opacity(0.88))
 
@@ -188,7 +188,7 @@ struct StepsDetailView: View {
 
     private var weekCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("НЕДЕЛЬНАЯ СВОДКА")
+            Text(BagytL10n.tr("НЕДЕЛЬНАЯ СВОДКА"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -261,7 +261,7 @@ struct StepsDetailView: View {
 
     private var hourlyCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("ПОЧАСОВОЙ ГРАФИК АКТИВНОСТИ")
+            Text(BagytL10n.tr("ПОЧАСОВОЙ ГРАФИК АКТИВНОСТИ"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -297,11 +297,11 @@ struct StepsDetailView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text("Динамика активности")
+                            Text(BagytL10n.tr("Динамика активности"))
                                 .font(.system(size: 18, weight: .black))
                                 .foregroundColor(.white)
 
-                            Text("Коснитесь графика для просмотра количества шагов в выбранный час")
+                            Text(BagytL10n.tr("Коснитесь графика для просмотра количества шагов в выбранный час"))
                                 .font(.system(size: 11, weight: .medium))
                                 .foregroundColor(Color.white.opacity(0.66))
                         }
@@ -313,7 +313,7 @@ struct StepsDetailView: View {
                                 Circle()
                                     .fill(accent3)
                                     .frame(width: 8, height: 8)
-                                Text("АНАЛИЗ ДАННЫХ")
+                                Text(BagytL10n.tr("АНАЛИЗ ДАННЫХ"))
                                     .font(.system(size: 10, weight: .bold))
                                     .foregroundColor(Color.white.opacity(0.82))
                             }
@@ -352,7 +352,7 @@ struct StepsDetailView: View {
 
     private var detailsCard: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ")
+            Text(BagytL10n.tr("КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ"))
                 .font(.system(size: 11, weight: .bold))
                 .foregroundColor(secondaryText)
                 .tracking(0.9)
@@ -412,7 +412,7 @@ struct StepsDetailView: View {
                 Text(title)
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(primaryText)
-                Text("Данные телеметрии HealthKit")
+                Text(BagytL10n.tr("Данные телеметрии HealthKit"))
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(secondaryText)
             }
@@ -431,11 +431,11 @@ struct StepsDetailView: View {
                 .font(.system(size: 46, weight: .light))
                 .foregroundColor(accent.opacity(isDarkMode ? 0.6 : 0.35))
 
-            Text("Нет данных телеметрии активности")
+            Text(BagytL10n.tr("Нет данных телеметрии активности"))
                 .font(.system(size: 18, weight: .black))
                 .foregroundColor(primaryText)
 
-            Text("Убедитесь, что Apple Watch или совместимое устройство синхронизирует измерения активности с HealthKit.")
+            Text(BagytL10n.tr("Убедитесь, что Apple Watch или совместимое устройство синхронизирует измерения активности с HealthKit."))
                 .font(.system(size: 14, weight: .medium))
                 .foregroundColor(secondaryText)
                 .multilineTextAlignment(.center)
@@ -638,7 +638,7 @@ private struct StepsInteractiveRhythmChart: View {
 
     private func selectionBubble(for hour: HourlySteps) -> some View {
         VStack(spacing: 4) {
-            Text("\(hour.steps.formattedWithSeparator) шагов")
+            Text("\(hour.steps.formattedWithSeparator) \(BagytL10n.tr("шагов"))")
                 .font(.system(size: 11, weight: .black))
                 .foregroundColor(isDarkMode ? .white : Color(red: 0.02, green: 0.12, blue: 0.18))
 
@@ -722,7 +722,7 @@ private final class StepsDetailViewModel: ObservableObject {
     private let store = HKHealthStore()
 
     private var goal: Int {
-        let saved = UserDefaults.standard.integer(forKey: "stepsGoal")
+        let saved = UserProfileStore.shared.stepsGoal
         return saved > 0 ? saved : 8000
     }
 
